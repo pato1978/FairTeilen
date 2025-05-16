@@ -6,22 +6,20 @@ using WebAssembly.Server.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔑 Verbindung zur Shared-Datenbank aus appsettings.Development.json
+// 🔑 Verbindung zur Shared-Datenbank
 var sharedConnection = builder.Configuration.GetConnectionString("SharedDb")
                        ?? throw new InvalidOperationException("❌ Verbindung 'SharedDb' ist nicht gesetzt.");
 
-// 📦 Services registrieren
+// 📦 Services
 builder.Services.AddControllers();
 
-// 📂 Lokale SQLite-Datenbank (private Ausgaben)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=expenses.db"));
 
-// 🌐 Zentrale MSSQL-Datenbank (gemeinsame Ausgaben)
 builder.Services.AddDbContext<SharedDbContext>(options =>
     options.UseSqlServer(sharedConnection));
 
-// 🔓 CORS für React-Frontend
+// ✅ CORS korrekt konfigurieren
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -34,12 +32,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 🔧 Middleware
+// ✅ Wichtige Reihenfolge!
 app.UseHttpsRedirection();
-app.UseCors();
+app.UseRouting();       // <--- 🔥 MUSS VOR UseCors()
+app.UseCors();          // <--- 🔥 DANACH!
 app.UseAuthorization();
 
-// 🧭 API-Endpunkte aktivieren
 app.MapControllers();
 
 app.Run();

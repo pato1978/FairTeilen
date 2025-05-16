@@ -31,7 +31,8 @@ namespace WebAssembly.Server.Controllers
             [FromQuery] string scope,
             [FromQuery] string? group,
             [FromQuery] string? month)
-        {
+        {   
+            if (group == "null") group = null;
             // 🔒 1. Scope-Validierung
             if (string.IsNullOrWhiteSpace(scope))
                 return BadRequest("Parameter 'scope' ist erforderlich.");

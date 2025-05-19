@@ -1,0 +1,207 @@
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add font-inter class for use in components */
+.font-inter {
+    font-family: 'Inter', sans-serif;
+}
+
+@layer base {
+  :root {
+    --foreground-rgb: 0, 0, 0;
+    --background-rgb: 234, 239, 245; /* Hellgrauer Hintergrund #EAEFF5 */
+
+    /* Theme variables from theme.css */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Füge diese Styles hinzu, um die Höhe der Seite zu fixieren und Overflow zu kontrollieren */
+html,
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Verhindert Scrollen der gesamten Seite */
+    position: relative;
+    width: 100%;
+    height: 100%; /* Fixe Höhe */
+}
+
+body {
+    color: rgb(var(--foreground-rgb));
+    background: rgb(var(--background-rgb));
+}
+
+/* App Container - Zentraler Container für die gesamte App */
+.app-container {
+    width: 100%;
+    max-width: 448px; /* max-w-md */
+    margin: 0 auto;
+    position: relative;
+    height: 100vh; /* Volle Höhe des Viewports */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Verhindert Scrollen des Containers */
+}
+
+/* Verhindere blauen Highlight-Effekt bei Touch auf mobilen Geräten */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Gemeinsame Klassen für konsistentes Layout */
+.page-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh; /* Volle Höhe */
+    padding-top: 3.5rem; /* 56px für Header - dieser Wert bestimmt den Abstand zum Header */
+    padding-bottom: 3.5rem; /* 64px für Navigation (h-16) */
+    overflow: hidden; /* Verhindert Scrollen der Seite */
+}
+
+.page-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.page-header-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1rem 0; /* Hier wird der Abstand definiert: 1rem oben und links/rechts, 0 unten */
+}
+
+.transform-origin-top {
+    transform-origin: top center;
+}
+
+/* Scrollbereich nur für die Ausgabenliste */
+.expenses-scroll-area {
+    flex: 1;
+    overflow-y: auto; /* Nur dieser Bereich ist scrollbar */
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem; /* Kleiner Abstand zum Footer */
+    max-height: calc(100vh - 14rem); /* Dynamische Höhe mit Abstand zum Footer */
+}
+
+/* Verbesserte Scrollbar für Desktop */
+@media (min-width: 768px) {
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c5c5c5;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a0a0a0;
+    }
+}
+
+/* Verbesserte Karten-Hervorhebung */
+.bg-white {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+/* Subtile Hover-Effekte für Karten
+button.bg-white:active,
+div.bg-white:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}*/

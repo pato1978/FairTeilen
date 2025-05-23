@@ -41,12 +41,12 @@ function MonthCardHeader({ month, toggleExpand, statusInfo }: MonthCardHeaderPro
       className="flex items-center justify-between p-3 border-b border-gray-100 cursor-pointer"
       onClick={toggleExpand}
     >
-      <h3 className="font-semibold text-lg">{month.name}</h3>
+      <h3 className="text-xl font-semibold">{month.name}</h3>
 
       <div className="flex items-center">
         <div className={`flex items-center px-2 py-1 rounded-full ${statusInfo.statusBgColor}`}>
           {statusInfo.icon}
-          <span className={`ml-1.5 text-xs ${statusInfo.textColor}`}>{statusInfo.text}</span>
+          <span className={`ml-1.5 text-sm font-normal ${statusInfo.textColor}`}>{statusInfo.text}</span>
         </div>
         <div className="relative ml-2">
           <Star
@@ -58,7 +58,7 @@ function MonthCardHeader({ month, toggleExpand, statusInfo }: MonthCardHeaderPro
           />
 
           {showStarTooltip && (
-            <div className="absolute top-0 right-6 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-xs z-20">
+            <div className="absolute top-0 right-6 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-sm font-normal z-20">
               <p>Premium-Funktion: Detaillierte Monatsanalyse und Exportmöglichkeiten.</p>
               <div className="absolute top-2 -right-2 w-3 h-3 bg-white transform rotate-45"></div>
             </div>
@@ -197,27 +197,27 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
           {/* Ausgaben-Übersicht */}
           {month.expenses && (
             <div className="mb-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Ausgaben</h4>
+              <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <div className="p-2 rounded text-center bg-blue-50 border border-blue-50 shadow-sm">
                   <div className="flex items-center justify-center mb-1">
                     <Users className="h-3 w-3 text-blue-600 mr-1" />
-                    <span className="text-xs text-blue-600">Gemeinsam</span>
+                    <span className="text-sm font-medium text-blue-600">Gemeinsam</span>
                   </div>
-                  <span className="text-sm font-bold text-black">€{month.expenses.shared}</span>
+                  <span className="text-base font-bold text-black">€{month.expenses.shared}</span>
                 </div>
 
                 <div className="p-2 rounded text-center bg-blue-50 border border-blue-50 shadow-sm">
                   <div className="flex items-center justify-center mb-1">
                     <Baby className="h-3 w-3 text-blue-600 mr-1" />
-                    <span className="text-xs text-blue-600">Kind</span>
+                    <span className="text-sm font-medium text-blue-600">Kind</span>
                   </div>
-                  <span className="text-sm font-bold text-black">€{month.expenses.child}</span>
+                  <span className="text-base font-bold text-black">€{month.expenses.child}</span>
                 </div>
               </div>
 
               <div className="bg-gray-50 p-2 rounded text-center">
-                <span className="text-xs text-gray-600">Gesamtausgaben</span>
+                <span className="text-sm font-normal text-gray-600">Gesamtausgaben</span>
                 <div className="text-base font-bold">€{month.expenses.total}</div>
               </div>
             </div>
@@ -226,13 +226,13 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
           {/* Bestätigungsstatus */}
           {!isFuture && (
             <div className="mb-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Bestätigungsstatus</h4>
+              <h4 className="text-base font-medium text-gray-700 mb-2">Bestätigungsstatus</h4>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                   <div>
-                    <span className="text-xs">Partner 1</span>
+                    <span className="text-sm font-normal">Partner 1</span>
                     {month.expenses && (
-                      <div className="text-xs text-gray-500 mt-0.5">€{(month.expenses.shared / 2).toFixed(2)}</div>
+                      <div className="text-sm font-normal text-gray-500 mt-0.5">€{(month.expenses.shared / 2).toFixed(2)}</div>
                     )}
                   </div>
                   <div className="bg-blue-100 rounded-full p-1.5 border border-blue-600">
@@ -246,9 +246,9 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
 
                 <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
                   <div>
-                    <span className="text-xs">Partner 2</span>
+                    <span className="text-sm font-normal">Partner 2</span>
                     {month.expenses && (
-                      <div className="text-xs text-gray-500 mt-0.5">€{(month.expenses.shared / 2).toFixed(2)}</div>
+                      <div className="text-sm font-normal text-gray-500 mt-0.5">€{(month.expenses.shared / 2).toFixed(2)}</div>
                     )}
                   </div>
                   <div className="bg-blue-100 rounded-full p-1.5 border border-blue-600">
@@ -266,25 +266,25 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
           {/* Ausgleichszahlung */}
           {(isPending || needsClarification) && month.balance !== undefined && (
             <div className="mb-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Ausgleichszahlung</h4>
+              <h4 className="text-base font-medium text-gray-700 mb-2">Ausgleichszahlung</h4>
               <div className={`p-2 rounded bg-blue-50 border border-blue-50 shadow-sm`}>
                 <div className="flex items-center justify-center">
-                  <span className="text-xs font-medium text-blue-600">
+                  <span className="text-sm font-medium text-blue-600">
                     {month.balance > 0 ? "Partner 2" : "Partner 1"}
                   </span>
                   <ArrowRight className="h-3 w-3 mx-1 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-600">
+                  <span className="text-sm font-medium text-blue-600">
                     {month.balance > 0 ? "Partner 1" : "Partner 2"}
                   </span>
                 </div>
-                <div className="text-center font-bold mt-1 text-black">€{Math.abs(month.balance).toFixed(2)}</div>
+                <div className="text-center text-lg font-bold mt-1 text-black">€{Math.abs(month.balance).toFixed(2)}</div>
               </div>
             </div>
           )}
 
           {/* Klärungsbedarf-Nachricht */}
           {needsClarification && month.message && (
-            <div className="mt-2 text-xs bg-amber-100 text-amber-700 p-2 rounded">
+            <div className="mt-2 text-sm font-normal bg-amber-100 text-amber-700 p-2 rounded">
               <div className="font-medium mb-1">Hinweis:</div>
               {month.message}
             </div>
@@ -292,14 +292,14 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
 
           {/* Zukunfts-Hinweis */}
           {isFuture && (
-            <div className="mt-2 text-xs bg-gray-100 text-gray-500 p-2 rounded">
+            <div className="mt-2 text-sm font-normal bg-gray-100 text-gray-500 p-2 rounded">
               Dieser Monat ist noch nicht verfügbar. Ausgaben können erst nach Monatsende bearbeitet werden.
             </div>
           )}
 
           {/* Abgeschlossen-Hinweis */}
           {isCompleted && (
-            <div className="mt-2 text-xs bg-green-100 text-green-700 p-2 rounded">
+            <div className="mt-2 text-sm font-normal bg-green-100 text-green-700 p-2 rounded">
               Dieser Monat ist vollständig abgeschlossen und von beiden Partnern bestätigt.
             </div>
           )}

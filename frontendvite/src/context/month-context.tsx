@@ -19,14 +19,14 @@ export function MonthProvider({ children }: { children: React.ReactNode }) {
 
         setCurrentDateState(date)
 
-        // 🚀 Monat wird hier direkt ans Backend geschickt
+      /*  // 🚀 Monat wird hier direkt ans Backend geschickt
         fetch("http://localhost:5289/api/currentmonth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ month: date.toISOString() }),
         }).catch((error) => {
             console.error("Fehler beim Senden des Monats an das Backend:", error)
-        })
+        })*/
     }
 
     return (

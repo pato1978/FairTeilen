@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState } from "react"
 import { ArrowUpDown, ChevronDown } from "lucide-react"
@@ -46,7 +46,21 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
             const amountB = parseAmount(b.amount)
             return sortDirection === "asc" ? amountA - amountB : amountB - amountA
         }
+        if (sortBy === "confirmed") {
+            // Wir nehmen an, dass jedes Expense-Item einen isConfirmed-Status hat
+            // Wenn nicht vorhanden, nehmen wir an, dass es bestätigt ist (true)
+            const confirmedA = a.isConfirmed !== undefined ? a.isConfirmed : true
+            const confirmedB = b.isConfirmed !== undefined ? b.isConfirmed : true
 
+            // Sortiere bestätigte Items (grünes Häkchen) zuerst (wenn aufsteigend)
+            // oder unbestätigte Items (orangenes Ausrufezeichen) zuerst (wenn absteigend)
+            if (confirmedA === confirmedB) return 0
+            if (sortDirection === "asc") {
+                return confirmedA ? -1 : 1 // Bestätigte zuerst bei aufsteigender Sortierung
+            } else {
+                return confirmedA ? 1 : -1 // Unbestätigte zuerst bei absteigender Sortierung
+            }
+        }
         return 0
     })
 
@@ -59,31 +73,43 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
                         <ArrowUpDown className="h-3 w-3" />
                     </div>
                 </div>
-                <div className="flex-1 flex">
-                    <button
-                        onClick={() => handleSort("date")}
-                        className="flex items-center text-blue-600 font-semibold"
-                    >
-                        <span className="inline-block w-14">Datum</span>
-                        <span className="w-3">
+                <div className="flex-1">
+                    <button onClick={() => handleSort("date")} className={`flex items-center text-blue-600 font-semibold`}>
+                        <span className="inline-block">Datum</span>
+                        <span className="w-3 ml-1">
               {sortBy === "date" && (
                   <ChevronDown
-                      className={`h-3 w-3 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                      className={`h-3 w-3 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""}`}
                   />
               )}
             </span>
                     </button>
                 </div>
-                <div className="w-20 text-right">
+                <div className="w-24 text-right">
                     <button
                         onClick={() => handleSort("amount")}
-                        className="flex items-center justify-end ml-auto text-blue-600 font-semibold"
+                        className={`flex items-center justify-end ml-auto text-blue-600 font-semibold`}
                     >
-                        <span className="inline-block w-10">Betrag</span>
-                        <span className="w-3">
+                        <span className="inline-block">Betrag</span>
+                        <span className="w-3 ml-1">
               {sortBy === "amount" && (
                   <ChevronDown
-                      className={`h-3 w-3 transition-transform ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                      className={`h-3 w-3 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""}`}
+                  />
+              )}
+            </span>
+                    </button>
+                </div>
+                <div className="w-12 text-center">
+                    <button
+                        onClick={() => handleSort("confirmed")}
+                        className={`flex items-center justify-center text-blue-600 font-semibold`}
+                    >
+                        <span className="inline-block">OK</span>
+                        <span className="w-3 ml-1">
+              {sortBy === "confirmed" && (
+                  <ChevronDown
+                      className={`h-3 w-3 transition-transform ${sortDirection === "desc" ? "transform rotate-180" : ""}`}
                   />
               )}
             </span>
@@ -92,13 +118,9 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
             </div>
 
             <div className="expenses-scroll-area rounded-lg p-4 flex-1 [&>div]:mb-[0.125rem]">
-                {sortedExpenses.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center mt-6">Keine Ausgaben für diesen Monat.</p>
-                ) : (
-                    sortedExpenses.map((item) => (
-                        <ExpenseItem key={item.id} item={item} onDelete={onDelete} onEdit={onEdit} />
-                    ))
-                )}
+                {sortedExpenses.map((item) => (
+                    <ExpenseItem key={item.id} item={item} onDelete={onDelete} onEdit={onEdit} />
+                ))}
             </div>
         </div>
     )

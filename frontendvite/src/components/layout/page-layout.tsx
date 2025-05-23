@@ -11,7 +11,7 @@ interface PageLayoutProps {
 export function PageLayout({ children, onAddButtonClick, showAddButton = true }: PageLayoutProps) {
   return (
     <>
-      <Header />
+        <Header />
       <div className="page-container flex flex-col">
         {children}
         <Footer onAddButtonClick={onAddButtonClick} showAddButton={showAddButton} />

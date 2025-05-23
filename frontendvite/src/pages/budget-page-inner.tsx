@@ -16,9 +16,9 @@ import { convertDateToISO } from "@/lib/utils"
 // ✅ Layout-Komponenten und UI-Elemente
 import { PageLayout } from "@/components/layout/page-layout"
 import { PageHeader } from "@/components/layout/page-header"
-import { MonthSelector } from "@/components/layout/month-selector"
+
 import { BudgetSummaryCard } from "@/components/dashboard/budget-summary-card"
-import ExpenseEditorModal from "@/components/modals/expense-editor-modal"
+import { ExpenseEditorBottomSheet } from "@/components/modals/expense-editor-bottom-sheet"
 import BudgetEditorModal from "@/components/modals/budget-editor-modal"
 import { VerbesserteLitenansicht } from "@/components/dashboard/verbesserte-listenansicht"
 
@@ -123,6 +123,13 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         if (selectedCategory === "gesamt") {
             return expenses
         }
+        else if (selectedCategory === "wiederkehrend") {
+            return expenses.filter((e) => e.isRecurring)
+        }
+        else if (selectedCategory === "bereits beglichen") {
+            return expenses.filter((e) => e.isBalanced)
+        }
+
 
         return expenses.filter((e) => e.category === selectedCategory)
     }
@@ -149,7 +156,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         <PageLayout onAddButtonClick={handleAdd}>
             <div className="page-header-container">
                 <PageHeader title={title} /> {/* 🏷 Titel: Personal / Shared / Child */}
-                <MonthSelector />
+
             </div>
 
             <div className="flex-1 px-4 pb-6 mt-8 flex flex-col overflow-hidden">
@@ -178,8 +185,8 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 </div>
             </div>
 
-            {/* ✍ Modal für Ausgaben */}
-            <ExpenseEditorModal
+            {/* ✍ Bottom Sheet für Ausgaben */}
+            <ExpenseEditorBottomSheet
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 expense={editingExpense}

@@ -1,25 +1,50 @@
+"use client"
+
+import { MonthSelector } from "@/components/layout/month-selector"
+import { YearSelector } from "@/components/layout/year-selector"
+import { useMonth } from "@/context/month-context"
+
+import { useState } from "react" // für selectedYear
+
 interface PageHeaderProps {
-  title: string
+    title: string
+    showMonthSelector?: boolean
 }
 
-export function PageHeader({ title }: PageHeaderProps) {
-  return (
-    <h2 className="relative px-6 py-6 text-center rounded-xl w-[85%] mb-3 text-2xl font-bold text-white overflow-hidden backdrop-blur-sm shadow-lg">
-      {/* Hintergrund mit Gradient und Glaseffekt */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-blue-500/90 -z-10"></div>
+export function PageHeader({
+                               title,
+                               showMonthSelector = true,
+                           }: PageHeaderProps) {
+    const { currentDate } = useMonth()
 
-      {/* Subtile Designelemente */}
-      <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-400/30 rounded-full blur-xl"></div>
-      <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-blue-300/20 rounded-full blur-xl"></div>
+    // Lokaler State für ausgewähltes Jahr – nur bei YearSelector notwendig
+    const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
 
-      {/* Feiner Akzentstreifen am unteren Rand */}
-      <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-white/60"></div>
+    // Handler für YearSelector
+    const handleYearChange = (newYear: number) => {
+        setSelectedYear(newYear)
+        // Optional: Hier könntest du den Kontext aktualisieren oder API neu laden
+        console.log("Neues Jahr ausgewählt:", newYear)
+    }
 
-      {/* Titel mit Icon */}
-      <div className="flex items-center justify-center space-x-2">
-        <span className="relative">{title}</span>
-      </div>
-    </h2>
-  )
+    return (
+        <div className="relative flex flex-col justify-center items-center px-6 py-3 text-center rounded-xl w-full mb-2 overflow-hidden backdrop-blur-sm shadow-lg -mt-4 min-h-[120px]">
+            {/* 🔵 Hintergrundfarbe passend zur Footer-Farbe */}
+            <div className="absolute inset-0 bg-blue-600 -z-10" />
+
+            {/* 🌬 Subtile grafische Elemente */}
+            <div className="absolute -top-4 -right-6 w-20 h-20 bg-blue-400/30 rounded-full blur-xl" />
+            <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-white/60" />
+
+            {/* 🏷️ Titelanzeige */}
+            <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
+
+            {/* 📅 Monats- oder Jahresauswahl */}
+            {showMonthSelector ? (
+                <MonthSelector />
+            ) : (
+                <YearSelector selectedYear={selectedYear} onChange={handleYearChange} />
+            )}
+        </div>
+    )
 }
-

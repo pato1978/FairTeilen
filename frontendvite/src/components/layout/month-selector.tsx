@@ -1,31 +1,40 @@
 "use client"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useMonth } from "@/context/month-context"
-import { formatMonthYear } from "@/lib/utils"
 
-export function MonthSelector() {
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { formatMonthYear } from "@/lib/utils"
+import { useMonth } from "@/context/month-context"
+
+export interface MonthSelectorProps {
+    initialDate?: Date
+}
+
+export function MonthSelector(): React.JSX.Element {
     const { currentDate, setCurrentDate } = useMonth()
 
-    const goToPreviousMonth = () => {
+    const navigateMonth = (offset: number) => {
         const newDate = new Date(currentDate)
-        newDate.setMonth(currentDate.getMonth() - 1)
-        setCurrentDate(newDate) // 💡 wird direkt an Backend gesendet
-    }
-
-    const goToNextMonth = () => {
-        const newDate = new Date(currentDate)
-        newDate.setMonth(currentDate.getMonth() + 1)
+        newDate.setMonth(newDate.getMonth() + offset)
         setCurrentDate(newDate)
     }
 
     return (
-        <div className="flex justify-between items-center bg-white shadow-sm rounded-lg p-3 w-[70%] border border-gray-100">
-            <button onClick={goToPreviousMonth} aria-label="Vorheriger Monat">
-                <ChevronLeft className="h-5 w-5 text-blue-500" />
+        <div className="flex justify-between items-center bg-blue-50 rounded-lg p-2 mt-2 mx-auto w-[80%]">
+            <button
+                onClick={() => navigateMonth(-1)}
+                className="p-1.5 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                aria-label="Vorheriger Monat"
+            >
+                <ChevronLeft className="h-4 w-4" />
             </button>
-            <div className="font-medium text-gray-700">{formatMonthYear(currentDate)}</div>
-            <button onClick={goToNextMonth} aria-label="Nächster Monat">
-                <ChevronRight className="h-5 w-5 text-blue-500" />
+            <div className="text-base font-medium text-blue-600">
+                {formatMonthYear(currentDate)}
+            </div>
+            <button
+                onClick={() => navigateMonth(1)}
+                className="p-1.5 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                aria-label="Nächster Monat"
+            >
+                <ChevronRight className="h-4 w-4" />
             </button>
         </div>
     )

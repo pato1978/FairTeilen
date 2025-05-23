@@ -93,7 +93,7 @@ export function BarChartComponent({ data }: BarChartProps) {
       label.setAttribute("y", yPos.toString())
       label.setAttribute("text-anchor", "end")
       label.setAttribute("dominant-baseline", "middle")
-      label.setAttribute("font-size", "10")
+      label.setAttribute("font-size", "12")
       label.setAttribute("fill", "#64748B") // slate-500
       label.textContent = `€${amount.toFixed(0)}`
       svg.appendChild(label)
@@ -130,7 +130,7 @@ export function BarChartComponent({ data }: BarChartProps) {
       label.setAttribute("x", (x + barWidth / 2).toString())
       label.setAttribute("y", (padding.top + chartHeight + 15).toString())
       label.setAttribute("text-anchor", "middle")
-      label.setAttribute("font-size", "10")
+      label.setAttribute("font-size", "12")
       label.setAttribute("fill", "#64748B") // slate-500
 
       // Kategoriename kürzen, wenn zu lang

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { LineChartComponent } from "@/components/charts/line-chart"
 import { CategoryFilter } from "@/components/filters/category-filter"
 import { useNavigate } from "react-router-dom"
+import { useMonth } from "@/context/month-context"
 
 // Beispieldaten für die Ausgaben über Zeit
 const monthlyExpenses = [
@@ -88,7 +89,7 @@ const categoryColors = {
 }
 
 export default function TrendsPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const { currentDate } = useMonth()
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [timeRange, setTimeRange] = useState<"3m" | "6m" | "1y">("6m")
   const [viewType, setViewType] = useState<"total" | "categories">("total")
@@ -134,7 +135,7 @@ export default function TrendsPage() {
     <PageLayout showAddButton={false}>
       {/* Header Area */}
       <div className="page-header-container">
-        <PageHeader title="Ausgabentrends" initialDate={currentDate} onMonthChange={setCurrentDate} />
+        <PageHeader title="Ausgabentrends" />
       </div>
 
       {/* Seitenauswahl Container */}

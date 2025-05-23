@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { PageLayout } from "@/components/layout/page-layout"
 import { PageHeader } from "@/components/layout/page-header"
-import { YearSelector } from "./year-selector"
+import { YearSelector } from "../../components/layout/year-selector.tsx"
 import { EnhancedMonthCard } from "./enhanced-month-card"
 import { StatusModal } from "./status-modal"
 import { useNavigate } from "react-router-dom"
@@ -201,9 +201,9 @@ export default function JahresUebersicht() {
   return (
     <PageLayout showAddButton={false}>
       {/* Header Area */}
-      <div className="page-header-container">
-        <PageHeader title="Jahresübersicht" />
-        <YearSelector selectedYear={selectedYear} onChange={handleYearChange} />
+      <div className="page-header-container scale-80 transform-origin-top">
+        <PageHeader showMonthSelector={false} title="Jahresübersicht" />
+
       </div>
 
       {/* Main Content Area */}

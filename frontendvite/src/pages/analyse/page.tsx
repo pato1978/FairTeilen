@@ -8,6 +8,7 @@ import { PieChartComponent } from "@/components/charts/pie-chart"
 import { BarChartComponent } from "@/components/charts/bar-chart"
 import { CategoryFilter } from "@/components/filters/category-filter"
 import { useNavigate } from "react-router-dom"
+import { useMonth } from "@/context/month-context"
 
 // Beispieldaten für die Ausgaben nach Kategorien
 const expensesByCategory = [
@@ -22,7 +23,7 @@ const expensesByCategory = [
 
 export default function AnalysePage() {
   const navigate = useNavigate()
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const { currentDate } = useMonth()
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [chartType, setChartType] = useState<"pie" | "bar">("pie")
   const [sortBy, setSortBy] = useState<"amount" | "name">("amount")
@@ -67,7 +68,7 @@ export default function AnalysePage() {
     <PageLayout showAddButton={false}>
       {/* Header Area */}
       <div className="page-header-container">
-        <PageHeader title="Ausgabenanalyse" initialDate={currentDate} onMonthChange={setCurrentDate} />
+        <PageHeader title="Ausgabenanalyse" />
       </div>
 
       {/* Seitenauswahl Container */}

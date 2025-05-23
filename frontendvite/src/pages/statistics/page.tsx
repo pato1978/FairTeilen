@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
 import { ArrowRight } from "lucide-react"
 import { PageLayout } from "@/components/layout/page-layout"
 import { PageHeader } from "@/components/layout/page-header"
 import { MonthSelector } from "@/components/layout/month-selector"
+import { useMonth } from "@/context/month-context"
 import type { FinancialData } from "@/types"
 
 export default function StatisticsPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const { currentDate } = useMonth()
 
   // Sample financial data
   const financialData: FinancialData = {
@@ -148,7 +148,7 @@ export default function StatisticsPage() {
       {/* Container Layout Area */}
       <div className="page-header-container">
         <PageHeader title="Gemeinsame Ausgaben" />
-        <MonthSelector initialDate={currentDate} onChange={setCurrentDate} />
+        <MonthSelector />
       </div>
 
       {/* Main Content Area */}
@@ -162,4 +162,3 @@ export default function StatisticsPage() {
     </PageLayout>
   )
 }
-

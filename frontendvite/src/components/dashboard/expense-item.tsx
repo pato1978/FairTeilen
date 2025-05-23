@@ -67,7 +67,7 @@ ${state.isDragging ? "" : "transition-transform duration-300"} text-sm mb-[0.125
           <Icon className="h-4 w-4 text-blue-600" />
         </div>
         <div className="flex-1">
-          <div className="font-medium flex items-center">
+          <div className="text-sm font-medium flex items-center">
             {item.name}
             {item.isRecurring && (
               <span className="ml-1 flex items-center justify-center bg-blue-100 rounded-full p-0.5">
@@ -75,11 +75,10 @@ ${state.isDragging ? "" : "transition-transform duration-300"} text-sm mb-[0.125
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-500">{convertDateToDisplay(item.date)}</div>
+          <div className="text-sm font-normal text-gray-500">{convertDateToDisplay(item.date)}</div>
         </div>
-        <div className="font-bold text-right">{formatEuro(item.amount)}</div>
+        <div className="text-sm font-bold text-right">{formatEuro(item.amount)}</div>
       </div>
     </div>
   )
 }
-

@@ -45,9 +45,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
 
     // 🔹 Hintergrundfarbe je nach User-Zugehörigkeit
     const userId = item.createdByUserId
-    console.log("userId:", userId)
-    console.log("currentUserId:", currentUserId)
-    console.log("users[userId]:", users[userId])
+
     let iconBgColor: string
     if (userId === currentUserId) {
         iconBgColor = state.isTouched ? "bg-blue-200" : "bg-blue-100"

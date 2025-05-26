@@ -21,65 +21,93 @@ public class BudgetController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetBudget(
         [FromQuery] string scope,
-        [FromQuery] string month
+        [FromQuery] string month,
+        [FromQuery] string userId
     )
     {
-        if (scope == "null") scope = null;
-        if (month == "null") month = null;
+        try
+        {
+            if (scope == "null") scope = null;
+            if (month == "null") month = null;
+            if (userId == "null") userId = null;
 
-        if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(month))
-            return BadRequest("Scope und Month sind erforderlich");
+            if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(month) || string.IsNullOrWhiteSpace(userId))
+                return BadRequest("Scope, Month und UserId sind erforderlich");
 
-        var db = GetDbContext(scope);
-        var entry = await EnsureBudgetEntry(db, scope, month);
-        return Ok(entry.Amount);
+            var db = GetDbContext(scope);
+            var entry = await EnsureBudgetEntry(db, scope, month, userId);
+            return Ok(entry.Amount);
+        }
+        catch (FormatException)
+        {
+            return BadRequest("Ungültiges Monatsformat. Erwartet: yyyy-MM");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Interner Fehler: {ex.Message}");
+        }
     }
 
     [HttpPut]
     public async Task<IActionResult> PutBudget([FromBody] BudgetEntry input)
     {
-        if (input.Scope == "null") input.Scope = null;
-        if (input.Month == "null") input.Month = null;
-
-        if (string.IsNullOrWhiteSpace(input.Scope) || string.IsNullOrWhiteSpace(input.Month))
-            return BadRequest("Scope und Month sind erforderlich");
-
-        var db = GetDbContext(input.Scope);
-
-        var existing = await db.Set<BudgetEntry>()
-            .FirstOrDefaultAsync(b => b.Month == input.Month && b.Scope == input.Scope);
-
-        if (existing != null)
+        try
         {
-            existing.Amount = input.Amount;
-        }
-        else
-        {
-            input.Id = Guid.NewGuid();
-            db.Set<BudgetEntry>().Add(input);
-        }
+            if (input.Scope == "null") input.Scope = null;
+            if (input.Month == "null") input.Month = null;
+            if (input.UserId == "null") input.UserId = null;
 
-        await db.SaveChangesAsync();
-        return NoContent();
+            if (string.IsNullOrWhiteSpace(input.Scope) || string.IsNullOrWhiteSpace(input.Month) || string.IsNullOrWhiteSpace(input.UserId))
+                return BadRequest("Scope, Month und UserId sind erforderlich");
+
+            var db = GetDbContext(input.Scope);
+
+            var existing = await db.Set<BudgetEntry>()
+                .FirstOrDefaultAsync(b => b.Month == input.Month && b.Scope == input.Scope && b.UserId == input.UserId);
+
+            if (existing != null)
+            {
+                existing.Amount = input.Amount;
+            }
+            else
+            {
+                input.Id = Guid.NewGuid();
+                db.Set<BudgetEntry>().Add(input);
+            }
+
+            await db.SaveChangesAsync();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Fehler beim Speichern des Budgets: {ex.Message}");
+        }
     }
 
-    private async Task<BudgetEntry> EnsureBudgetEntry(DbContext db, string scope, string month)
+    private async Task<BudgetEntry> EnsureBudgetEntry(DbContext db, string scope, string month, string userId)
     {
-        var entry = await db.Set<BudgetEntry>()
-            .FirstOrDefaultAsync(b => b.Month == month && b.Scope == scope);
+        var entry = scope == "personal"
+            ? await db.Set<BudgetEntry>().FirstOrDefaultAsync(b => b.Month == month && b.Scope == scope && b.UserId == userId)
+            : await db.Set<BudgetEntry>().FirstOrDefaultAsync(b => b.Month == month && b.Scope == scope);
+
         if (entry != null)
             return entry;
 
-        DateTime monthParsed = DateTime.ParseExact(month, "yyyy-MM", null);
-        var previousMonth = monthParsed.AddMonths(-1);
+        if (!DateTime.TryParseExact(month, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out var monthParsed))
+            throw new FormatException("Ungültiges Datumsformat");
+
+        var previousMonth = monthParsed.AddMonths(-1).ToString("yyyy-MM");
+
         var entryLastMonth = await db.Set<BudgetEntry>()
-            .FirstOrDefaultAsync(b => b.Month == previousMonth.ToString("yyyy-MM") && b.Scope == scope);
+            .FirstOrDefaultAsync(b => b.Month == previousMonth && b.Scope == scope && b.UserId == userId);
 
         entry = new BudgetEntry
         {
+            Id = Guid.NewGuid(),
             Amount = entryLastMonth?.Amount ?? 0,
             Month = month,
-            Scope = scope
+            Scope = scope,
+            UserId = userId
         };
 
         db.Set<BudgetEntry>().Add(entry);

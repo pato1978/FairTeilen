@@ -5,7 +5,7 @@ public class Expense
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string? GroupId { get; set; } // darf null sein
     public string? CreatedByUserId { get; set; }
-    public User? CreatedByUser { get; set; } // falls du ein User-Modell hast
+    //public User? CreatedByUser { get; set; } // falls du ein User-Modell hast
  
     
     
@@ -22,4 +22,5 @@ public class Expense
     public bool isShared { get; set; }
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
+    public bool isAccepted { get; set; }
 }

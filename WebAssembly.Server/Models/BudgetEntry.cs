@@ -6,4 +6,7 @@ public class BudgetEntry
     public string Month { get; set; } = ""; // Format: "2025-05"
     public decimal Amount { get; set; }
     public string Scope { get; set; } = ""; // "personal", "shared", "child", etc.
+    // 🔑 Benutzerbindung hinzufügen:
+    public string UserId { get; set; } = "";
+    //public User? User { get; set; } // Navigation Property (optional)
 }

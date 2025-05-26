@@ -1,5 +1,6 @@
 import type { Expense } from "@/types"
 import type { Dispatch, SetStateAction } from "react"
+import { getCurrentUserId } from "@/lib/user-storage"
 
 /**
  * Speichert oder aktualisiert eine Ausgabe im Backend
@@ -28,7 +29,8 @@ export async function saveExpense(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             ...expense,
-            date: normalizedDate // evtl. wichtig für Backend-Kompatibilität
+            date: normalizedDate, // evtl. wichtig für Backend-Kompatibilität
+            CreatedByUserId: getCurrentUserId() // ✅ wichtig!
         }),
     })
 

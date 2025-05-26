@@ -1,9 +1,11 @@
+import { getCurrentUserId } from "@/lib/user-storage"
+
 const BASE_URL = "http://localhost:5289"  // Direkt und fest eingetragen
 
 // 💸 Holt das Budget für einen bestimmten Scope und Monat
 export async function fetchBudget(scope: string, date: Date): Promise<number> {
     const month = date.toISOString().slice(0, 7)
-    const res = await fetch(`${BASE_URL}/api/budget?scope=${scope}&month=${month}`)
+    const res = await fetch(`${BASE_URL}/api/budget?scope=${scope}&month=${month}&userId=${getCurrentUserId()}`)
 
     if (!res.ok) {
         console.error(`Fehler beim Laden des Budgets für "${scope}" im Monat ${month}`)
@@ -20,7 +22,7 @@ export async function saveBudget(scope: string, date: Date, amount: number): Pro
     await fetch(`${BASE_URL}/api/budget`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope, month, amount }),
+        body: JSON.stringify({ scope, month, amount , userId: getCurrentUserId()}),
     }).catch((err) => {
         console.error("Fehler beim Speichern des Budgets:", err)
     })

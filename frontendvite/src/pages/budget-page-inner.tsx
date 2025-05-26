@@ -180,6 +180,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                             expenses={mapped}
                             onDelete={deleteExpense}
                             onEdit={handleEdit}
+                            scopeFlags={scopeFlags}
                         />
                     )}
                 </div>

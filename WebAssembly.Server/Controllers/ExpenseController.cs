@@ -30,7 +30,9 @@ namespace WebAssembly.Server.Controllers
         public async Task<IActionResult> GetExpenses(
             [FromQuery] string scope,
             [FromQuery] string? group,
-            [FromQuery] string? month)
+            [FromQuery] string? month,
+            [FromQuery] string? userId
+            )
         {   
             if (group == "null") group = null;
             // 🔒 1. Scope-Validierung
@@ -60,7 +62,11 @@ namespace WebAssembly.Server.Controllers
 
             // 📆 4. Monatsfilter anwenden
             query = query.Where(e => e.Date >= monthStart && e.Date < monthEnd);
-
+            
+            if (scope == "personal" && !string.IsNullOrWhiteSpace(userId))
+            {
+                query = query.Where(e => e.CreatedByUserId == userId);
+            }
             // 🧾 5. Sortierung und Rückgabe
             var result = await query.OrderByDescending(e => e.Date).ToListAsync();
             return Ok(result);
@@ -96,8 +102,10 @@ namespace WebAssembly.Server.Controllers
                 isShared = dto.isShared,
                 isRecurring = dto.isRecurring,
                 isBalanced = dto.isBalanced,
+                isAccepted = dto.isAccepted,
                 GroupId = dto.GroupId,
                 CreatedByUserId = dto.CreatedByUserId
+                
             };
 
             // 🧠 Zielkontext wählen (lokal oder zentral)

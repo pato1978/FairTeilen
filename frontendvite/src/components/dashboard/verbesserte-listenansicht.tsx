@@ -9,9 +9,14 @@ interface VerbesserteLitenansichtProps {
     expenses: Expense[]
     onDelete: (id: string) => void | Promise<void>
     onEdit: (expense: Expense) => void
+    scopeFlags?: {
+        isPersonal: boolean
+        isShared: boolean
+        isChild: boolean
+    }
 }
 
-export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: VerbesserteLitenansichtProps) {
+export function VerbesserteLitenansicht({ expenses, onDelete, onEdit, scopeFlags }: VerbesserteLitenansichtProps) {
     const [sortBy, setSortBy] = useState<string | null>(null)
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
@@ -23,7 +28,14 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
             setSortDirection("asc")
         }
     }
-
+    const parseAmount = (amount: string | number): number => {
+        if (typeof amount === "number") return amount
+        if (typeof amount === "string") {
+            return parseFloat(amount.replace(/[^\d,-]/g, "").replace(",", ".")) || 0
+        }
+        console.warn("Unerwarteter Betragstyp:", amount)
+        return 0
+    }
     const sortedExpenses = [...expenses].sort((a, b) => {
         if (!sortBy) return 0
 
@@ -39,9 +51,6 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
         }
 
         if (sortBy === "amount") {
-            const parseAmount = (amountStr: string) =>
-                parseFloat(amountStr.replace(/[^\d,-]/g, "").replace(",", ".")) || 0
-
             const amountA = parseAmount(a.amount)
             const amountB = parseAmount(b.amount)
             return sortDirection === "asc" ? amountA - amountB : amountB - amountA
@@ -119,7 +128,7 @@ export function VerbesserteLitenansicht({ expenses, onDelete, onEdit }: Verbesse
 
             <div className="expenses-scroll-area rounded-lg p-4 flex-1 [&>div]:mb-[0.125rem]">
                 {sortedExpenses.map((item) => (
-                    <ExpenseItem key={item.id} item={item} onDelete={onDelete} onEdit={onEdit} />
+                    <ExpenseItem key={item.id} item={item} onDelete={onDelete} onEdit={onEdit} scopeFlags={scopeFlags} />
                 ))}
             </div>
         </div>

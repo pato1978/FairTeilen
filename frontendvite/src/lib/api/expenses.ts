@@ -1,4 +1,5 @@
 import type { Expense } from "@/types"
+import { getCurrentUserId } from "@/lib/user-storage" // falls noch nicht vorhanden
 
 // 🌐 API-Basis-URL: entweder aus .env-Datei oder lokal fallback
 const BASE_URL = "http://localhost:5289"
@@ -21,6 +22,8 @@ export async function fetchExpenses(
     scope: ExpenseScope,
     group: string | null,
     date: Date
+
+
 ): Promise<Expense[]> {
     // 🗓️ Monat aus dem Datum extrahieren im Format "YYYY-MM"
     const month = date.toISOString().slice(0, 7)
@@ -33,6 +36,8 @@ export async function fetchExpenses(
         scope,
         ...(isValidGroup ? { group } : {}), // ← Nur wenn gültig
         month,
+        ...(scope === "personal" ? { userId: getCurrentUserId() } : {}) // ✅ HIER!
+
     })
 
     // 🧾 Vollständige URL bauen

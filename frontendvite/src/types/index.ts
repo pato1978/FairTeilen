@@ -6,7 +6,7 @@ export interface Expense {
   amount: number
   date: string
   category: string
-  icon: LucideIcon
+  createdByUserId: string
   isPersonal: boolean
   isShared: boolean
   isChild: boolean

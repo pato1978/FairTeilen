@@ -10,6 +10,7 @@ import AnalysePage from '@/pages/analyse/page'
 import JahresuebersichtPage from '@/pages/jahresuebersicht/page'
 import PersonalPage from '@/pages/personal/page'
 import StatisticsPage from '@/pages/statistics/page'
+import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import { MultiBudgetProvider } from "@/context/multi-budget-context"
 import HomePage from "@/pages/home/page"
@@ -64,6 +65,11 @@ function App() {
             <Route path="/trends" element={
                 <RootLayout>
                     <TrendsPage />
+                </RootLayout>
+            } />
+            <Route path="/profile" element={
+                <RootLayout>
+                    <ProfilePage />
                 </RootLayout>
             } />
 

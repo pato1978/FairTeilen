@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WebAssembly.Server.Data;
-
+using WebAssembly.Server.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // 🔑 Verbindung zur Shared-Datenbank
@@ -18,7 +18,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddDbContext<SharedDbContext>(options =>
     options.UseSqlServer(sharedConnection));
-
+builder.Services.AddScoped<YearOverviewService>();
 // ✅ CORS korrekt konfigurieren
 builder.Services.AddCors(options =>
 {

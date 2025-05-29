@@ -102,7 +102,7 @@ namespace WebAssembly.Server.Controllers
                 isShared = dto.isShared,
                 isRecurring = dto.isRecurring,
                 isBalanced = dto.isBalanced,
-                isAccepted = dto.isAccepted,
+                ClarificationReactions = dto.ClarificationReactions,
                 GroupId = dto.GroupId,
                 CreatedByUserId = dto.CreatedByUserId
                 

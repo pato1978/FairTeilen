@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import {
   CheckCircle,
@@ -17,315 +16,222 @@ import {
   ArrowUpRight,
 } from "lucide-react"
 import { useTooltip } from "@/lib/hooks/use-tooltip"
-import { useNavigate } from "react-router-dom" // falls du react-router-dom nutzt
-
-interface MonthCardHeaderProps {
-  month: {
-    name: string
-    status: "completed" | "pending" | "needs-clarification" | "future"
-  }
-  toggleExpand: (e: React.MouseEvent) => void
-  statusInfo: {
-    icon: React.ReactNode
-    text: string
-    statusBgColor: string
-    textColor: string
-  }
-}
-
-function MonthCardHeader({ month, toggleExpand, statusInfo }: MonthCardHeaderProps) {
-  const { isVisible: showStarTooltip, showTooltip: displayStarTooltip } = useTooltip({ isGlobal: true })
-
-  return (
-      <div
-          className="flex items-center justify-between p-3 border-b border-gray-100 cursor-pointer"
-          onClick={toggleExpand} // ✅ Nur hier wird das Öffnen/Schließen getriggert
-      >
-        <h3 className="text-xl font-semibold">{month.name}</h3>
-
-        <div className="flex items-center">
-          <div className={`flex items-center px-2 py-1 rounded-full ${statusInfo.statusBgColor}`}>
-            {statusInfo.icon}
-            <span className={`ml-1.5 text-sm font-normal ${statusInfo.textColor}`}>{statusInfo.text}</span>
-          </div>
-          <div className="relative ml-2">
-            <Star
-                className="h-4 w-4 text-yellow-300 cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  displayStarTooltip()
-                }}
-            />
-            {showStarTooltip && (
-                <div className="absolute top-0 right-6 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-sm font-normal z-20">
-                  <p>Premium-Funktion: Detaillierte Monatsanalyse und Exportmöglichkeiten.</p>
-                  <div className="absolute top-2 -right-2 w-3 h-3 bg-white transform rotate-45"></div>
-                </div>
-            )}
-          </div>
-        </div>
-      </div>
-  )
-}
+import type { MonthlyOverview } from "@/types/monthly-overview"
 
 interface EnhancedMonthCardProps {
-  month: {
-    id: number
-    name: string
-    status: "completed" | "pending" | "needs-clarification" | "future"
-    confirmations: {
-      user1: boolean
-      user2: boolean
-    }
-    message?: string
-    expenses?: {
-      total: number
-      shared: number
-      personal: number
-      child: number
-      sharedBy?: { partner1: number; partner2: number }
-      childBy?: { partner1: number; partner2: number }
-      totalBy?: { partner1: number; partner2: number }
-    }
-    balance?: number
-  }
+  month: MonthlyOverview
   onClick: () => void
   onStatusClick: (e: React.MouseEvent) => void
 }
 
 export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMonthCardProps) {
-  const isCompleted = month.status === "completed"
-  const isFuture = month.status === "future"
-  const needsClarification = month.status === "needs-clarification"
-  const isPending = month.status === "pending"
-  const isClickable = !isCompleted && !isFuture
-
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showDetails, setShowDetails] = useState(false) // ✅ Einheitlicher Toggle für shared/child/total
-
-  const navigate = useNavigate()
+  const [showDetails, setShowDetails] = useState(false)
 
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsExpanded(!isExpanded)
   }
 
-  const getStatusInfo = () => {
+  const { isVisible: showStarTooltip, showTooltip: displayStarTooltip } = useTooltip({ isGlobal: true })
+
+  const statusInfo = (() => {
     switch (month.status) {
       case "completed":
         return {
           icon: <CheckCircle className="h-5 w-5 text-green-500" />,
           text: "Abgeschlossen",
-          bgColor: "bg-white",
-          borderColor: "border-gray-200",
-          textColor: "text-green-600",
           statusBgColor: "bg-green-50",
+          textColor: "text-green-600",
+          borderColor: "border-gray-200",
         }
       case "pending":
         return {
           icon: <Clock className="h-5 w-5 text-amber-500" />,
           text: "Offen",
-          bgColor: "bg-white",
-          borderColor: "border-amber-200",
-          textColor: "text-amber-600",
           statusBgColor: "bg-amber-50",
+          textColor: "text-amber-600",
+          borderColor: "border-amber-200",
         }
       case "needs-clarification":
         return {
           icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
           text: "Klärungsbedarf",
-          bgColor: "bg-white",
-          borderColor: "border-amber-200",
-          textColor: "text-amber-600",
           statusBgColor: "bg-amber-50",
+          textColor: "text-amber-600",
+          borderColor: "border-amber-200",
         }
       case "future":
         return {
           icon: <Lock className="h-5 w-5 text-gray-400" />,
           text: "Nicht verfügbar",
-          bgColor: "bg-white",
-          borderColor: "border-gray-200",
-          textColor: "text-gray-400",
           statusBgColor: "bg-gray-50",
+          textColor: "text-gray-400",
+          borderColor: "border-gray-200",
         }
       default:
         return {
           icon: <Info className="h-5 w-5 text-gray-500" />,
           text: "Unbekannt",
-          bgColor: "bg-white",
-          borderColor: "border-gray-200",
-          textColor: "text-gray-500",
           statusBgColor: "bg-gray-50",
+          textColor: "text-gray-500",
+          borderColor: "border-gray-200",
         }
     }
+  })()
+
+  const expenses = {
+    shared: month.shared,
+    child: month.child,
+    total: month.total,
+    sharedBy: {
+      partner1: month.sharedUser1,
+      partner2: month.sharedUser2,
+    },
+    childBy: {
+      partner1: month.childUser1,
+      partner2: month.childUser2,
+    },
+    totalBy: {
+      partner1: month.sharedUser1 + month.childUser1,
+      partner2: month.sharedUser2 + month.childUser2,
+    },
   }
 
-  const statusInfo = getStatusInfo()
+  const isPending = month.status === "pending"
+  const isCompleted = month.status === "completed"
+  const isFuture = month.status === "future"
+  const needsClarification = month.status === "needs-clarification"
 
   return (
-      <div
-          className={`${statusInfo.bgColor} rounded-lg shadow-sm border ${statusInfo.borderColor} overflow-hidden transition-colors ${isClickable ? "active:bg-gray-100 cursor-pointer" : ""}`}
-      >
-        <MonthCardHeader month={month} toggleExpand={toggleExpand} statusInfo={statusInfo} />
-
-        {isExpanded && (
-            <div className="p-3">
-              {/* Ausgaben-Übersicht */}
-              {month.expenses && (
-                  <div className="mb-3">
-                    <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
-
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      {/* Gemeinsam */}
-                      <div
-                          className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer"
-                          onClick={() => setShowDetails(!showDetails)}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 text-blue-600 mr-1" />
-                            <span className="text-sm font-medium text-blue-600">Gemeinsam</span>
-                          </div>
-                        </div>
-                        <div className="text-base font-bold text-black">€{month.expenses.shared}</div>
-                        {showDetails && (
-                            <div className="mt-2 text-sm text-gray-700">
-                              <div>Partner 1: €{month.expenses.sharedBy?.partner1 ?? "0.00"}</div>
-                              <div>Partner 2: €{month.expenses.sharedBy?.partner2 ?? "0.00"}</div>
-                            </div>
-                        )}
-                      </div>
-
-                      {/* Kind */}
-                      <div
-                          className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer"
-                          onClick={() => setShowDetails(!showDetails)}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center">
-                            <Baby className="h-4 w-4 text-blue-600 mr-1" />
-                            <span className="text-sm font-medium text-blue-600">Kind</span>
-                          </div>
-                        </div>
-                        <div className="text-base font-bold text-black">€{month.expenses.child}</div>
-                        {showDetails && (
-                            <div className="mt-2 text-sm text-gray-700">
-                              <div>Partner 1: €{month.expenses.childBy?.partner1 ?? "0.00"}</div>
-                              <div>Partner 2: €{month.expenses.childBy?.partner2 ?? "0.00"}</div>
-                            </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Gesamtausgaben */}
-                    <div
-                        className="bg-gray-50 p-2 rounded text-center cursor-pointer"
-                        onClick={() => setShowDetails(!showDetails)}
-                    >
-                      <span className="text-sm font-normal text-gray-600">Gesamtausgaben</span>
-                      <div className="text-base font-bold">€{month.expenses.total}</div>
-                      {showDetails && (
-                          <div className="mt-2 text-sm text-gray-700">
-                            <div>Partner 1: €{month.expenses.totalBy?.partner1 ?? "0.00"}</div>
-                            <div>Partner 2: €{month.expenses.totalBy?.partner2 ?? "0.00"}</div>
-                          </div>
-                      )}
-                    </div>
+      <div className={`bg-white rounded-lg shadow-sm border ${statusInfo.borderColor} overflow-hidden transition-colors ${!isFuture && "cursor-pointer"}`}>
+        <div className="flex items-center justify-between p-3 border-b border-gray-100" onClick={toggleExpand}>
+          <h3 className="text-lg font-semibold">{month.name}</h3>
+          <div className="flex items-center">
+            <div className={`flex items-center px-2 py-1 rounded-full ${statusInfo.statusBgColor}`}>
+              {statusInfo.icon}
+              <span className={`ml-1.5 text-sm font-normal ${statusInfo.textColor}`}>{statusInfo.text}</span>
+            </div>
+            <div className="relative ml-2">
+              <Star
+                  className="h-4 w-4 text-yellow-300 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    displayStarTooltip()
+                  }}
+              />
+              {showStarTooltip && (
+                  <div className="absolute top-0 right-6 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-sm font-normal z-20">
+                    <p>Premium-Funktion: Detaillierte Monatsanalyse und Exportmöglichkeiten.</p>
+                    <div className="absolute top-2 -right-2 w-3 h-3 bg-white transform rotate-45"></div>
                   </div>
               )}
+            </div>
+          </div>
+        </div>
 
-              {/* Bestätigungsstatus */}
+        {isExpanded && (
+            <div className="p-3 space-y-4">
+
+              {/* Ausgaben-Übersicht */}
+              <div>
+                <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Gemeinsam */}
+                  <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
+                    <div className="flex items-center mb-1">
+                      <Users className="h-4 w-4 text-blue-600 mr-1" />
+                      <span className="text-sm font-medium text-blue-600">Gemeinsam</span>
+                    </div>
+                    <div className="text-base font-bold text-black">€{expenses.shared.toFixed(2)}</div>
+                    {showDetails && (
+                        <div className="mt-2 text-sm text-gray-700">
+                          <div>Partner 1: €{expenses.sharedBy.partner1.toFixed(2)}</div>
+                          <div>Partner 2: €{expenses.sharedBy.partner2.toFixed(2)}</div>
+                        </div>
+                    )}
+                  </div>
+
+                  {/* Kind */}
+                  <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
+                    <div className="flex items-center mb-1">
+                      <Baby className="h-4 w-4 text-blue-600 mr-1" />
+                      <span className="text-sm font-medium text-blue-600">Kind</span>
+                    </div>
+                    <div className="text-base font-bold text-black">€{expenses.child.toFixed(2)}</div>
+                    {showDetails && (
+                        <div className="mt-2 text-sm text-gray-700">
+                          <div>Partner 1: €{expenses.childBy.partner1.toFixed(2)}</div>
+                          <div>Partner 2: €{expenses.childBy.partner2.toFixed(2)}</div>
+                        </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Gesamtausgaben */}
+                <div className="bg-gray-50 p-2 rounded text-center cursor-pointer mt-2" onClick={() => setShowDetails(!showDetails)}>
+                  <span className="text-sm font-normal text-gray-600">Gesamtausgaben</span>
+                  <div className="text-base font-bold">€{expenses.total.toFixed(2)}</div>
+                  {showDetails && (
+                      <div className="mt-2 text-sm text-gray-700">
+                        <div>Partner 1: €{expenses.totalBy.partner1.toFixed(2)}</div>
+                        <div>Partner 2: €{expenses.totalBy.partner2.toFixed(2)}</div>
+                      </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bestätigungen */}
               {!isFuture && (
-                  <div className="mb-3">
+                  <div>
                     <h4 className="text-base font-medium text-gray-700 mb-2">Bestätigungsstatus</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div>
-                          <span className="text-sm font-normal">Partner 1</span>
-                          <div className="text-sm font-normal text-gray-500 mt-0.5">
-                            €{(month.expenses?.totalBy?.partner1 ?? 0).toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="bg-blue-100 rounded-full p-1.5 border border-blue-600">
-                          {month.confirmations.user1 ? (
-                              <UserCheck className="h-4 w-4 text-green-500" />
-                          ) : (
-                              <UserX className="h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
+                        <span>Partner 1</span>
+                        {month.user1Confirmed ? <UserCheck className="text-green-500" /> : <UserX className="text-gray-400" />}
                       </div>
-
                       <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div>
-                          <span className="text-sm font-normal">Partner 2</span>
-                          <div className="text-sm font-normal text-gray-500 mt-0.5">
-                            €{(month.expenses?.totalBy?.partner2 ?? 0).toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="bg-blue-100 rounded-full p-1.5 border border-blue-600">
-                          {month.confirmations.user2 ? (
-                              <UserCheck className="h-4 w-4 text-green-500" />
-                          ) : (
-                              <UserX className="h-4 w-4 text-gray-400" />
-                          )}
-                        </div>
+                        <span>Partner 2</span>
+                        {month.user2Confirmed ? <UserCheck className="text-green-500" /> : <UserX className="text-gray-400" />}
                       </div>
                     </div>
                   </div>
               )}
 
-              {/* Ausgleichszahlung */}
-              {(isPending || isCompleted) && month.expenses?.totalBy && (
-                  <div className="mb-3">
+              {/* Ausgleich */}
+              {(isPending || isCompleted) && (
+                  <div>
                     <h4 className="text-base font-medium text-gray-700 mb-2">Ausgleichszahlung</h4>
-                    <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm">
-                      <div className="flex items-center justify-center">
-                <span className="text-sm font-medium text-blue-600">
-                  {month.expenses.totalBy.partner1 > month.expenses.totalBy.partner2
-                      ? "Partner 2"
-                      : "Partner 1"}
-                </span>
-                        <ArrowRight className="h-3 w-3 mx-1 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-600">
-                  {month.expenses.totalBy.partner1 > month.expenses.totalBy.partner2
-                      ? "Partner 1"
-                      : "Partner 2"}
-                </span>
+                    <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm text-center">
+                      <div className="flex justify-center items-center">
+                  <span className="text-sm text-blue-600 font-medium">
+                    {expenses.totalBy.partner1 > expenses.totalBy.partner2 ? "Partner 2" : "Partner 1"}
+                  </span>
+                        <ArrowRight className="mx-2 h-3 w-3 text-blue-600" />
+                        <span className="text-sm text-blue-600 font-medium">
+                    {expenses.totalBy.partner1 > expenses.totalBy.partner2 ? "Partner 1" : "Partner 2"}
+                  </span>
                       </div>
-                      <div className="text-center text-lg font-bold mt-1 text-black">
-                        €
-                        {Math.abs(
-                            month.expenses.totalBy.partner1 - month.expenses.totalBy.partner2
-                        ).toFixed(2)}
+                      <div className="text-lg font-bold text-black mt-1">
+                        €{Math.abs(expenses.totalBy.partner1 - expenses.totalBy.partner2).toFixed(2)}
                       </div>
                     </div>
                   </div>
               )}
 
-              {/* Klärungsbedarf-Nachricht */}
-              {needsClarification && month.message && (
-                  <div className="mt-2 text-sm font-normal bg-amber-100 text-amber-700 p-2 rounded">
-                    <div className="font-medium mb-1">Hinweis:</div>
-                    {month.message}
+              {/* Hinweis */}
+              {needsClarification && month.clarificationReactionsList?.length > 0 && (
+                  <div className="bg-amber-100 text-amber-700 p-2 rounded text-sm">
+                    Dieser Monat hat offene Klärungspunkte.
                   </div>
               )}
-
-              {/* Zukunfts-Hinweis */}
-              {isFuture && (
-                  <div className="mt-2 text-sm font-normal bg-gray-100 text-gray-500 p-2 rounded">
-                    Dieser Monat ist noch nicht verfügbar. Ausgaben können erst nach Monatsende bearbeitet werden.
-                  </div>
-              )}
-
-              {/* Abgeschlossen-Hinweis */}
               {isCompleted && (
-                  <div className="mt-2 text-sm font-normal bg-green-100 text-green-700 p-2 rounded">
-                    Dieser Monat ist vollständig abgeschlossen und von beiden Partnern bestätigt.
+                  <div className="bg-green-100 text-green-700 p-2 rounded text-sm">
+                    Dieser Monat ist abgeschlossen und bestätigt.
                   </div>
               )}
             </div>
         )}
       </div>
   )
-
 }

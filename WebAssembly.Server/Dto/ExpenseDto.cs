@@ -13,7 +13,8 @@ public class ExpenseDto
     public bool isShared { get; set; }
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
-    public bool isAccepted { get; set; }
+    
+    public List<ClarificationReactions>? ClarificationReactions{ get; set; }
 
     public string? GroupId { get; set; }
     public string? CreatedByUserId { get; set; } // optional für später

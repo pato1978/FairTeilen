@@ -22,5 +22,6 @@ public class Expense
     public bool isShared { get; set; }
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
-    public bool isAccepted { get; set; }
+    
+    public List<ClarificationReactions>? ClarificationReactions{ get; set; }
 }

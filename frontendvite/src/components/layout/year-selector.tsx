@@ -26,7 +26,7 @@ export function YearSelector({ selectedYear, onChange }: YearSelectorProps) {
   }
 
   return (
-    <div className="flex justify-between items-center bg-blue-50 rounded-lg p-2 mt-2 mx-auto w-[80%]">
+    <div className="inline-flex justify-between items-center bg-blue-50 rounded-md px-2 py-1 min-w-fit h-8">
       <button
         onClick={goToPreviousYear}
         className="p-1.5 flex items-center justify-center rounded-full active:bg-gray-200 transition-colors"

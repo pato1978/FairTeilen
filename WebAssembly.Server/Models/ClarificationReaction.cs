@@ -8,7 +8,7 @@ public enum ClarificationStatus
     Rejected     // Ablehnung / Widerspruch zur Ausgabe
     // Später z. B. "InDiscussion", "Ignored" usw.
 }
-public class ClarificationReactions
+public class ClarificationReaction
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string ExpenseId { get; set; } = "";  // FK zur Ausgabe

@@ -13,11 +13,11 @@ import {
   UserCheck,
   UserX,
   Star,
-  ArrowUpRight, ArrowUp,
+  ArrowUpRight,
 } from "lucide-react"
 import { useTooltip } from "@/lib/hooks/use-tooltip"
 import type { MonthlyOverview } from "@/types/monthly-overview"
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom"
 
 interface EnhancedMonthCardProps {
   month: MonthlyOverview
@@ -29,6 +29,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
   const [isExpanded, setIsExpanded] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const navigate = useNavigate()
+
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsExpanded(!isExpanded)
@@ -134,90 +135,76 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
         {isExpanded && (
             <div className="p-3 space-y-4">
 
-              {/* Ausgaben-Übersicht */}
-              <div>
-                <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
-                <div className="grid grid-cols-2 gap-2">
+              {/* Ausgabenübersicht */}
+              {!isFuture && (
+                  <div>
+                    <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
+                    <div className="grid grid-cols-2 gap-2">
 
-
-                  {/* Gemeinsam */}
-                  <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center" onClick={() => setShowDetails(!showDetails)}>
-                    <div className="flex items-center mb-1">
-                      <Users className="h-5 w-5 text-blue-600 mr-1" />
-                      <span className="text-base font-normal text-blue-600">Gemeinsam</span>
-                    </div>
-                    <div className="text-base font-bold text-black">€{expenses.shared.toFixed(2)}</div>
-                    {showDetails && (
-                        <div className="mt-2 text-sm text-gray-700">
-                          <div>Partner 1: €{expenses.sharedBy.partner1.toFixed(2)}</div>
-                          <div>Partner 2: €{expenses.sharedBy.partner2.toFixed(2)}</div>
-                          {/* Navigation zur Detailansicht */}
-                          <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                navigate("/shared") // ggf. dynamisieren
-                              }}
-                              className="mt-3 flex items-center text-blue-600  text font-medium"
-                          >
-                            <ArrowUpRight className="h-4 w-4 mr-1" />
-                            <span>Ausgaben anzeigen</span>
-                          </button>
+                      {/* Gemeinsam */}
+                      <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center" onClick={() => setShowDetails(!showDetails)}>
+                        <div className="flex items-center mb-1">
+                          <Users className="h-5 w-5 text-blue-600 mr-1" />
+                          <span className="text-base font-normal text-blue-600">Gemeinsam</span>
                         </div>
-                    )}
-                  </div>
-
-                  {/* Kind */}
-                  <div
-                      className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center"
-                      onClick={() => setShowDetails(!showDetails)}
-                  >
-                    {/* Titelzeile */}
-                    <div className="flex items-center mb-1">
-                      <Baby className="h-5 w-5 text-blue-600 mr-1" />
-                      <span className="text-base font-normal text-blue-600">Kind</span>
-                    </div>
-
-                    {/* Betrag */}
-                    <div className="text-base font-bold text-black">
-                      €{expenses.child.toFixed(2)}
-                    </div>
-
-                    {/* Details + Navigation unten */}
-                    {showDetails && (
-                        <div className="mt-2 text-sm text-gray-700  w-full">
-                          <div>Partner 1: €{expenses.childBy.partner1.toFixed(2)}</div>
-                          <div>Partner 2: €{expenses.childBy.partner2.toFixed(2)}</div>
-
-                          {/* Navigation zur Detailansicht */}
-                          <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                navigate("/child") // ggf. dynamisieren
-                              }}
-                              className="mt-3 flex items-center text-blue-600  text font-medium"
-                          >
-                            <ArrowUpRight className="h-4 w-4 mr-1" />
-                            <span>Ausgaben anzeigen</span>
-                          </button>
-                        </div>
-                    )}
-                  </div>
-
-
-                </div>
-
-                {/* Gesamtausgaben */}
-                <div className="bg-gray-50 p-2 rounded text-center cursor-pointer mt-2" onClick={() => setShowDetails(!showDetails)}>
-                  <span className="text-base font-normal text-gray-600">Gesamt</span>
-                  <div className="text-base font-bold">€{expenses.total.toFixed(2)}</div>
-                  {showDetails && (
-                      <div className="mt-2 text-sm text-gray-700">
-                        <div>Partner 1: €{expenses.totalBy.partner1.toFixed(2)}</div>
-                        <div>Partner 2: €{expenses.totalBy.partner2.toFixed(2)}</div>
+                        <div className="text-base font-bold text-black">€{expenses.shared.toFixed(2)}</div>
+                        {showDetails && (
+                            <div className="mt-2 text-sm text-gray-700">
+                              <div>Partner 1: €{expenses.sharedBy.partner1.toFixed(2)}</div>
+                              <div>Partner 2: €{expenses.sharedBy.partner2.toFixed(2)}</div>
+                              <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigate("/shared")
+                                  }}
+                                  className="mt-3 flex items-center text-blue-600 font-medium"
+                              >
+                                <ArrowUpRight className="h-4 w-4 mr-1" />
+                                <span>Ausgaben anzeigen</span>
+                              </button>
+                            </div>
+                        )}
                       </div>
-                  )}
-                </div>
-              </div>
+
+                      {/* Kind */}
+                      <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center" onClick={() => setShowDetails(!showDetails)}>
+                        <div className="flex items-center mb-1">
+                          <Baby className="h-5 w-5 text-blue-600 mr-1" />
+                          <span className="text-base font-normal text-blue-600">Kind</span>
+                        </div>
+                        <div className="text-base font-bold text-black">€{expenses.child.toFixed(2)}</div>
+                        {showDetails && (
+                            <div className="mt-2 text-sm text-gray-700 w-full">
+                              <div>Partner 1: €{expenses.childBy.partner1.toFixed(2)}</div>
+                              <div>Partner 2: €{expenses.childBy.partner2.toFixed(2)}</div>
+                              <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    navigate("/child")
+                                  }}
+                                  className="mt-3 flex items-center text-blue-600 font-medium"
+                              >
+                                <ArrowUpRight className="h-4 w-4 mr-1" />
+                                <span>Ausgaben anzeigen</span>
+                              </button>
+                            </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Gesamtausgaben */}
+                    <div className="bg-gray-50 p-2 rounded text-center cursor-pointer mt-2" onClick={() => setShowDetails(!showDetails)}>
+                      <span className="text-base font-normal text-gray-600">Gesamt</span>
+                      <div className="text-base font-bold">€{expenses.total.toFixed(2)}</div>
+                      {showDetails && (
+                          <div className="mt-2 text-sm text-gray-700">
+                            <div>Partner 1: €{expenses.totalBy.partner1.toFixed(2)}</div>
+                            <div>Partner 2: €{expenses.totalBy.partner2.toFixed(2)}</div>
+                          </div>
+                      )}
+                    </div>
+                  </div>
+              )}
 
               {/* Bestätigungen */}
               {!isFuture && (
@@ -257,12 +244,13 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                   </div>
               )}
 
-              {/* Hinweis */}
+              {/* Hinweis für Klärungsbedarf */}
               {needsClarification && month.clarificationReactionsList?.length > 0 && (
                   <div className="bg-amber-100 text-amber-700 p-2 rounded text-sm">
                     Dieser Monat hat offene Klärungspunkte.
                   </div>
               )}
+
               {/* Zukunfts-Hinweis */}
               {isFuture && (
                   <div className="mt-2 text-xs bg-gray-100 text-gray-500 p-2 rounded">

@@ -22,6 +22,6 @@ namespace WebAssembly.Server.Models
 
         public decimal Balance { get; set; }
 
-        public List<ClarificationReactions> ClarificationReactionsList { get; set; }
+        
     }
 }

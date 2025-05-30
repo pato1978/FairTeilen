@@ -3,106 +3,105 @@ using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Models;
 
-    
 namespace WebAssembly.Server.Services;
 
 public class YearOverviewService
 {
-    
     private readonly SharedDbContext _sharedDb;
 
-    public YearOverviewService( SharedDbContext sharedDb)
+    public YearOverviewService(SharedDbContext sharedDb)
     {
-        
         _sharedDb = sharedDb;
     }
-        public async Task<YearOverview> GetOverviewForYearAsync(int year, string userId)
-        {   
-            var overview = new YearOverview
+
+    public async Task<YearOverview> GetOverviewForYearAsync(int year, string userId)
+    {
+        // Erstelle eine neue Übersicht für das Jahr
+        var overview = new YearOverview
+        {
+            Year = year,
+            Months = new List<MonthlyOverview>()
+        };
+
+        // 🔹 Lade alle Reaktionen im angegebenen Jahr (getrennt vom Expense)
+        var allReactionsForYear = await _sharedDb.ClarificationReactions
+            .Where(r => r.Timestamp.Year == year)
+            .ToListAsync();
+
+        // Schleife über alle 12 Monate
+        for (int month = 1; month <= 12; month++)
+        {
+            // Monatsname wie "Januar", "Februar", ...
+            var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
+
+            // Vergleiche: liegt dieser Monat in der Zukunft?
+            DateTime referenceMonth = new DateTime(year, month, 1);
+            DateTime today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            var status = referenceMonth > today ? "future" : "pending";
+
+            // 🔹 Lade alle Ausgaben dieses Monats (nicht ausgeglichen)
+            var monthlyExpensesAll = await _sharedDb.SharedExpenses
+                .Where(e => e.Date.Year == year && e.Date.Month == month && !e.isBalanced)
+                .ToListAsync();
+
+            // 🔹 Gemeinschaftsausgaben
+            var monthlyExpensesShared = monthlyExpensesAll.Where(e => e.isShared).ToList();
+            var totalShared = monthlyExpensesShared.Sum(e => e.Amount);
+
+            // 🔹 Aufteilung Gemeinschaftsausgaben nach User
+            var sharedUser1 = monthlyExpensesShared.Where(e => e.CreatedByUserId == userId).ToList();
+            var sharedUser2 = monthlyExpensesShared.Where(e => e.CreatedByUserId != userId).ToList();
+            var totalSharedUser1 = sharedUser1.Sum(e => e.Amount);
+            var totalSharedUser2 = sharedUser2.Sum(e => e.Amount);
+
+            // 🔹 Ausgaben für Kinder
+            var monthlyExpensesChild = monthlyExpensesAll.Where(e => e.isChild).ToList();
+            var totalChild = monthlyExpensesChild.Sum(e => e.Amount);
+
+            // 🔹 Aufteilung Kinderausgaben nach User
+            var childUser1 = monthlyExpensesChild.Where(e => e.CreatedByUserId == userId).ToList();
+            var childUser2 = monthlyExpensesChild.Where(e => e.CreatedByUserId != userId).ToList();
+            var totalChildUser1 = childUser1.Sum(e => e.Amount);
+            var totalChildUser2 = childUser2.Sum(e => e.Amount);
+
+            // 🔹 Reaktionen in diesem Monat (auf die vorhandenen Ausgaben bezogen)
+            var reactionsForMonth = allReactionsForYear
+                .Where(r => monthlyExpensesAll.Any(e => e.Id == r.ExpenseId))
+                .ToList();
+
+            // 🔹 Wenn mindestens eine Reaktion "Rejected" ist → Klärungsbedarf
+            bool hasClarificationNeed = reactionsForMonth
+                .Any(r => r.Status == ClarificationStatus.Rejected);
+
+            if (hasClarificationNeed)
+                status = "needs-clarification";
+
+            // 🔹 Monatsübersicht erstellen
+            var monthly = new MonthlyOverview
             {
-                Year = year,
-                Months = new List<MonthlyOverview>()
+                MonthId = month,
+                Name = monthName,
+                Status = status,
+
+                User1Confirmed = false, // (wird später gesetzt)
+                User2Confirmed = false,
+
+                Total = totalShared + totalChild,
+                Shared = totalShared,
+                SharedUser1 = totalSharedUser1,
+                SharedUser2 = totalSharedUser2,
+                Child = totalChild,
+                ChildUser1 = totalChildUser1,
+                ChildUser2 = totalChildUser2,
+
+                Balance = (totalChildUser1 + totalSharedUser1) - (totalChildUser2 + totalSharedUser2)
             };
 
-            for (int month = 1; month <= 12; month++)
-            {
-                var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
-                
-                DateTime vergleichsmonat = new DateTime(year, month, 1);
-                DateTime heute = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                var status = (vergleichsmonat > heute) ? "future" : "pending";
-                
-                int currentMonth = month;
-                var monthlyExpensesAll = await _sharedDb.SharedExpenses
-                    .Where(e => e.Date.Year == year && e.Date.Month == currentMonth&& !e.isBalanced).ToListAsync();
-                
-                
-                var monthlyExpensesShared =
-                    monthlyExpensesAll.Where(e => e.isShared ).ToList();
-                var totalShared = monthlyExpensesShared.Sum(e => e.Amount);
-                
-                var monthlyExpensesSharedUser1= monthlyExpensesShared.
-                    Where(expense => expense.CreatedByUserId == userId).ToList();
-                var totalSharedUser1 = monthlyExpensesSharedUser1.Sum(e => e.Amount);
-                var monthlyExpensesSharedUser2 = monthlyExpensesShared.
-                    Where(expense => expense.CreatedByUserId != userId).ToList();
-                var totalSharedUser2 = monthlyExpensesSharedUser2.Sum(e => e.Amount);
-                
-                
-                var monthlyExpensesChild =
-                    monthlyExpensesAll.Where(e => e.isChild );
-                var totalChild = monthlyExpensesChild.Sum(e => e.Amount);
-                var monthlyExpensesChildUser1 = monthlyExpensesChild.
-                    Where(expense => expense.CreatedByUserId == userId).ToList();
-                var totalChildUser1 = monthlyExpensesChildUser1.Sum(e => e.Amount);
-                var monthlyExpensesChildUser2 = monthlyExpensesChild.
-                    Where(expense => expense.CreatedByUserId != userId).ToList();
-                var totalChildUser2 = monthlyExpensesChildUser2.Sum(e => e.Amount);
-
-
-                var hasClarificationNeed = monthlyExpensesAll
-                    .Any(expense => expense.ClarificationReactions != null && 
-                                    expense.ClarificationReactions.Any(r => r.Status == ClarificationStatus.Rejected));
-
-
-                if (hasClarificationNeed)
-                    status = "needs-clarification";
-                
-                var clarificationReactionsList = monthlyExpensesAll
-                    .Where(expense => expense.ClarificationReactions != null)
-                    .SelectMany(expense => expense.ClarificationReactions
-                        .Where(r => r.Status == ClarificationStatus.Rejected))
-                    .ToList();
-
-
-
-                
-                var monthly = new MonthlyOverview
-                {
-                    MonthId = month,
-                    Name = monthName,
-                    Status = status, // TODO: Status berechnen
-                    User1Confirmed = false, // TODO: aus DB oder Berechnung
-                    User2Confirmed = false, // TODO: aus DB oder Berechnung
-                    Total = totalShared+totalChild,      // TODO: berechnen
-                    Shared = totalShared,     // TODO: berechnen
-                    SharedUser1 = totalSharedUser1,
-                    SharedUser2 = totalSharedUser2,
-                    Child = totalChild,      // TODO: berechnen
-                    ChildUser1 = totalChildUser1,
-                    ChildUser2 = totalChildUser2,
-                    Balance = (totalChildUser1+totalSharedUser1)-(totalChildUser2+totalSharedUser2),    // TODO: berechnen
-                    ClarificationReactionsList = clarificationReactionsList  // TODO: Konflikthinweis ggf. setzen
-                };
-
-                // TODO: Daten aus DB laden und Felder oben befüllen
-
-                overview.Months.Add(monthly);
-            }
-
-            return overview;
+            // ➕ Monatsübersicht zur Jahresübersicht hinzufügen
+            overview.Months.Add(monthly);
         }
-        
-        
-   
+
+        // 📤 Rückgabe der vollständigen Jahresübersicht
+        return overview;
+    }
 }

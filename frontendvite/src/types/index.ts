@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react"
+import {ClarificationReaction} from "@/types/monthly-overview.ts";
 
 export interface Expense {
   id: string
@@ -12,6 +13,7 @@ export interface Expense {
   isChild: boolean
   isRecurring: boolean
   isBalanced: boolean
+  clarificationReactionsList: ClarificationReaction[]
 
 }
 
@@ -41,3 +43,5 @@ export interface IconOption {
   name: string
   defaultLabel?: string
 }
+export type { ClarificationReaction };
+

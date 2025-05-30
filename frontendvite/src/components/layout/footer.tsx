@@ -1,33 +1,35 @@
-import { useLocation, useNavigate } from "react-router-dom"
-import { Home, PieChart, CalendarDays, User, Star } from "lucide-react"
-import { EnhancedPlusButton } from "@/components/ui/enhanced-plus-button"
-import { useTooltip } from "@/lib/hooks/use-tooltip"
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, PieChart, CalendarDays, User, Star } from "lucide-react";
+import { EnhancedPlusButton } from "@/components/ui/enhanced-plus-button";
+import { useTooltip } from "@/lib/hooks/use-tooltip";
 
 interface FooterProps {
-    onAddButtonClick?: () => void
-    showAddButton?: boolean
+    onAddButtonClick?: () => void;
+    showAddButton?: boolean;
 }
 
 export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) {
-    const navigate = useNavigate()
-    const location = useLocation()
-    const pathname = location.pathname
-    const { isVisible: showTooltip, showAllTooltips } = useTooltip()
+    const navigate = useNavigate();
+    const location = useLocation();
+    const pathname = location.pathname;
+    const { isVisible: showTooltip, showAllTooltips } = useTooltip();
 
-    const isAnalyseActive = pathname === "/analyse"
-    const isJahresuebersichtActive = pathname === "/jahresuebersicht"
-    const isProfileActive = pathname === "/profile"
+    const isAnalyseActive = pathname === "/analyse";
+    const isJahresuebersichtActive = pathname === "/jahresuebersicht";
+    const isProfileActive = pathname === "/profile";
 
     return (
-        <footer className="fixed bottom-0 left-0 right-0 bg-blue-600 text-white h-16 flex items-center justify-between z-10 max-w-md mx-auto pb-safe">
-            {/* Navigation mit 4 Elementen (2 links, Plus/Profile in der Mitte, 2 rechts) */}
+        <footer className="fixed bottom-0 left-0 right-0 bg-[#EAEFF5] text-gray-200 h-16 flex items-center justify-between z-10 max-w-md mx-auto pb-safe">
+            <div className="absolute top-0 left-0 right-0 h-px bg-blue-300"></div>
+
+            {/* Linke Seite */}
             <div className="flex w-2/5 justify-around">
                 <button
                     className="p-2 active:bg-blue-500 transition-colors rounded-full"
                     onClick={() => navigate("/")}
                     aria-label="Dashboard"
                 >
-                    <Home className={`h-5 w-5 ${pathname === "/" ? "opacity-100" : "opacity-70"}`} />
+                    <Home className={`h-5 w-5 ${pathname === "/" ? "text-blue-600" : "text-blue-300"}`} />
                 </button>
 
                 <button
@@ -35,11 +37,11 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                     onClick={() => navigate("/jahresuebersicht")}
                     aria-label="Jahresübersicht"
                 >
-                    <CalendarDays className={`h-5 w-5 ${isJahresuebersichtActive ? "opacity-100" : "opacity-70"}`} />
+                    <CalendarDays className={`h-5 w-5 ${isJahresuebersichtActive ? "text-blue-600" : "text-blue-300"}`} />
                 </button>
             </div>
 
-            {/* Center section - conditionally shows either Plus Button or Profile Button */}
+            {/* Mitte */}
             <div className="absolute left-1/2 transform -translate-x-1/2">
                 {showAddButton ? (
                     <div className="-mt-12 active:scale-95 transition-transform duration-150">
@@ -53,22 +55,21 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                         onClick={() => navigate("/profile")}
                         aria-label="Profil"
                     >
-                        <User className={`h-5 w-5 ${isProfileActive ? "opacity-100" : "opacity-70"}`} />
+                        <User className={`h-5 w-5 ${isProfileActive ? "text-blue-600" : "text-blue-300"}`} />
                     </button>
                 )}
             </div>
 
-            {/* Rechte Seite der Navigation */}
+            {/* Rechte Seite */}
             <div className="flex w-2/5 justify-around">
                 <button
                     className="p-2 active:bg-blue-500 transition-colors rounded-full"
                     onClick={() => navigate("/analyse")}
                     aria-label="Ausgabenanalyse"
                 >
-                    <PieChart className={`h-5 w-5 ${isAnalyseActive ? "opacity-100" : "opacity-70"}`} />
+                    <PieChart className={`h-5 w-5 ${isAnalyseActive ? "text-blue-600" : "text-blue-300"}`} />
                 </button>
 
-                {/* Share2Gether Plus Button */}
                 <div className="relative">
                     <button
                         className="p-2 active:bg-blue-500 transition-colors rounded-full"
@@ -78,7 +79,6 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                         <Star className="h-5 w-5 text-yellow-300" />
                     </button>
 
-                    {/* Tooltip */}
                     {showTooltip && (
                         <div className="absolute bottom-16 right-0 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-xs z-20 transform transition-all">
                             <div className="font-medium text-blue-600 mb-1">Share2Gether Plus</div>
@@ -89,5 +89,5 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                 </div>
             </div>
         </footer>
-    )
+    );
 }

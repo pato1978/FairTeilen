@@ -3,8 +3,7 @@
 import { MonthSelector } from "@/components/layout/month-selector"
 import { YearSelector } from "@/components/layout/year-selector"
 import { useMonth } from "@/context/month-context"
-
-import { useState } from "react" // für selectedYear
+import { useState } from "react"
 
 interface PageHeaderProps {
     title: string
@@ -16,35 +15,36 @@ export function PageHeader({
                                showMonthSelector = true,
                            }: PageHeaderProps) {
     const { currentDate } = useMonth()
-
-    // Lokaler State für ausgewähltes Jahr – nur bei YearSelector notwendig
     const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
 
-    // Handler für YearSelector
     const handleYearChange = (newYear: number) => {
         setSelectedYear(newYear)
-        // Optional: Hier könntest du den Kontext aktualisieren oder API neu laden
         console.log("Neues Jahr ausgewählt:", newYear)
     }
 
     return (
-        <div className="relative flex flex-col justify-center items-center px-6 py-3 text-center rounded-xl w-full mb-2 overflow-hidden backdrop-blur-sm shadow-lg -mt-4 min-h-[120px]">
-            {/* 🔵 Hintergrundfarbe passend zur Footer-Farbe */}
-            <div className="absolute inset-0 bg-blue-600 -z-10" />
+        <div className="relative px-6 py-4 text-left rounded-xl w-full mb-2 overflow-hidden backdrop-blur-sm shadow-lg -mt-4">
+            {/* Hintergrund – hell statt blau */}
+            <div className="absolute inset-0 bg-white -z-10 pl-3" />
 
-            {/* 🌬 Subtile grafische Elemente */}
-            <div className="absolute -top-4 -right-6 w-20 h-20 bg-blue-400/30 rounded-full blur-xl" />
-            <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-white/60" />
+            {/* Dezente Designakzente */}
+            <div className="absolute -top-4 -right-6 w-20 h-20 bg-blue-100/50 rounded-full blur-xl"></div>
+            <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60"></div>
 
-            {/* 🏷️ Titelanzeige */}
-            <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
+            {/* Titel und Selector nebeneinander */}
+            <div className="flex flex-row items-center justify-between gap-2">
+                <h2 className="text-2xl font-bold text-gray-700">{title}</h2>
 
-            {/* 📅 Monats- oder Jahresauswahl */}
-            {showMonthSelector ? (
-                <MonthSelector />
-            ) : (
-                <YearSelector selectedYear={selectedYear} onChange={handleYearChange} />
-            )}
+                {showMonthSelector ? (
+
+                        <MonthSelector />
+
+                ) : (
+                    <div className="inline-flex items-center justify-between bg-blue-50 rounded-lg p-2 min-w-fit">
+                        <YearSelector selectedYear={selectedYear} onChange={handleYearChange} />
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Models;
+
 namespace WebAssembly.Server.Data
 {
     public class SharedDbContext : DbContext
@@ -9,27 +10,20 @@ namespace WebAssembly.Server.Data
         public DbSet<User> SharedUsers { get; set; }
         public DbSet<YearOverview> SharedYearOverviews { get; set; }
         public DbSet<MonthlyOverview> SharedMonthlyOverviews { get; set; }
-        public DbSet<ClarificationReactions> ClarificationReactions { get; set; }
+        public DbSet<ClarificationReaction> ClarificationReactions { get; set; } // ✅ singular
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<MonthlyOverview>()
-                .HasMany(m => m.ClarificationReactionsList)
-                .WithOne() // kein Navigationsproperty zurück
-                .HasForeignKey("MonthlyOverviewId") // Shadow Property
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<ClarificationReactions>()
+            modelBuilder.Entity<ClarificationReaction>()
                 .Property(c => c.Status)
                 .IsRequired();
         }
+
         public SharedDbContext(DbContextOptions<SharedDbContext> options)
             : base(options)
         {
         }
-
-        
     }
 }

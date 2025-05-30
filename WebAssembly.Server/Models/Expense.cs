@@ -23,5 +23,5 @@ public class Expense
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
     
-    public List<ClarificationReactions>? ClarificationReactions{ get; set; }
+    
 }

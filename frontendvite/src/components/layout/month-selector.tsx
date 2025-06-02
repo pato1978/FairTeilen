@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { formatMonthYear } from "@/lib/utils"
-import { useMonth } from "@/context/month-context"
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatMonthYear } from '@/lib/utils'
+import { useMonth } from '@/context/month-context'
 
 export interface MonthSelectorProps {
     initialDate?: Date
@@ -13,6 +13,7 @@ export function MonthSelector(): React.JSX.Element {
 
     const navigateMonth = (offset: number) => {
         const newDate = new Date(currentDate)
+        newDate.setDate(1) //
         newDate.setMonth(newDate.getMonth() + offset)
         setCurrentDate(newDate)
     }

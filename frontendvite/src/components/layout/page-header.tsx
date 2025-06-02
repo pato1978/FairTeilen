@@ -1,29 +1,26 @@
-"use client"
+'use client'
 
-import { MonthSelector } from "@/components/layout/month-selector"
-import { YearSelector } from "@/components/layout/year-selector"
-import { useMonth } from "@/context/month-context"
-import { useState } from "react"
+import { MonthSelector } from '@/components/layout/month-selector'
+import { YearSelector } from '@/components/layout/year-selector'
+import { useMonth } from '@/context/month-context'
+import { useState } from 'react'
 
 interface PageHeaderProps {
     title: string
     showMonthSelector?: boolean
 }
 
-export function PageHeader({
-                               title,
-                               showMonthSelector = true,
-                           }: PageHeaderProps) {
+export function PageHeader({ title, showMonthSelector = true }: PageHeaderProps) {
     const { currentDate } = useMonth()
     const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
 
     const handleYearChange = (newYear: number) => {
         setSelectedYear(newYear)
-        console.log("Neues Jahr ausgewählt:", newYear)
+        console.log('Neues Jahr ausgewählt:', newYear)
     }
 
     return (
-        <div className="relative px-6 py-4 text-left rounded-xl w-full mb-2 overflow-hidden backdrop-blur-sm shadow-lg -mt-4">
+        <div className="relative px-6 py-4 text-left rounded-xl w-full mb-2 backdrop-blur-sm shadow-lg -mt-4">
             {/* Hintergrund – hell statt blau */}
             <div className="absolute inset-0 bg-white -z-10 pl-3" />
 
@@ -36,9 +33,9 @@ export function PageHeader({
                 <h2 className="text-2xl font-bold text-gray-700">{title}</h2>
 
                 {showMonthSelector ? (
-
+                    <div className="z-10 relative">
                         <MonthSelector />
-
+                    </div>
                 ) : (
                     <div className="inline-flex items-center justify-between bg-blue-50 rounded-lg p-2 min-w-fit">
                         <YearSelector selectedYear={selectedYear} onChange={handleYearChange} />

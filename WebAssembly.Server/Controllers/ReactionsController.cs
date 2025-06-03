@@ -34,7 +34,7 @@ public class ReactionsController : ControllerBase
         return Ok(reaction);
     }
 
-    // ❌ DELETE: Reaktion eines Users zu einer Ausgabe löschen
+    // ✅ DELETE: Reaktion eines Users zu einer Ausgabe löschen
     [HttpDelete("{expenseId}/{userId}")]
     public async Task<IActionResult> DeleteReaction(string expenseId, string userId)
     {
@@ -50,7 +50,7 @@ public class ReactionsController : ControllerBase
         return NoContent();
     }
 
-    // 🔍 GET: Alle Reaktionen zu einer bestimmten Ausgabe
+    // ✅ GET: Alle Reaktionen zu einer bestimmten Ausgabe
     [HttpGet("expense/{expenseId}")]
     public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsForExpense(string expenseId)
     {
@@ -61,24 +61,31 @@ public class ReactionsController : ControllerBase
         return Ok(reactions);
     }
 
-    // 🔍 GET: Alle Reaktionen für einen bestimmten Monat (Format: yyyy-MM)
+    // ✅ GET: Alle Reaktionen für einen bestimmten Monat (z. B. "2025-06")
     [HttpGet("month/{monthId}")]
-    public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsByMonth(string monthId)
+    public async Task<IActionResult> GetReactionsForMonth(string monthId)
     {
+        // 🔍 Monatsbereich berechnen
         if (!DateTime.TryParse($"{monthId}-01", out var firstOfMonth))
             return BadRequest("Invalid month format. Use YYYY-MM.");
 
         var nextMonth = firstOfMonth.AddMonths(1);
 
+        // 🔍 Nur die IDs der Ausgaben im Zeitraum holen
+        var expenseIds = await _db.SharedExpenses
+            .Where(e => e.Date >= firstOfMonth && e.Date < nextMonth)
+            .Select(e => e.Id)
+            .ToListAsync();
+
+        // 🧠 Nur Reaktionen zu diesen Ausgaben
         var reactions = await _db.ClarificationReactions
-            .Include(r => r.Expense) // 🔁 Wichtig: Expense-Datum abrufen
-            .Where(r => r.Expense.Date >= firstOfMonth && r.Expense.Date < nextMonth)
+            .Where(r => expenseIds.Contains(r.ExpenseId))
             .ToListAsync();
 
         return Ok(reactions);
     }
 
-    // (Optional: GET aller Reaktionen eines Nutzers – kannst du jetzt löschen, wenn nicht mehr gebraucht)
+    // (Optional) GET: Alle Reaktionen eines Nutzers
     [HttpGet("user/{userId}")]
     public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsByUser(string userId)
     {

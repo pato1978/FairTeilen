@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { useClarificationReactions } from '@/context/clarificationContext'
 
 import type { Expense, ClarificationReaction } from '@/types'
-import { ClarificationStatus } from '@/types/monthly-overview' // ⬅️ Neu
+import { ClarificationStatus } from '@/types/monthly-overview' // ⬅️ Enum-Import
 
 import {
     postClarificationReaction,
@@ -39,15 +39,17 @@ const formatEuro = (amount: string | number) => {
 
 export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemProps) {
     const Icon = item.icon
-    const [isConfirmed, setIsConfirmed] = useState(true)
-    const [reactions, setReactions] = useState<ClarificationReaction[]>([])
-    const { refresh } = useClarificationReactions()
+
+    // 🔁 Globale Reaktionen aus dem Kontext holen (statt lokal)
+    const { getAllReactions, refresh } = useClarificationReactions()
+    const reactions = getAllReactions()
 
     const currentUserId = localStorage.getItem('user_id') ?? 'unknown'
     const createdByUserId = item.createdByUserId
     const isOwnItem = createdByUserId === currentUserId
     const showInitials = scopeFlags?.isShared || scopeFlags?.isChild
 
+    // 🔄 Swipe für mobile Interaktion
     const { ref, touchProps, style, state } = useSwipe(
         -80,
         80,
@@ -59,57 +61,52 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             : {}
     )
 
+    // ✅ Wechsel der Bestätigung (Accepted ↔ Rejected)
     const toggleConfirmationStatus = async (
         e: React.MouseEvent<HTMLButtonElement>,
         item: Expense
     ) => {
         e.stopPropagation()
-        const newConfirmed = !isConfirmed
-        setIsConfirmed(newConfirmed)
+        const existing = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
 
-        if (newConfirmed) {
-            const existing = reactions.find(
-                r => r.expenseId === item.id && r.userId === currentUserId
-            )
-            if (existing) {
-                await deleteClarificationReaction(item.id, currentUserId)
-                setReactions(reactions.filter(r => r.id !== existing.id))
-                refresh()
-            }
+        if (existing) {
+            // ✅ Reaktion löschen (zurück zu Accepted)
+            await deleteClarificationReaction(item.id, currentUserId)
+            refresh()
         } else {
+            // ✅ Neue Ablehnung speichern
             const newReaction: ClarificationReaction = {
                 id: uuidv4(),
                 expenseId: item.id,
                 userId: currentUserId,
-                status: ClarificationStatus.Rejected, // ⬅️ Enum statt String
+                status: ClarificationStatus.Rejected,
                 timestamp: new Date().toISOString(),
             }
             await postClarificationReaction(newReaction)
-            const filtered = reactions.filter(
-                r => r.expenseId !== item.id || r.userId !== currentUserId
-            )
-            setReactions([...filtered, newReaction])
             refresh()
         }
     }
 
+    // ❓ Hat dieser User diese Ausgabe abgelehnt?
     const userHasClarified = reactions.some(
         r =>
             r.expenseId === item.id &&
             r.userId === currentUserId &&
-            r.status === ClarificationStatus.Rejected // ⬅️ Enum
+            r.status === ClarificationStatus.Rejected
     )
 
     return (
         <div className="relative overflow-visible rounded-lg mb-2">
             {isOwnItem && (
                 <>
+                    {/* 🗑️ Löschen */}
                     <div
                         className="absolute inset-y-0 right-0 bg-red-500 flex items-center justify-center text-white"
                         style={{ width: '80px', opacity: state.leftOpacity }}
                     >
                         <Trash2 className="h-5 w-5" />
                     </div>
+                    {/* ✏️ Bearbeiten */}
                     <div
                         className="absolute inset-y-0 left-0 bg-blue-600 flex items-center justify-center text-white"
                         style={{ width: '80px', opacity: state.rightOpacity }}
@@ -119,6 +116,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 </>
             )}
 
+            {/* 🧾 Hauptinhalt */}
             <div
                 ref={ref}
                 className={`flex items-center p-2 rounded-lg border border-gray-200 z-10 shadow-sm mb-[0.125rem] text-sm
@@ -127,6 +125,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 style={style}
                 {...touchProps}
             >
+                {/* 🟢 Statusicon oder Initialen */}
                 {item.isBalanced ? (
                     <div className="w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center bg-green-100 text-green-600">
                         <Scale className="h-4 w-4" />
@@ -141,6 +140,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                     )
                 )}
 
+                {/* 💬 Details */}
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
                         <div>
@@ -172,20 +172,22 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                         </div>
                     </div>
 
+                    {/* 💰 Betrag + Reaktions-Button */}
                     <div className="flex items-center gap-2 ml-2">
                         <div className="text-sm font-medium">{formatEuro(item.amount)}</div>
                         <div className="relative group">
                             <button
                                 onClick={e => toggleConfirmationStatus(e, item)}
                                 className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-                                aria-label={isConfirmed ? 'Confirmed' : 'Needs Clarification'}
+                                aria-label={userHasClarified ? 'Needs Clarification' : 'Confirmed'}
                             >
-                                {isConfirmed ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                ) : (
+                                {userHasClarified ? (
                                     <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                ) : (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
                                 )}
                             </button>
+                            {/* 🛎️ Tooltip */}
                             {userHasClarified && (
                                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
                                     Clarification submitted

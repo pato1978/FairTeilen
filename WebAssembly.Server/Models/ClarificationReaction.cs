@@ -16,6 +16,5 @@ public class ClarificationReaction
     public ClarificationStatus Status { get; set; } = ClarificationStatus.Accepted;
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-    // ✅ Navigation zur zugehörigen Ausgabe (damit wir auf .Expense.Date zugreifen können)
-    public Expense? Expense { get; set; } 
+    
 }

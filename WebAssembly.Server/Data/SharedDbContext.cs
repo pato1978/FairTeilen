@@ -16,10 +16,19 @@ namespace WebAssembly.Server.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // ✅ Beziehung zwischen Reaction und Expense
+            modelBuilder.Entity<ClarificationReaction>()
+                .HasOne(r => r.Expense)
+                .WithMany() // oder .WithMany(e => e.ClarificationReactions), wenn du Rückbeziehung willst
+                .HasForeignKey(r => r.ExpenseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ✅ Status-Feld ist Pflicht
             modelBuilder.Entity<ClarificationReaction>()
                 .Property(c => c.Status)
                 .IsRequired();
         }
+
 
         public SharedDbContext(DbContextOptions<SharedDbContext> options)
             : base(options)

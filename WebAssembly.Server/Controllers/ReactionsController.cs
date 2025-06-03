@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
@@ -21,17 +20,14 @@ public class ReactionsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> PostReaction([FromBody] ClarificationReaction reaction)
     {
-        // Prüfen, ob es schon eine Reaktion dieses Nutzers zur Ausgabe gibt
         var existing = await _db.ClarificationReactions
             .FirstOrDefaultAsync(r => r.ExpenseId == reaction.ExpenseId && r.UserId == reaction.UserId);
 
         if (existing != null)
         {
-            // Alte Reaktion entfernen
             _db.ClarificationReactions.Remove(existing);
         }
 
-        // Neue Reaktion hinzufügen
         _db.ClarificationReactions.Add(reaction);
         await _db.SaveChangesAsync();
 
@@ -53,6 +49,7 @@ public class ReactionsController : ControllerBase
 
         return NoContent();
     }
+
     // 🔍 GET: Alle Reaktionen zu einer bestimmten Ausgabe
     [HttpGet("expense/{expenseId}")]
     public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsForExpense(string expenseId)
@@ -64,7 +61,24 @@ public class ReactionsController : ControllerBase
         return Ok(reactions);
     }
 
-// 🔍 GET: Alle Reaktionen eines bestimmten Nutzers (optional, wenn du willst)
+    // 🔍 GET: Alle Reaktionen für einen bestimmten Monat (Format: yyyy-MM)
+    [HttpGet("month/{monthId}")]
+    public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsByMonth(string monthId)
+    {
+        if (!DateTime.TryParse($"{monthId}-01", out var firstOfMonth))
+            return BadRequest("Invalid month format. Use YYYY-MM.");
+
+        var nextMonth = firstOfMonth.AddMonths(1);
+
+        var reactions = await _db.ClarificationReactions
+            .Include(r => r.Expense) // 🔁 Wichtig: Expense-Datum abrufen
+            .Where(r => r.Expense.Date >= firstOfMonth && r.Expense.Date < nextMonth)
+            .ToListAsync();
+
+        return Ok(reactions);
+    }
+
+    // (Optional: GET aller Reaktionen eines Nutzers – kannst du jetzt löschen, wenn nicht mehr gebraucht)
     [HttpGet("user/{userId}")]
     public async Task<ActionResult<List<ClarificationReaction>>> GetReactionsByUser(string userId)
     {
@@ -74,6 +88,4 @@ public class ReactionsController : ControllerBase
 
         return Ok(reactions);
     }
-   
 }
-

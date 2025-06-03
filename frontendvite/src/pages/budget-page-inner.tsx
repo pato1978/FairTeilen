@@ -1,33 +1,34 @@
 // ✅ React-Import für State-Management
-import { useState } from "react"
+import { useState } from 'react'
 
 // ✅ Fallback-Icon für neue Ausgaben
-import { HelpCircle } from "lucide-react"
+import { HelpCircle } from 'lucide-react'
 
 // ✅ Funktion zum Speichern von Ausgaben
-import { saveExpense } from "@/lib/expense-actions"
+import { saveExpense } from '@/lib/expense-actions'
 
 // ✅ Hilfsfunktionen & Daten
-import { iconMap } from "@/lib/icon-map"
-import { availableIcons } from "@/lib/icon-options"
-import { calculateTotalExpenses, calculatePercentageUsed } from "@/lib/budget-utils"
-import { convertDateToISO } from "@/lib/utils"
+import { iconMap } from '@/lib/icon-map'
+import { availableIcons } from '@/lib/icon-options'
+import { calculateTotalExpenses, calculatePercentageUsed } from '@/lib/budget-utils'
+import { convertDateToISO } from '@/lib/utils'
+import { toDateInputValue } from '@/lib/utils'
 
 // ✅ Layout-Komponenten und UI-Elemente
-import { PageLayout } from "@/components/layout/page-layout"
-import { PageHeader } from "@/components/layout/page-header"
+import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
 
-import { BudgetSummaryCard } from "@/components/dashboard/budget-summary-card"
-import { ExpenseEditorBottomSheet } from "@/components/modals/expense-editor-bottom-sheet"
-import BudgetEditorModal from "@/components/modals/budget-editor-modal"
-import { VerbesserteLitenansicht } from "@/components/dashboard/verbesserte-listenansicht"
+import { BudgetSummaryCard } from '@/components/dashboard/budget-summary-card'
+import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
+import BudgetEditorModal from '@/components/modals/budget-editor-modal'
+import { VerbesserteLitenansicht } from '@/components/dashboard/verbesserte-listenansicht'
 
 // ✅ Contexts: aktueller Monat + Budgetdaten
-import { useMonth } from "@/context/month-context"
-import { useBudget } from "@/context/budget-context"
+import { useMonth } from '@/context/month-context'
+import { useBudget } from '@/context/budget-context'
 
 // ✅ Datentyp
-import type { Expense } from "@/types"
+import type { Expense } from '@/types'
 
 // -------------------------------------------
 // 🔧 1. Komponente bekommt nun Konfigurations-Props
@@ -58,21 +59,14 @@ type Props = {
 export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     const { currentDate } = useMonth()
 
-    const {
-        budget,
-        setBudget,
-        expenses,
-        setExpenses,
-        isLoading,
-        refreshExpenses,
-    } = useBudget()
+    const { budget, setBudget, expenses, setExpenses, isLoading, refreshExpenses } = useBudget()
 
     // 🧠 UI-Zustände (Modale, Auswahl etc.)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [selectedIcon, setSelectedIcon] = useState<any>(null)
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
-    const [selectedCategory, setSelectedCategory] = useState("gesamt")
+    const [selectedCategory, setSelectedCategory] = useState('gesamt')
 
     // -------------------------------------------
     // ➕ Ausgabe hinzufügen
@@ -80,11 +74,11 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     // -------------------------------------------
     const handleAdd = () => {
         setEditingExpense({
-            id: "",
-            name: "",
+            id: '',
+            name: '',
             amount: 0,
-            date: new Date().toISOString().split("T")[0],
-            category: "",
+            date: new Date().toISOString().split('T')[0],
+            category: '',
             icon: HelpCircle,
             isPersonal: scopeFlags.isPersonal, // 💡 DYNAMISCH statt fest
             isShared: scopeFlags.isShared,
@@ -98,7 +92,8 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     // ✏️ Bestehende Ausgabe bearbeiten
     const handleEdit = (e: Expense) => {
-        setEditingExpense({ ...e, date: convertDateToISO(e.date) })
+        //setEditingExpense({ ...e, date: convertDateToISO(e.date) })
+        setEditingExpense({ ...e, date: toDateInputValue(e.date) })
         setSelectedIcon(iconMap[e.category] || HelpCircle)
         setIsModalOpen(true)
     }
@@ -113,32 +108,28 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     // ❌ Löschen einer Ausgabe
     const deleteExpense = async (id: string) => {
-        await fetch(`http://localhost:5289/api/expenses/${id}`, { method: "DELETE" })
+        await fetch(`http://localhost:5289/api/expenses/${id}`, { method: 'DELETE' })
         refreshExpenses()
     }
 
     // 🔎 Ausgaben nach Kategorie filtern
 
     function getFilteredExpenses(expenses: Expense[], selectedCategory: string): Expense[] {
-        if (selectedCategory === "gesamt") {
+        if (selectedCategory === 'gesamt') {
             return expenses
-        }
-        else if (selectedCategory === "wiederkehrend") {
-            return expenses.filter((e) => e.isRecurring)
-        }
-        else if (selectedCategory === "bereits beglichen") {
-            return expenses.filter((e) => e.isBalanced)
+        } else if (selectedCategory === 'wiederkehrend') {
+            return expenses.filter(e => e.isRecurring)
+        } else if (selectedCategory === 'bereits beglichen') {
+            return expenses.filter(e => e.isBalanced)
         }
 
-
-        return expenses.filter((e) => e.category === selectedCategory)
+        return expenses.filter(e => e.category === selectedCategory)
     }
 
     const filteredExpenses = getFilteredExpenses(expenses, selectedCategory)
 
-
     // 🎨 Icon zuweisen
-    const mapped = filteredExpenses.map((e) => ({
+    const mapped = filteredExpenses.map(e => ({
         ...e,
         icon: iconMap[e.category] || HelpCircle,
     }))
@@ -156,7 +147,6 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         <PageLayout onAddButtonClick={handleAdd}>
             <div className="page-header-container">
                 <PageHeader title={title} /> {/* 🏷 Titel: Personal / Shared / Child */}
-
             </div>
 
             <div className="flex-1 px-4 pb-6 mt-8 flex flex-col overflow-hidden">
@@ -168,7 +158,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                         expenses={expenses}
                         percentageUsed={percentageUsed}
                         onBudgetClick={() => setIsBudgetModalOpen(true)}
-                        onCategoryChange={(newCat) => setSelectedCategory(newCat)}
+                        onCategoryChange={newCat => setSelectedCategory(newCat)}
                     />
 
                     {isLoading ? (
@@ -200,7 +190,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 isOpen={isBudgetModalOpen}
                 onClose={() => setIsBudgetModalOpen(false)}
                 currentBudget={budget}
-                onSave={(b) => {
+                onSave={b => {
                     setBudget(b)
                     setIsBudgetModalOpen(false)
                 }}

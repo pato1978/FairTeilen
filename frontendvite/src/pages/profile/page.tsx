@@ -1,63 +1,63 @@
-import { useState } from "react"
-import {User, Check, Settings, LogOut, Users, Crown, Star, User as UserIcon} from "lucide-react"
-import { PageLayout } from "@/components/layout/page-layout"
-import { PageHeader } from "@/components/layout/page-header"
-import { useNavigate } from "react-router-dom"
+import { useState } from 'react'
+import { User, Check, Settings, LogOut, Users, Crown, Star, User as UserIcon } from 'lucide-react'
+import { PageLayout } from '@/components/layout/page-layout'
+import { PageHeader } from '@/components/layout/page-header'
+import { useNavigate } from 'react-router-dom'
 
 // Benutzer-Daten
 const users = [
     {
-        id: "4dfde3f4-d9c2-4b0b-875f-2e5e41b531f7",
-        name: "Partner 1",
-        email: "partner1@example.com",
-        role: "Hauptnutzer",
+        id: '4dfde3f4-d9c2-4b0b-875f-2e5e41b531f7',
+        name: 'Partner 1',
+        email: 'partner1@example.com',
+        role: 'Hauptnutzer',
         icon: Crown,
-        color: "bg-blue-500",
+        color: 'blue-500',
     },
     {
-        id: "9aaf8e82-6d38-4b2b-84ce-9130c6dd98a9",
-        name: "Partner 2",
-        email: "partner2@example.com",
-        role: "Partner",
+        id: '9aaf8e82-6d38-4b2b-84ce-9130c6dd98a9',
+        name: 'Partner 2',
+        email: 'partner2@example.com',
+        role: 'Partner',
         icon: Users,
-        color: "bg-green-500",
+        color: 'green-500',
     },
     {
-        id: "3fcb1191-1741-4b1d-87be-c0be899b356c",
-        name: "Partner 3",
-        email: "partner3@example.com",
-        role: "Partner",
+        id: '3fcb1191-1741-4b1d-87be-c0be899b356c',
+        name: 'Partner 3',
+        email: 'partner3@example.com',
+        role: 'Partner',
         icon: Users,
-        color: "bg-purple-500",
+        color: 'bg-purple-500',
     },
     {
-        id: "guest-user-0000",
-        name: "Gast",
-        email: "gast@example.com",
-        role: "Gastnutzer",
+        id: 'guest-user-0000',
+        name: 'Gast',
+        email: 'gast@example.com',
+        role: 'Gastnutzer',
         icon: UserIcon,
-        color: "bg-orange-500",
+        color: 'bg-orange-500',
     },
 ]
 
 export default function ProfilePage() {
     const [selectedUser, setSelectedUser] = useState(() => {
-        const savedId = localStorage.getItem("user_id")
-        return users.find((u) => u.id.toString() === savedId) || users[0]
+        const savedId = localStorage.getItem('user_id')
+        return users.find(u => u.id.toString() === savedId) || users[0]
     })
     const [showSettings, setShowSettings] = useState(false)
     const navigate = useNavigate()
 
     const handleUserSelect = (user: (typeof users)[0]) => {
         setSelectedUser(user)
-        localStorage.setItem("user_id",  user.id.toString())
+        localStorage.setItem('user_id', user.id.toString())
         console.log(`Wechsel zu Benutzer: ${user.name}`)
     }
 
     const handleLogout = () => {
-        localStorage.removeItem("user_id")
-        console.log("Benutzer abgemeldet")
-        navigate("/")
+        localStorage.removeItem('user_id')
+        console.log('Benutzer abgemeldet')
+        navigate('/')
     }
 
     return (
@@ -78,8 +78,8 @@ export default function ProfilePage() {
                             <h4 className="font-medium text-lg">{selectedUser.name}</h4>
                             <p className="text-sm text-gray-600">{selectedUser.email}</p>
                             <span className="inline-block mt-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                {selectedUser.role}
-              </span>
+                                {selectedUser.role}
+                            </span>
                         </div>
                         <Check className="h-6 w-6 text-green-500" />
                     </div>
@@ -92,14 +92,14 @@ export default function ProfilePage() {
                         <Star className="h-5 w-5 text-yellow-300" />
                     </div>
                     <div className="space-y-3">
-                        {users.map((user) => (
+                        {users.map(user => (
                             <button
                                 key={user.id}
                                 onClick={() => handleUserSelect(user)}
                                 className={`w-full flex items-center p-3 rounded-lg transition-colors ${
                                     selectedUser.id === user.id
-                                        ? "bg-blue-50 border border-blue-200"
-                                        : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
+                                        ? 'bg-blue-50 border border-blue-200'
+                                        : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                                 }`}
                             >
                                 <div className={`p-2 rounded-full ${user.color} mr-3`}>
@@ -109,7 +109,9 @@ export default function ProfilePage() {
                                     <h4 className="font-medium">{user.name}</h4>
                                     <p className="text-sm text-gray-600">{user.role}</p>
                                 </div>
-                                {selectedUser.id === user.id && <Check className="h-5 w-5 text-green-500" />}
+                                {selectedUser.id === user.id && (
+                                    <Check className="h-5 w-5 text-green-500" />
+                                )}
                             </button>
                         ))}
                     </div>
@@ -162,8 +164,6 @@ export default function ProfilePage() {
                         </button>
                     </div>
                 </div>
-
-
             </div>
         </PageLayout>
     )

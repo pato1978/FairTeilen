@@ -46,26 +46,10 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
     const isOwnItem = createdByUserId === currentUserId
     const showInitials = scopeFlags?.isShared || scopeFlags?.isChild
 
-    // ─── Color‐Berechnung (nur ein Mal!) ─────────────────────────────────────────
     const rawColor = users[createdByUserId]?.color ?? 'gray-400'
     const { text: textClass, border: borderClass } =
         userColorMap[rawColor] ?? userColorMap['gray-400']
 
-    // **Hier das Debug‐Log, vor dem return**:
-    console.log(
-        '📌 ExpenseItem Debug:',
-        'createdByUserId =',
-        createdByUserId,
-        '| rawColor =',
-        rawColor,
-        '| textClass =',
-        textClass,
-        '| borderClass =',
-        borderClass
-    )
-    // ────────────────────────────────────────────────────────────────────────────
-
-    // Swipe‐Hook
     const { ref, touchProps, style, state } = useSwipe(
         -80,
         80,
@@ -77,7 +61,6 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             : {}
     )
 
-    // Wechsel der Bestätigung (Accepted ↔ Rejected)
     const toggleConfirmationStatus = async (
         e: React.MouseEvent<HTMLButtonElement>,
         item: Expense
@@ -101,12 +84,19 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
         }
     }
 
+    const isClarifiedByAnyone = reactions.some(
+        r => r.expenseId === item.id && r.status === ClarificationStatus.Rejected
+    )
+
     const userHasClarified = reactions.some(
         r =>
             r.expenseId === item.id &&
             r.userId === currentUserId &&
             r.status === ClarificationStatus.Rejected
     )
+
+    const canToggleClarification = !isOwnItem || userHasClarified
+    const iconClasses = !canToggleClarification ? 'opacity-60' : ''
 
     return (
         <div className="relative overflow-visible rounded-lg mb-2">
@@ -129,15 +119,12 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
 
             <div
                 ref={ref}
-                className={`
-          flex items-center p-2 rounded-lg border border-gray-200 z-10 shadow-sm mb-[0.125rem] text-sm
-          ${state.isTouched ? 'bg-blue-50' : 'bg-white'}
-          ${state.isDragging ? '' : 'transition-transform duration-300'}
-        `}
+                className={`flex items-center p-2 rounded-lg border border-gray-200 z-10 shadow-sm mb-[0.125rem] text-sm
+                ${state.isTouched ? 'bg-blue-50' : 'bg-white'}
+                ${state.isDragging ? '' : 'transition-transform duration-300'}`}
                 style={style}
                 {...touchProps}
             >
-                {/* 🟢 Statusicon oder Initialen */}
                 {item.isBalanced ? (
                     <div className="w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center bg-green-100 text-green-600">
                         <Scale className="h-4 w-4" />
@@ -145,18 +132,15 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 ) : (
                     showInitials && (
                         <div
-                            className={`
-                w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center
-                bg-white text-xs font-semibold mr-2
-                ${textClass} ${borderClass} border-2 border-solid
-              `}
+                            className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center
+                            bg-white text-xs font-semibold mr-2
+                            ${textClass} ${borderClass} border-2 border-solid`}
                         >
                             {users[createdByUserId]?.initials ?? '?'}
                         </div>
                     )
                 )}
 
-                {/* 💬 Details */}
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
                         <div>
@@ -172,47 +156,59 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 ">
-                            <div className="flex items-center gap-1">
-                                {item.isRecurring && (
-                                    <span className="bg-gray-100 rounded-full p-0.5">
-                                        <Repeat className="h-3 w-3 text-gray-500" />
-                                    </span>
-                                )}
-                                {!isOwnItem && (
-                                    <span className="bg-gray-100 rounded-full p-0.5">
-                                        <Lock className="h-3 w-3 text-gray-500" />
-                                    </span>
-                                )}
-                            </div>
+                        <div className="flex items-center gap-2">
+                            {item.isRecurring && (
+                                <span className="bg-gray-100 rounded-full p-0.5">
+                                    <Repeat className="h-3 w-3 text-gray-500" />
+                                </span>
+                            )}
+                            {!isOwnItem && (
+                                <span className="bg-gray-100 rounded-full p-0.5">
+                                    <Lock className="h-3 w-3 text-gray-500" />
+                                </span>
+                            )}
                         </div>
                     </div>
 
-                    {/* 💰 Betrag + Reaktions-Button */}
                     <div className="flex items-center gap-2 ml-2">
                         <div className="text-sm font-medium">{formatEuro(item.amount)}</div>
-                        <div className="relative group">
-                            {showInitials && (
+
+                        {/* ⚠️ Reaktionssymbol (sichtbar für alle, aber evtl. ausgegraut) */}
+                        {showInitials && (
+                            <div className="relative group">
                                 <button
-                                    onClick={e => toggleConfirmationStatus(e, item)}
-                                    className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                    onClick={e => {
+                                        if (canToggleClarification) {
+                                            toggleConfirmationStatus(e, item)
+                                        }
+                                    }}
+                                    className={`p-1 rounded-full transition-colors ${
+                                        canToggleClarification
+                                            ? 'hover:bg-gray-100'
+                                            : 'cursor-default opacity-70'
+                                    }`}
                                     aria-label={
-                                        userHasClarified ? 'Needs Clarification' : 'Confirmed'
+                                        isClarifiedByAnyone ? 'Needs Clarification' : 'Confirmed'
                                     }
                                 >
-                                    {userHasClarified ? (
-                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                    {isClarifiedByAnyone ? (
+                                        <AlertTriangle
+                                            className={`h-4 w-4 text-amber-500 ${iconClasses}`}
+                                        />
                                     ) : (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                        <CheckCircle
+                                            className={`h-4 w-4 text-green-500 ${iconClasses}`}
+                                        />
                                     )}
                                 </button>
-                            )}
-                            {userHasClarified && (
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
-                                    Clarification submitted
-                                </div>
-                            )}
-                        </div>
+
+                                {userHasClarified && (
+                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
+                                        Clarification submitted
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

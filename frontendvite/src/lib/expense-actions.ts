@@ -1,6 +1,6 @@
-import type { Expense } from "@/types"
-import type { Dispatch, SetStateAction } from "react"
-import { getCurrentUserId } from "@/lib/user-storage"
+import type { Expense } from '@/types'
+import type { Dispatch, SetStateAction } from 'react'
+import { getCurrentUserId } from '@/lib/user-storage'
 
 /**
  * Speichert oder aktualisiert eine Ausgabe im Backend
@@ -21,22 +21,22 @@ export async function saveExpense(
 ): Promise<Expense | null> {
     // Optional: Datum in das Format "YYYY-MM-DD" konvertieren,
     // da HTML oder .NET eventuell kein ISO mit Zeitanteil erwartet.
-    const normalizedDate = expense.date.split("T")[0]
+    const normalizedDate = expense.date.split('T')[0]
 
     // Sende Anfrage an das Backend
-    const response = await fetch("http://localhost:5289/api/expenses", {
-        method: "POST", // ← Immer POST, dein Backend entscheidet selbst zwischen "neu" und "aktualisieren"
-        headers: { "Content-Type": "application/json" },
+    const response = await fetch('http://localhost:5289/api/expenses', {
+        method: 'POST', // ← Immer POST, dein Backend entscheidet selbst zwischen "neu" und "aktualisieren"
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             ...expense,
-            date: normalizedDate, // evtl. wichtig für Backend-Kompatibilität
-            CreatedByUserId: getCurrentUserId() // ✅ wichtig!
+            date: normalizedDate,
+            createdByUserId: getCurrentUserId(), // ✅ richtig!
         }),
     })
 
     // Fehlerbehandlung: Wenn Statuscode z. B. 400, 404 oder 500 ist
     if (!response.ok) {
-        console.error("❌ Fehler beim Speichern:", response.status, await response.text())
+        console.error('❌ Fehler beim Speichern:', response.status, await response.text())
         return null
     }
 
@@ -49,7 +49,7 @@ export async function saveExpense(
 
         if (alreadyExists) {
             // Update: vorhandenes Element ersetzen
-            return prev.map(e => e.id === saved.id ? { ...saved, icon } : e)
+            return prev.map(e => (e.id === saved.id ? { ...saved, icon } : e))
         } else {
             // Neuer Eintrag: anhängen
             return [...prev, { ...saved, icon }]

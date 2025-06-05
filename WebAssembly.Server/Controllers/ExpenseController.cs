@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
@@ -9,8 +12,6 @@ namespace WebAssembly.Server.Controllers
     [Route("api/[controller]")]
     public class ExpensesController : ControllerBase
     {
-        // 🔌 Zwei verschiedene DbContexts: einer für lokale persönliche Ausgaben (SQLite),
-        // der andere für zentrale geteilte/Kind-Ausgaben (MSSQL)
         private readonly AppDbContext _appDb;
         private readonly SharedDbContext _sharedDb;
 
@@ -20,74 +21,75 @@ namespace WebAssembly.Server.Controllers
             _sharedDb = sharedDb;
         }
 
-        // -----------------------------------------------------------------------
-        // 📥 Universeller GET-Endpunkt
-        // Liefert Ausgaben abhängig vom Scope (personal/shared/child)
-        // Optional mit Monatsfilter und Gruppen-ID
-        // Beispiel: GET /api/expenses?scope=shared&group=xyz&month=2025-05
-        // -----------------------------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> GetExpenses(
             [FromQuery] string scope,
             [FromQuery] string? group,
             [FromQuery] string? month,
             [FromQuery] string? userId
-            )
-        {   
-            if (group == "null") group = null;
-            // 🔒 1. Scope-Validierung
+        )
+        {
             if (string.IsNullOrWhiteSpace(scope))
                 return BadRequest("Parameter 'scope' ist erforderlich.");
 
-            // 📅 2. Monat in Datumsbereich umwandeln (z. B. 2025-05 → 01.05.–01.06.)
-            if (!DateTime.TryParse($"{month}-01", out var monthStart))
+            if (!DateTime.TryParseExact($"{month}-01", "yyyy-MM-dd", null,
+                System.Globalization.DateTimeStyles.None, out var monthStart))
+            {
+                Console.WriteLine($"DEBUG → ❌ TryParseExact fehlgeschlagen für month='{month}'");
                 return BadRequest("Ungültiges Datumsformat. Erwartet wird 'YYYY-MM'.");
+            }
 
             var monthEnd = monthStart.AddMonths(1);
 
-            // 🔍 3. Je nach Scope den passenden DbContext und Filter wählen
+            var today = DateTime.Today;
+            var firstOfThisMonth = new DateTime(today.Year, today.Month, 1);
+
+            Console.WriteLine($"DEBUG → 📅 Today: {today:yyyy-MM-dd}");
+            Console.WriteLine($"DEBUG → 📅 firstOfThisMonth: {firstOfThisMonth:yyyy-MM-dd}");
+            Console.WriteLine($"DEBUG → 📅 monthStart (aus Query): {monthStart:yyyy-MM-dd}");
+            Console.WriteLine($"DEBUG → 🧾 scope: {scope}");
+
+            if (scope == "personal" && monthStart == firstOfThisMonth)
+            {
+                Console.WriteLine("DEBUG → 🔁 CopyRecurringFromPreviousMonth wird aufgerufen");
+                await CopyRecurringFromPreviousMonth(monthStart);
+            }
+            else
+            {
+                Console.WriteLine("DEBUG → ⏭️ CopyRecurringFromPreviousMonth NICHT aufgerufen");
+            }
+
             IQueryable<Expense> query = scope switch
             {
                 "personal" => _appDb.Expenses
                     .Where(e => e.isPersonal && !e.isShared && !e.isChild),
-
                 "shared" => _sharedDb.SharedExpenses
                     .Where(e => e.isShared && (string.IsNullOrWhiteSpace(group) || e.GroupId == group)),
-
                 "child" => _sharedDb.SharedExpenses
                     .Where(e => e.isChild),
-
                 _ => throw new ArgumentException($"Unbekannter scope: {scope}")
             };
 
-            // 📆 4. Monatsfilter anwenden
             query = query.Where(e => e.Date >= monthStart && e.Date < monthEnd);
-            
+
             if (scope == "personal" && !string.IsNullOrWhiteSpace(userId))
             {
                 query = query.Where(e => e.CreatedByUserId == userId);
             }
-            // 🧾 5. Sortierung und Rückgabe
+
             var result = await query.OrderByDescending(e => e.Date).ToListAsync();
             return Ok(result);
         }
 
-        // -----------------------------------------------------------------------
-        // 💾 Universeller POST-Endpunkt zum Speichern oder Aktualisieren von Ausgaben
-        // Entscheidet anhand des Scopes, ob SQLite oder MSSQL verwendet wird
-        // -----------------------------------------------------------------------
         [HttpPost]
         public async Task<IActionResult> SaveExpense([FromBody] ExpenseDto dto)
         {
-            // 📆 Monatsschlüssel und Jahreswert setzen
             var monthKey = dto.Date.ToString("yyyy-MM");
             var yearKey = dto.Date.Year.ToString();
 
-            // 🆕 Neue ID erzeugen oder bestehende übernehmen
             var isNew = string.IsNullOrWhiteSpace(dto.Id);
             var expenseId = isNew ? Guid.NewGuid().ToString() : dto.Id;
 
-            // 🏗️ Neues Expense-Objekt aufbauen
             var expense = new Expense
             {
                 Id = expenseId,
@@ -102,16 +104,12 @@ namespace WebAssembly.Server.Controllers
                 isShared = dto.isShared,
                 isRecurring = dto.isRecurring,
                 isBalanced = dto.isBalanced,
-                
                 GroupId = dto.GroupId,
-                CreatedByUserId = dto.CreatedByUserId
-                
+                CreatedByUserId = dto.createdByUserId
             };
 
-            // 🧠 Zielkontext wählen (lokal oder zentral)
-            var context = dto.isShared || dto.isChild ? (DbContext)_sharedDb : _appDb;
+            var context = (dto.isShared || dto.isChild) ? (DbContext)_sharedDb : _appDb;
 
-            // 🔁 Falls vorhanden: alte Ausgabe löschen (Upsert-Verhalten)
             if (!isNew)
             {
                 var existing = await context.Set<Expense>().FirstOrDefaultAsync(e => e.Id == expense.Id);
@@ -121,21 +119,15 @@ namespace WebAssembly.Server.Controllers
                 }
             }
 
-            // 💾 Speichern
             await context.AddAsync(expense);
             await context.SaveChangesAsync();
 
             return Ok(expense);
         }
 
-        // -----------------------------------------------------------------------
-        // 🗑️ DELETE: /api/expenses/{id}
-        // Entfernt eine Ausgabe aus beiden Kontexten (wird im ersten gefundenen gelöscht)
-        // -----------------------------------------------------------------------
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteExpense(string id)
         {
-            // 🔍 1. Suche in lokaler DB
             var expense = await _appDb.Expenses.FirstOrDefaultAsync(e => e.Id == id);
             if (expense != null)
             {
@@ -144,7 +136,6 @@ namespace WebAssembly.Server.Controllers
                 return NoContent();
             }
 
-            // 🔍 2. Suche in zentraler DB
             expense = await _sharedDb.SharedExpenses.FirstOrDefaultAsync(e => e.Id == id);
             if (expense != null)
             {
@@ -153,8 +144,98 @@ namespace WebAssembly.Server.Controllers
                 return NoContent();
             }
 
-            // ❌ Nicht gefunden
             return NotFound();
+        }
+
+        private async Task CopyRecurringFromPreviousMonth(DateTime currentMonthStart)
+        {
+            Console.WriteLine($"DEBUG → 🔄 Starte CopyRecurringFromPreviousMonth für {currentMonthStart:yyyy-MM-dd}");
+
+            var alreadyCopied = await _appDb.Expenses.AnyAsync(e =>
+                e.isPersonal &&
+                e.isRecurring &&
+                e.Date >= currentMonthStart &&
+                e.Date < currentMonthStart.AddMonths(1));
+
+            Console.WriteLine($"DEBUG → ❓ alreadyCopied im {currentMonthStart:yyyy-MM} = {alreadyCopied}");
+
+            if (alreadyCopied)
+            {
+                Console.WriteLine("DEBUG → ⛔️ Kopieren abgebrochen, weil alreadyCopied = true");
+                return;
+            }
+
+            var lastMonthStart = currentMonthStart.AddMonths(-1);
+            var lastMonthEnd = currentMonthStart;
+
+            Console.WriteLine($"DEBUG → 📅 Zeitraum zum Prüfen: {lastMonthStart:yyyy-MM-dd} bis {lastMonthEnd:yyyy-MM-dd}");
+
+            var recurringLastMonth = await _appDb.Expenses
+                .Where(e =>
+                    e.isPersonal &&
+                    e.isRecurring &&
+                    e.Date >= lastMonthStart &&
+                    e.Date < lastMonthEnd)
+                .ToListAsync();
+
+            Console.WriteLine($"DEBUG → 🔍 Gefundene wiederkehrende Ausgaben im Vormonat: {recurringLastMonth.Count}");
+
+            foreach (var x in recurringLastMonth)
+            {
+                Console.WriteLine($"  → [Mai] {x.Name}, Betrag: {x.Amount}, Datum: {x.Date:yyyy-MM-dd}");
+            }
+
+            if (!recurringLastMonth.Any())
+            {
+                Console.WriteLine("DEBUG → ⚠️ Keine Einträge zum Kopieren gefunden.");
+                return;
+            }
+
+            foreach (var oldExp in recurringLastMonth)
+            {
+                var newDate = oldExp.Date.AddMonths(1);
+                var monthKeyNew = newDate.ToString("yyyy-MM");
+                var yearKeyNew = newDate.Year.ToString();
+
+                var exists = await _appDb.Expenses.AnyAsync(e =>
+                    e.isPersonal &&
+                    e.isRecurring &&
+                    e.Date == newDate &&
+                    e.Name == oldExp.Name &&
+                    e.Amount == oldExp.Amount);
+
+                Console.WriteLine($"DEBUG → Prüfe: existiert schon '{oldExp.Name}' für {newDate:yyyy-MM-dd}? {exists}");
+
+                if (exists)
+                {
+                    Console.WriteLine($"DEBUG → ⚠️ Überspringe '{oldExp.Name}' – bereits vorhanden");
+                    continue;
+                }
+
+                var newExpense = new Expense
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = oldExp.Name,
+                    Amount = oldExp.Amount,
+                    Date = newDate,
+                    MonthKey = monthKeyNew,
+                    YearKey = yearKeyNew,
+                    Category = oldExp.Category,
+                    isPersonal = oldExp.isPersonal,
+                    isChild = oldExp.isChild,
+                    isShared = oldExp.isShared,
+                    isRecurring = oldExp.isRecurring,
+                    isBalanced = false,
+                    GroupId = oldExp.GroupId,
+                    CreatedByUserId = oldExp.CreatedByUserId
+                };
+
+                _appDb.Expenses.Add(newExpense);
+                Console.WriteLine($"DEBUG → ✅ Neue Kopie erstellt: '{newExpense.Name}' am {newExpense.Date:yyyy-MM-dd}");
+            }
+
+            await _appDb.SaveChangesAsync();
+            Console.WriteLine("DEBUG → 💾 Speichern abgeschlossen (SaveChangesAsync).");
         }
     }
 }

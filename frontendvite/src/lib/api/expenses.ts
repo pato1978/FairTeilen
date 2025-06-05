@@ -1,11 +1,11 @@
-import type { Expense } from "@/types"
-import { getCurrentUserId } from "@/lib/user-storage" // falls noch nicht vorhanden
+import type { Expense } from '@/types'
+import { getCurrentUserId } from '@/lib/user-storage' // falls noch nicht vorhanden
 
 // 🌐 API-Basis-URL: entweder aus .env-Datei oder lokal fallback
-const BASE_URL = "http://localhost:5289"
+const BASE_URL = 'http://localhost:5289'
 
 // 🔢 Mögliche Werte für den Ausgaben-Scope
-export type ExpenseScope = "personal" | "shared" | "child" | string
+export type ExpenseScope = 'personal' | 'shared' | 'child' | string
 
 /**
  * 📡 Lädt Ausgaben vom Backend für einen gegebenen Scope, Monat und (optional) Gruppen-ID.
@@ -22,29 +22,26 @@ export async function fetchExpenses(
     scope: ExpenseScope,
     group: string | null,
     date: Date
-
-
 ): Promise<Expense[]> {
     // 🗓️ Monat aus dem Datum extrahieren im Format "YYYY-MM"
     const month = date.toISOString().slice(0, 7)
 
     // ✅ Nur dann anhängen, wenn `group` wirklich gesetzt ist (also NICHT "null", "undefined", leer)
-    const isValidGroup = group && group !== "null" && group !== "undefined" && group !== ""
+    const isValidGroup = group && group !== 'null' && group !== 'undefined' && group !== ''
 
     // 🧩 Query-Parameter zusammenbauen
     const params = new URLSearchParams({
         scope,
         ...(isValidGroup ? { group } : {}), // ← Nur wenn gültig
         month,
-        ...(scope === "personal" ? { userId: getCurrentUserId() } : {}) // ✅ HIER!
-
+        ...(scope === 'personal' ? { userId: getCurrentUserId() } : {}), // ✅ HIER!
     })
 
     // 🧾 Vollständige URL bauen
     const url = `${BASE_URL}/api/expenses?${params.toString()}`
 
     // 🧪 Debug-Ausgabe (optional wieder entfernen)
-    console.log("[fetchExpenses] URL:", url)
+    console.log('[fetchExpenses] URL:', url)
 
     // 🌍 Anfrage an das Backend senden
     const res = await fetch(url)
@@ -52,7 +49,7 @@ export async function fetchExpenses(
     // ⚠️ Fehlerbehandlung: Wenn HTTP-Status nicht OK (200–299)
     if (!res.ok) {
         console.error(`[fetchExpenses] Fehler bei scope=${scope}, group=${group}, month=${month}`)
-        throw new Error("Fehler beim Laden der Ausgaben")
+        throw new Error('Fehler beim Laden der Ausgaben')
     }
 
     // ✅ Daten erfolgreich empfangen und als JSON zurückgeben

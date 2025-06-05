@@ -17,5 +17,5 @@ public class ExpenseDto
     
 
     public string? GroupId { get; set; }
-    public string? CreatedByUserId { get; set; } // optional für später
+    public string? createdByUserId { get; set; } // optional für später
 }

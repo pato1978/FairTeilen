@@ -72,7 +72,12 @@ public class YearOverviewService
             // 🔹 Wenn mindestens eine Reaktion "Rejected" ist → Klärungsbedarf
             bool hasClarificationNeed = reactionsForMonth
                 .Any(r => r.Status == ClarificationStatus.Rejected);
-
+            
+            var user1Confirmed = hasClarificationNeed && reactionsForMonth.Any(r => r.UserId == userId); 
+            var user2Confirmed = hasClarificationNeed && reactionsForMonth.Any(r => r.UserId != userId);
+            
+            
+            
             if (hasClarificationNeed)
                 status = "needs-clarification";
 
@@ -83,8 +88,8 @@ public class YearOverviewService
                 Name = monthName,
                 Status = status,
 
-                User1Confirmed = false, // (wird später gesetzt)
-                User2Confirmed = false,
+                User1Confirmed = user1Confirmed, // (wird später gesetzt)
+                User2Confirmed = user2Confirmed,
 
                 Total = totalShared + totalChild,
                 Shared = totalShared,

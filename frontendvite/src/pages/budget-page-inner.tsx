@@ -1,43 +1,36 @@
 // ✅ React-Import für State-Management
 import { useState } from 'react'
 
-// ✅ Fallback-Icon für neue Ausgaben
+// ✅ Standard-Icon, falls keine Kategorie zugeordnet ist
 import { HelpCircle } from 'lucide-react'
 
-// ✅ Funktion zum Speichern von Ausgaben
+// ✅ Speichern von Ausgaben (POST)
 import { saveExpense } from '@/lib/expense-actions'
 
-// ✅ Hilfsfunktionen & Daten
+// ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'
 import { availableIcons } from '@/lib/icon-options'
 import { calculateTotalExpenses, calculatePercentageUsed } from '@/lib/budget-utils'
-import { convertDateToISO } from '@/lib/utils'
-import { toDateInputValue } from '@/lib/utils'
+import { convertDateToISO, toDateInputValue } from '@/lib/utils'
 
-// ✅ Layout-Komponenten und UI-Elemente
+// ✅ Layout-Komponenten
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 
+// ✅ UI-Komponenten (Budgetanzeige, Modale, Ausgabenliste)
 import { BudgetSummaryCard } from '@/components/dashboard/budget-summary-card'
 import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
 import BudgetEditorModal from '@/components/modals/budget-editor-modal'
 import { VerbesserteLitenansicht } from '@/components/dashboard/verbesserte-listenansicht'
 
-// ✅ Contexts: aktueller Monat + Budgetdaten
+// ✅ Kontexte: Monat und Budgetdaten (globaler Zustand)
 import { useMonth } from '@/context/month-context'
 import { useBudget } from '@/context/budget-context'
 
-// ✅ Datentyp
+// ✅ Datentyp für einzelne Ausgaben
 import type { Expense } from '@/types'
 
-// -------------------------------------------
-// 🔧 1. Komponente bekommt nun Konfigurations-Props
-//     Diese ersetzen die Unterschiede aus früher:
-//     - title: Was im Header steht
-//     - budgetTitle: Überschrift im Budgetbereich
-//     - scopeFlags: Steuert, ob die Ausgabe "personal", "shared" oder "child" ist
-// -------------------------------------------
-
+// 🧱 Typisierung der Props für die Komponente
 type Props = {
     title: string
     budgetTitle: string
@@ -48,30 +41,19 @@ type Props = {
     }
 }
 
-// -------------------------------------------
-// 📦 Hauptkomponente für ALLE Budgetansichten
-//     ersetzt früher:
-//       - PersonalPageInner
-//       - SharedPageInner
-//       - ChildPageInner
-// -------------------------------------------
-
+// 📦 Hauptkomponente für persönliche, gemeinsame und Kinder-Ausgaben
 export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     const { currentDate } = useMonth()
-
     const { budget, setBudget, expenses, setExpenses, isLoading, refreshExpenses } = useBudget()
 
-    // 🧠 UI-Zustände (Modale, Auswahl etc.)
+    // 🎛️ UI-Zustände
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [selectedIcon, setSelectedIcon] = useState<any>(null)
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState('gesamt')
 
-    // -------------------------------------------
-    // ➕ Ausgabe hinzufügen
-    //     ✅ Jetzt: Flags werden dynamisch gesetzt
-    // -------------------------------------------
+    // ➕ Neue Ausgabe hinzufügen
     const handleAdd = () => {
         setEditingExpense({
             id: '',
@@ -80,7 +62,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
             date: new Date().toISOString().split('T')[0],
             category: '',
             icon: HelpCircle,
-            isPersonal: scopeFlags.isPersonal, // 💡 DYNAMISCH statt fest
+            isPersonal: scopeFlags.isPersonal,
             isShared: scopeFlags.isShared,
             isChild: scopeFlags.isChild,
             isRecurring: false,
@@ -90,15 +72,14 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         setIsModalOpen(true)
     }
 
-    // ✏️ Bestehende Ausgabe bearbeiten
+    // ✏️ Vorhandene Ausgabe bearbeiten
     const handleEdit = (e: Expense) => {
-        //setEditingExpense({ ...e, date: convertDateToISO(e.date) })
         setEditingExpense({ ...e, date: toDateInputValue(e.date) })
         setSelectedIcon(iconMap[e.category] || HelpCircle)
         setIsModalOpen(true)
     }
 
-    // 💾 Speichern (neu oder aktualisiert)
+    // 💾 Speichern (neu oder Update)
     const handleSave = async (exp: Expense) => {
         await saveExpense(exp, selectedIcon, setExpenses)
         refreshExpenses()
@@ -106,53 +87,43 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         setEditingExpense(null)
     }
 
-    // ❌ Löschen einer Ausgabe
+    // ❌ Löschen einer Ausgabe (jetzt mit Proxy!)
     const deleteExpense = async (id: string) => {
-        await fetch(`http://localhost:5289/api/expenses/${id}`, { method: 'DELETE' })
+        await fetch(`/api/expenses/${id}`, { method: 'DELETE' }) // ✅ Vite-Proxy aktiv
         refreshExpenses()
     }
 
     // 🔎 Ausgaben nach Kategorie filtern
-
     function getFilteredExpenses(expenses: Expense[], selectedCategory: string): Expense[] {
-        if (selectedCategory === 'gesamt') {
-            return expenses
-        } else if (selectedCategory === 'wiederkehrend') {
-            return expenses.filter(e => e.isRecurring)
-        } else if (selectedCategory === 'bereits beglichen') {
-            return expenses.filter(e => e.isBalanced)
-        }
-
+        if (selectedCategory === 'gesamt') return expenses
+        if (selectedCategory === 'wiederkehrend') return expenses.filter(e => e.isRecurring)
+        if (selectedCategory === 'bereits beglichen') return expenses.filter(e => e.isBalanced)
         return expenses.filter(e => e.category === selectedCategory)
     }
 
     const filteredExpenses = getFilteredExpenses(expenses, selectedCategory)
 
-    // 🎨 Icon zuweisen
+    // 🖼️ Icon anhand Kategorie zuweisen
     const mapped = filteredExpenses.map(e => ({
         ...e,
         icon: iconMap[e.category] || HelpCircle,
     }))
 
-    // 🧮 Berechnungen für Anzeige
+    // 💡 Budgetberechnungen
     const totalExpenses = calculateTotalExpenses(filteredExpenses)
     const percentageUsed = calculatePercentageUsed(totalExpenses, budget)
 
-    // -------------------------------------------
-    // 🧱 UI-Aufbau der Seite – alles wie früher,
-    //     aber gesteuert über Props
-    // -------------------------------------------
-
+    // 🖥️ JSX – Seitengestaltung
     return (
         <PageLayout onAddButtonClick={handleAdd}>
             <div className="page-header-container">
-                <PageHeader title={title} /> {/* 🏷 Titel: Personal / Shared / Child */}
+                <PageHeader title={title} /> {/* z. B. „Persönlich“ oder „Gemeinsam“ */}
             </div>
 
             <div className="flex-1 px-4 pb-6 mt-8 flex flex-col overflow-hidden">
                 <div className="bg-white shadow-md rounded-lg p-4 flex-1 flex flex-col overflow-hidden mb-0">
                     <BudgetSummaryCard
-                        title={budgetTitle} // 💰 z. B. "Monatliche Ausgaben"
+                        title={budgetTitle}
                         budget={budget}
                         totalExpenses={totalExpenses}
                         expenses={expenses}
@@ -176,7 +147,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 </div>
             </div>
 
-            {/* ✍ Bottom Sheet für Ausgaben */}
+            {/* 🔽 Modal: Neue oder bearbeitete Ausgabe */}
             <ExpenseEditorBottomSheet
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -185,7 +156,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 availableIcons={availableIcons}
             />
 
-            {/* 💵 Modal fürs Budget */}
+            {/* 💵 Modal: Budget bearbeiten */}
             <BudgetEditorModal
                 isOpen={isBudgetModalOpen}
                 onClose={() => setIsBudgetModalOpen(false)}

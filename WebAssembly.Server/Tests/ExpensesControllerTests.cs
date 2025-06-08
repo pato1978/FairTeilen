@@ -8,35 +8,30 @@ using WebAssembly.Server.Data;
 using WebAssembly.Server.Models;
 using Xunit;
 
-// Note on DateTime.Today:
-// The `CopyRecurringSharedExpenses` method in `ExpensesController` uses `DateTime.Today` directly.
-// For more deterministic testing across different dates, especially for end-of-month scenarios
-// (e.g., copying from Jan 31st to Feb), abstracting `DateTime.Today` (e.g., via an IClock interface
-// or passing the date as a parameter to the method) would be beneficial.
-// These tests use `_runDate = DateTime.Today` at the time of test execution, making "previous"
-// and "current" months relative to that execution time. This is generally fine for verifying
-// the core logic but makes targeted date testing (e.g. "run this test as if today is Feb 28th") harder.
+// Hinweis zu DateTime.Today:
+// Die Methode `CopyRecurringSharedExpenses` nutzt direkt DateTime.Today. Für deterministische Tests
+// wäre es ideal, DateTime.Today per Interface (z.B. IDateTimeProvider) zu kapseln. Diese Tests
+// verwenden _runDate = DateTime.Today zur Laufzeit. Das reicht, um die Kernlogik zu verifizieren,
+// macht aber gezielte Datumstests (z.B. Jahreswechsel) schwerer.
+
 namespace WebAssembly.Server.Tests
 {
     public class ExpensesControllerTests : IDisposable
     {
         private readonly SharedDbContext _context;
         private readonly ExpensesController _controller;
-        private readonly DateTime _runDate; // To ensure consistent "today" for tests
+        private readonly DateTime _runDate; // Für konsistente "Heute"-Berechnung in den Tests
 
         public ExpensesControllerTests()
         {
-            _runDate = DateTime.Today; // Could be fixed for more deterministic tests across days
+            _runDate = DateTime.Today; // Könnte festgelegt werden, um tests an spezifischen Tagen zu simulieren
 
             var options = new DbContextOptionsBuilder<SharedDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB for each test run
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Jede Testinstanz eigene DB
                 .Options;
             _context = new SharedDbContext(options);
 
-            // We need an AppDbContext mock/stub as well, though it's not directly used by CopyRecurringSharedExpenses
-            // For simplicity, we can use an in-memory AppDbContext too if no complex interaction is needed.
-            // If AppDbContext is not used by the method under test, it could even be null,
-            // but it's safer to provide a valid, albeit unused, instance.
+            // AppDbContext wird von CopyRecurringSharedExpenses nicht genutzt, aber benötigt für den Controller-Konstruktor
             var appDbOptions = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
@@ -48,10 +43,11 @@ namespace WebAssembly.Server.Tests
         [Fact]
         public async Task CopyRecurringSharedExpenses_NoExpensesCopiedYet_CopiesPreviousMonthExpenses()
         {
-            // Arrange
+            // Arrange: Vormonats-Datum und Monatsanfang berechnen
             var previousMonth = _runDate.AddMonths(-1);
             var currentMonthStart = new DateTime(_runDate.Year, _runDate.Month, 1);
 
+            // Wiederkehrende Shared-Ausgabe aus Mai
             var recurringExpense1 = new Expense
             {
                 Id = "prev_shared_recurring1",
@@ -68,6 +64,7 @@ namespace WebAssembly.Server.Tests
                 CreatedByUserId = "user1"
             };
 
+            // Wiederkehrende Child-Ausgabe aus Mai
             var recurringExpense2 = new Expense
             {
                 Id = "prev_child_recurring1",
@@ -78,13 +75,13 @@ namespace WebAssembly.Server.Tests
                 YearKey = previousMonth.Year.ToString(),
                 Category = "Childcare",
                 isRecurring = true,
-                isShared = false, // Important: isChild implies it's handled by SharedDbContext
+                isShared = false,
                 isChild = true,
-                GroupId = "group2", // Can be different or same, based on logic
+                GroupId = "group2",
                 CreatedByUserId = "user2"
             };
 
-            // Non-recurring expense, should not be copied
+            // Non-recurring Shared-Ausgabe aus Mai (darf nicht kopiert werden)
             var nonRecurringExpense = new Expense
             {
                 Id = "prev_shared_nonrecurring1",
@@ -100,7 +97,7 @@ namespace WebAssembly.Server.Tests
                 CreatedByUserId = "user1"
             };
 
-            // Personal expense, should not be copied by this method
+            // Personal-Ausgabe aus Mai (darf nicht kopiert werden)
             var personalExpense = new Expense
             {
                 Id = "prev_personal_recurring1",
@@ -111,125 +108,120 @@ namespace WebAssembly.Server.Tests
                 YearKey = previousMonth.Year.ToString(),
                 Category = "Subscription",
                 isRecurring = true,
-                isPersonal = true, // This would be in AppDbContext, but good to define for clarity
+                isPersonal = true,
                 isShared = false,
                 isChild = false,
                 GroupId = null,
                 CreatedByUserId = "user1"
             };
 
-
+            // In-Memory-Datenbank mit den relevanten Vormonats-Einträgen befüllen
             await _context.SharedExpenses.AddRangeAsync(recurringExpense1, recurringExpense2, nonRecurringExpense);
             await _context.SaveChangesAsync();
 
-            // Act
+            // Act: Kopiermethode ausführen
             await _controller.CopyRecurringSharedExpenses();
 
-            // Assert
+            // Assert: Nur die beiden recurring-Ausgaben wurden kopiert
             var currentMonthExpenses = await _context.SharedExpenses
                 .Where(e => e.Date >= currentMonthStart && e.Date < currentMonthStart.AddMonths(1))
                 .ToListAsync();
 
-            Assert.Equal(2, currentMonthExpenses.Count); // Only the two recurring shared/child expenses
+            Assert.Equal(2, currentMonthExpenses.Count);
 
+            // Prüfen, dass "Shared Rent" korrekt kopiert wurde
             var copiedExpense1 = currentMonthExpenses.FirstOrDefault(e => e.Name == "Shared Rent");
             Assert.NotNull(copiedExpense1);
             Assert.Equal(recurringExpense1.Amount, copiedExpense1.Amount);
             Assert.Equal(recurringExpense1.Category, copiedExpense1.Category);
             Assert.Equal(recurringExpense1.isShared, copiedExpense1.isShared);
-            Assert.Equal(recurringExpense1.isChild, copiedExpense1.isChild); // Should be false
+            Assert.False(copiedExpense1.isChild);
             Assert.Equal(recurringExpense1.GroupId, copiedExpense1.GroupId);
             Assert.Equal(recurringExpense1.CreatedByUserId, copiedExpense1.CreatedByUserId);
             Assert.True(copiedExpense1.isRecurring);
             Assert.False(copiedExpense1.isBalanced);
             Assert.Equal(new DateTime(currentMonthStart.Year, currentMonthStart.Month, 15), copiedExpense1.Date);
-            Assert.NotEqual(recurringExpense1.Id, copiedExpense1.Id); // New ID
+            Assert.NotEqual(recurringExpense1.Id, copiedExpense1.Id);
 
+            // Prüfen, dass "Child Support" korrekt kopiert wurde
             var copiedExpense2 = currentMonthExpenses.FirstOrDefault(e => e.Name == "Child Support");
             Assert.NotNull(copiedExpense2);
             Assert.Equal(recurringExpense2.Amount, copiedExpense2.Amount);
             Assert.Equal(recurringExpense2.Category, copiedExpense2.Category);
-            Assert.False(copiedExpense2.isShared); // Should be false as per original
-            Assert.True(copiedExpense2.isChild);  // Should be true as per original
+            Assert.False(copiedExpense2.isShared);
+            Assert.True(copiedExpense2.isChild);
             Assert.Equal(recurringExpense2.GroupId, copiedExpense2.GroupId);
             Assert.Equal(recurringExpense2.CreatedByUserId, copiedExpense2.CreatedByUserId);
             Assert.True(copiedExpense2.isRecurring);
             Assert.False(copiedExpense2.isBalanced);
             Assert.Equal(new DateTime(currentMonthStart.Year, currentMonthStart.Month, 5), copiedExpense2.Date);
-            Assert.NotEqual(recurringExpense2.Id, copiedExpense2.Id); // New ID
+            Assert.NotEqual(recurringExpense2.Id, copiedExpense2.Id);
         }
 
         [Fact]
-        public async Task CopyRecurringSharedExpenses_ExpensesAlreadyCopied_DoesNotCopyAgain()
+        public async Task CopyRecurringSharedExpenses_OnlyExactExistingOldEntry_NoNewCopies()
         {
-            // Arrange
+            // Arrange: Vormonats-Datum und Monatsanfang
             var previousMonth = _runDate.AddMonths(-1);
             var currentMonthStart = new DateTime(_runDate.Year, _runDate.Month, 1);
 
-            // Expense from previous month that would normally be copied
-            var recurringExpenseFromPrevMonth = new Expense
+            // Vormonats-Ausgabe A (Shared)
+            var expenseA_prev = new Expense
             {
-                Id = "prev_re_shared1",
-                Name = "Shared Service Fee",
-                Amount = 75,
+                Id = "prev_A",
+                Name = "Service A",
+                Amount = 100,
                 Date = new DateTime(previousMonth.Year, previousMonth.Month, 10),
                 MonthKey = previousMonth.ToString("yyyy-MM"),
                 YearKey = previousMonth.Year.ToString(),
                 Category = "Services",
                 isRecurring = true,
                 isShared = true,
-                GroupId = "group3",
-                CreatedByUserId = "user3"
+                GroupId = "groupA",
+                CreatedByUserId = "userA"
             };
-            await _context.SharedExpenses.AddAsync(recurringExpenseFromPrevMonth);
+            await _context.SharedExpenses.AddAsync(expenseA_prev);
 
-            // Simulate an already copied expense in the current month
-            var alreadyCopiedExpense = new Expense
+            // Aktuelle-Monat-Ausgabe A (exakte Kopie, um Vorhandensein zu simulieren)
+            var expenseA_current = new Expense
             {
-                Id = "current_re_shared_copied1",
-                Name = "Some Copied Service", // Name can be different, the check is on date and flags
-                Amount = 100,
-                Date = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 5), // A day in current month
+                Id = "current_A",
+                Name = expenseA_prev.Name,
+                Amount = expenseA_prev.Amount,
+                Date = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 10),
                 MonthKey = currentMonthStart.ToString("yyyy-MM"),
                 YearKey = currentMonthStart.Year.ToString(),
-                Category = "Services",
-                isRecurring = true, // Critically, this must be true for the initial check
-                isShared = true,    // and this or isChild
-                isChild = false,
-                GroupId = "groupX",
-                CreatedByUserId = "userX"
+                Category = expenseA_prev.Category,
+                isRecurring = true,
+                isShared = true,
+                GroupId = expenseA_prev.GroupId,
+                CreatedByUserId = expenseA_prev.CreatedByUserId
             };
-            await _context.SharedExpenses.AddAsync(alreadyCopiedExpense);
+            await _context.SharedExpenses.AddAsync(expenseA_current);
             await _context.SaveChangesAsync();
 
-            var initialCurrentMonthCount = await _context.SharedExpenses
-                .CountAsync(e => e.Date >= currentMonthStart && e.Date < currentMonthStart.AddMonths(1) && (e.isShared || e.isChild) && e.isRecurring);
-
-            Assert.Equal(1, initialCurrentMonthCount); // Ensure our setup is correct
-
-            // Act
+            // Act: Kopiermethode ausführen
             await _controller.CopyRecurringSharedExpenses();
 
-            // Assert
+            // Assert: Nur die bereits vorhandene Ausgabe bleibt, keine neuen Kopien
             var currentMonthExpenses = await _context.SharedExpenses
                 .Where(e => e.Date >= currentMonthStart && e.Date < currentMonthStart.AddMonths(1))
                 .ToListAsync();
 
-            // The count should still be 1, meaning no new expense (like recurringExpenseFromPrevMonth) was copied
-            Assert.Equal(1, currentMonthExpenses.Count);
-            Assert.Contains(currentMonthExpenses, e => e.Id == alreadyCopiedExpense.Id);
+            Assert.Single(currentMonthExpenses);
+            Assert.Equal("current_A", currentMonthExpenses.First().Id);
         }
 
         [Fact]
         public async Task CopyRecurringSharedExpenses_SpecificExpenseAlreadyExists_SkipsThatExpenseOnly()
         {
-            // Arrange
+            // Arrange: Vormonats-Datum und Monatsanfang
             var previousMonth = _runDate.AddMonths(-1);
             var currentMonthStart = new DateTime(_runDate.Year, _runDate.Month, 1);
             var expectedDateForExpenseAInCurrentMonth = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 20);
             var expectedDateForExpenseBInCurrentMonth = new DateTime(currentMonthStart.Year, currentMonthStart.Month, 25);
 
-            // Expense A from previous month
+            // Vormonats-Ausgabe A
             var expenseA_prev = new Expense
             {
                 Id = "prev_A",
@@ -245,7 +237,7 @@ namespace WebAssembly.Server.Tests
                 CreatedByUserId = "userAlpha"
             };
 
-            // Expense B from previous month (will be copied)
+            // Vormonats-Ausgabe B (child)
             var expenseB_prev = new Expense
             {
                 Id = "prev_B",
@@ -256,30 +248,30 @@ namespace WebAssembly.Server.Tests
                 YearKey = previousMonth.Year.ToString(),
                 Category = "BetaService",
                 isRecurring = true,
-                isChild = true, // Mix it up: child expense
+                isShared = false,
+                isChild = true,
                 GroupId = "groupBeta",
                 CreatedByUserId = "userBeta"
             };
 
             await _context.SharedExpenses.AddRangeAsync(expenseA_prev, expenseB_prev);
 
-            // Manually add a version of Expense A to the current month to simulate it already existing
-            // This version must match what the copy logic would try to create (name, amount, date, group, recurring status)
+            // Aktuelle-Monat-Ausgabe A existiert bereits
             var expenseA_current_existing = new Expense
             {
-                Id = "current_A_existing", // Different ID, but content matches for duplication check
+                Id = "current_A_existing",
                 Name = expenseA_prev.Name,
                 Amount = expenseA_prev.Amount,
-                Date = expectedDateForExpenseAInCurrentMonth, // Date it would have if copied
+                Date = expectedDateForExpenseAInCurrentMonth,
                 MonthKey = currentMonthStart.ToString("yyyy-MM"),
                 YearKey = currentMonthStart.Year.ToString(),
                 Category = expenseA_prev.Category,
-                isRecurring = true, // Critical for the inner loop's duplicate check
+                isRecurring = true,
                 isShared = expenseA_prev.isShared,
                 isChild = expenseA_prev.isChild,
                 GroupId = expenseA_prev.GroupId,
                 CreatedByUserId = expenseA_prev.CreatedByUserId,
-                isBalanced = false // Or true, doesn't matter for the check itself
+                isBalanced = false
             };
             await _context.SharedExpenses.AddAsync(expenseA_current_existing);
             await _context.SaveChangesAsync();
@@ -287,39 +279,38 @@ namespace WebAssembly.Server.Tests
             var initialCurrentMonthExpenses = await _context.SharedExpenses
                 .Where(e => e.Date >= currentMonthStart && e.Date < currentMonthStart.AddMonths(1))
                 .ToListAsync();
-            Assert.Single(initialCurrentMonthExpenses); // Only expenseA_current_existing
+            Assert.Single(initialCurrentMonthExpenses); // Nur A ist initial vorhanden
 
-            // Act
+            // Act: Kopiermethode ausführen
             await _controller.CopyRecurringSharedExpenses();
 
-            // Assert
+            // Assert: Es sollten nun 2 Ausgaben im aktuellen Monat sein: A (bestehend) und B (neu kopiert)
             var currentMonthExpensesAfterCopy = await _context.SharedExpenses
                 .Where(e => e.Date >= currentMonthStart && e.Date < currentMonthStart.AddMonths(1))
-                .OrderBy(e => e.Name) // For consistent order
+                .OrderBy(e => e.Name) // Für konsistente Reihenfolge
                 .ToListAsync();
 
-            // Should now have 2 expenses: the pre-existing A, and the newly copied B
             Assert.Equal(2, currentMonthExpensesAfterCopy.Count);
 
-            // Check that expenseA_current_existing is still there and no duplicate of it was made
+            // Prüfen, dass A nicht dupliziert wurde
             var serviceAlphaExpenses = currentMonthExpensesAfterCopy.Where(e => e.Name == "Recurring Service Alpha").ToList();
-            Assert.Single(serviceAlphaExpenses); // Only one
+            Assert.Single(serviceAlphaExpenses);
             Assert.Equal(expenseA_current_existing.Id, serviceAlphaExpenses.First().Id);
             Assert.Equal(expectedDateForExpenseAInCurrentMonth, serviceAlphaExpenses.First().Date);
 
-            // Check that expense B was copied
+            // Prüfen, dass B korrekt kopiert wurde
             var serviceBetaExpense = currentMonthExpensesAfterCopy.FirstOrDefault(e => e.Name == "Recurring Service Beta");
             Assert.NotNull(serviceBetaExpense);
             Assert.Equal(expenseB_prev.Amount, serviceBetaExpense.Amount);
             Assert.Equal(expectedDateForExpenseBInCurrentMonth, serviceBetaExpense.Date);
             Assert.True(serviceBetaExpense.isRecurring);
             Assert.False(serviceBetaExpense.isBalanced);
-            Assert.NotEqual(expenseB_prev.Id, serviceBetaExpense.Id); // New ID for copied expense
+            Assert.NotEqual(expenseB_prev.Id, serviceBetaExpense.Id);
         }
 
         public void Dispose()
         {
-            _context.Database.EnsureDeleted(); // Clean up the in-memory database
+            _context.Database.EnsureDeleted();
             _context.Dispose();
         }
     }

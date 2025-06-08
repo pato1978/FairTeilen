@@ -1,8 +1,6 @@
-
-
-import { useState } from "react"
-import { availableIcons } from "@/lib/icon-options"
-import type { Expense } from "@/types"
+import { useState } from 'react'
+import { availableIcons } from '@/lib/icon-options'
+import type { Expense } from '@/types'
 
 interface BudgetSummaryCardProps {
     title: string
@@ -16,38 +14,38 @@ interface BudgetSummaryCardProps {
 }
 
 export function BudgetSummaryCard({
-                                      title,
-                                      budget,
-                                      totalExpenses = 0,
-                                      percentageUsed,
-                                      onBudgetClick,
-                                      onTitleClick,
-                                      onCategoryChange,
-                                      expenses = [],
-                                  }: BudgetSummaryCardProps) {
-    const [categoryText, setCategoryText] = useState("gesamt")
-    const hideBudget = categoryText !== "gesamt" // Nur im Modus „gesamt“ wird das Budget angezeigt
+    title,
+    budget,
+    totalExpenses = 0,
+    percentageUsed,
+    onBudgetClick,
+    onTitleClick,
+    onCategoryChange,
+    expenses = [],
+}: BudgetSummaryCardProps) {
+    const [categoryText, setCategoryText] = useState('gesamt')
+    const hideBudget = categoryText !== 'gesamt' // Nur im Modus „gesamt“ wird das Budget angezeigt
 
     // 💡 Sichere Fallbacks für Berechnungen
-    const safeExpenses = typeof totalExpenses === "number" ? totalExpenses : 0
+    const safeExpenses = typeof totalExpenses === 'number' ? totalExpenses : 0
     const safePercentageUsed =
-        typeof percentageUsed === "number"
+        typeof percentageUsed === 'number'
             ? percentageUsed
             : Math.min(100, Math.round((safeExpenses / budget) * 100))
 
     // 💡 Definiere Sonderkategorien (filternde Kategorien ohne Icons)
-    const specialCategories = ["wiederkehrend", "bereits beglichen"]
+    const specialCategories = ['wiederkehrend', 'bereits beglichen']
 
     // 🧠 Prüft, ob es in einer Kategorie Ausgaben mit Wert > 0 gibt
     function hasExpenses(categoryName: string): boolean {
-        if (categoryName === "wiederkehrend")
+        if (categoryName === 'wiederkehrend')
             return expenses.some(e => e.isRecurring === true && e.amount > 0)
 
-        if (categoryName === "bereits beglichen")
+        if (categoryName === 'bereits beglichen')
             return expenses.some(e => e.isBalanced === true && e.amount > 0)
 
         // Reguläre Kategorieprüfung
-        return expenses.some(e => e.category === categoryName && e.amount > 0)
+        return expenses.some(e => e.category === categoryName && !e.isRecurring && e.amount > 0)
     }
 
     /**
@@ -61,9 +59,9 @@ export function BudgetSummaryCard({
         const allCategories = [...specialCategories, ...availableIcons.map(i => i.name)]
 
         const currentIndex = allCategories.indexOf(current)
-        let newCategory = "gesamt"
+        let newCategory = 'gesamt'
 
-        if (current === "gesamt") {
+        if (current === 'gesamt') {
             // Starte bei der ersten verfügbaren Kategorie mit Ausgaben
             const first = allCategories.find(cat => hasExpenses(cat))
             if (first) newCategory = first
@@ -71,7 +69,7 @@ export function BudgetSummaryCard({
             // Finde die nächste gültige Kategorie mit Ausgaben
             const rest = allCategories.slice(currentIndex + 1)
             const next = rest.find(cat => hasExpenses(cat))
-            newCategory = next || "gesamt" // Falls nichts mehr kommt: zurück zu gesamt
+            newCategory = next || 'gesamt' // Falls nichts mehr kommt: zurück zu gesamt
         }
 
         setCategoryText(newCategory)
@@ -79,7 +77,9 @@ export function BudgetSummaryCard({
     }
 
     return (
-        <div className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 ${hideBudget ? "pb-2" : ""}`}>
+        <div
+            className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 ${hideBudget ? 'pb-2' : ''}`}
+        >
             <h4
                 className="text-lg font-semibold text-black mb-3 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={onTitleClick || (() => console.log(`${title} Übersicht anzeigen`))}
@@ -88,7 +88,7 @@ export function BudgetSummaryCard({
                     <span>{title}</span>
                     <span
                         className="text-blue-600 text-base font-semibold cursor-pointer"
-                        onClick={(e) => {
+                        onClick={e => {
                             e.stopPropagation() // Verhindert, dass onTitleClick ausgelöst wird
                             chooseCategory(categoryText)
                         }}
@@ -113,7 +113,9 @@ export function BudgetSummaryCard({
                             onClick={onBudgetClick}
                         >
                             <span>Budget:</span>
-                            <span className="ml-1 text-xs font-normal text-blue-600">(bearbeiten)</span>
+                            <span className="ml-1 text-xs font-normal text-blue-600">
+                                (bearbeiten)
+                            </span>
                         </button>
                         <span className="text-base font-medium">€{budget}</span>
                     </div>

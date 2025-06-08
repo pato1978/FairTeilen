@@ -20,7 +20,77 @@ namespace WebAssembly.Server.Controllers
             _appDb = appDb;
             _sharedDb = sharedDb;
         }
+        [HttpGet("test/copyRecurring")]
+        public async Task<IActionResult> TestCopyRecurring([FromQuery] DateTime simulatedToday)
+        {
+            await CopyRecurringSharedExpensesAtDate(simulatedToday);
+            return Ok("✅ Testlauf erfolgreich für " + simulatedToday.ToString("yyyy-MM-dd"));
+        }
 
+public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
+{
+    var firstOfThisMonth = new DateTime(simulatedToday.Year, simulatedToday.Month, 1);
+
+    var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
+        (e.isShared || e.isChild) &&
+        e.isRecurring &&
+        e.Date >= firstOfThisMonth &&
+        e.Date < firstOfThisMonth.AddMonths(1)
+    );
+
+    if (alreadyCopied)
+        return;
+
+    var lastMonthStart = firstOfThisMonth.AddMonths(-1);
+    var lastMonthEnd = firstOfThisMonth;
+
+    var recurringInLastMonth = await _sharedDb.SharedExpenses
+        .Where(e =>
+            (e.isShared || e.isChild) &&
+            e.isRecurring &&
+            e.Date >= lastMonthStart &&
+            e.Date < lastMonthEnd
+        )
+        .ToListAsync();
+
+    foreach (var oldExp in recurringInLastMonth)
+    {
+        var newDate = oldExp.Date.AddMonths(1);
+
+        var exists = await _sharedDb.SharedExpenses.AnyAsync(e =>
+            (e.isShared || e.isChild) &&
+            e.isRecurring &&
+            e.Name == oldExp.Name &&
+            e.Amount == oldExp.Amount &&
+            e.Date == newDate &&
+            e.GroupId == oldExp.GroupId
+        );
+
+        if (exists)
+            continue;
+
+        var copy = new Expense
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = oldExp.Name,
+            Amount = oldExp.Amount,
+            Date = newDate,
+            MonthKey = newDate.ToString("yyyy-MM"),
+            YearKey = newDate.Year.ToString(),
+            Category = oldExp.Category,
+            isRecurring = true,
+            isShared = oldExp.isShared,
+            isChild = oldExp.isChild,
+            isBalanced = false,
+            GroupId = oldExp.GroupId,
+            CreatedByUserId = oldExp.CreatedByUserId
+        };
+
+        _sharedDb.SharedExpenses.Add(copy);
+    }
+
+    await _sharedDb.SaveChangesAsync();
+}
         [HttpGet]
         public async Task<IActionResult> GetExpenses(
             [FromQuery] string scope,
@@ -33,7 +103,7 @@ namespace WebAssembly.Server.Controllers
                 return BadRequest("Parameter 'scope' ist erforderlich.");
 
             if (!DateTime.TryParseExact($"{month}-01", "yyyy-MM-dd", null,
-                System.Globalization.DateTimeStyles.None, out var monthStart))
+                    System.Globalization.DateTimeStyles.None, out var monthStart))
             {
                 Console.WriteLine($"DEBUG → ❌ TryParseExact fehlgeschlagen für month='{month}'");
                 return BadRequest("Ungültiges Datumsformat. Erwartet wird 'YYYY-MM'.");
@@ -135,18 +205,12 @@ namespace WebAssembly.Server.Controllers
             var today = DateTime.Today;
             var firstOfThisMonth = new DateTime(today.Year, today.Month, 1);
 
-            // 2) Prüfen, ob für diesen Monat bereits kopiert wurde
-            var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
-                (e.isShared || e.isChild) &&
-                e.isRecurring &&
-                e.Date >= firstOfThisMonth &&
-                e.Date < firstOfThisMonth.AddMonths(1)
-            );
+            // ─────────────────────────────────────────────────────────────────────────────────
+            // Entfernt: globaler Abbruch, wenn irgendeine Kopie bereits existiert.
+            // Stattdessen findet die Duplikatprüfung pro Eintrag in der Schleife statt.
+            // ─────────────────────────────────────────────────────────────────────────────────
 
-            if (alreadyCopied)
-                return;
-
-            // 3) Wiederkehrende Ausgaben aus dem Vormonat auslesen
+            // 2) Wiederkehrende Ausgaben aus dem Vormonat auslesen
             var lastMonthStart = firstOfThisMonth.AddMonths(-1);
             var lastMonthEnd = firstOfThisMonth; // exklusiv
 
@@ -159,18 +223,19 @@ namespace WebAssembly.Server.Controllers
                 )
                 .ToListAsync();
 
-            // 4) Für jeden Eintrag: identische Kopie im aktuellen Monat erstellen, falls noch nicht vorhanden
+            // 3) Für jeden alten Eintrag: prüfen und ggf. kopieren
             foreach (var oldExp in recurringInLastMonth)
             {
                 var newDate = oldExp.Date.AddMonths(1);
 
+                // Duplikatprüfungen (nur identische Einträge überspringen)
                 var exists = await _sharedDb.SharedExpenses.AnyAsync(e =>
                     (e.isShared || e.isChild) &&
                     e.isRecurring &&
                     e.Name == oldExp.Name &&
                     e.Amount == oldExp.Amount &&
                     e.Date == newDate &&
-                    e.GroupId == oldExp.GroupId // falls du group‐abhängig prüfen möchtest
+                    e.GroupId == oldExp.GroupId
                 );
 
                 if (exists)
@@ -196,8 +261,8 @@ namespace WebAssembly.Server.Controllers
                 _sharedDb.SharedExpenses.Add(copy);
             }
 
+            // 4) Änderungen in die Datenbank schreiben
             await _sharedDb.SaveChangesAsync();
         }
-        // ───────────────────────────────────────────────────────────────────────────
     }
 }

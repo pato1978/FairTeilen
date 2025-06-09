@@ -34,10 +34,7 @@ public class YearOverviewService
             // Monatsname wie "Januar", "Februar", ...
             var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
 
-            // Vergleiche: liegt dieser Monat in der Zukunft?
-            DateTime referenceMonth = new DateTime(year, month, 1);
-            DateTime today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            var status = referenceMonth > today ? "future" : "pending";
+           
 
             // 🔹 Lade alle Ausgaben dieses Monats (nicht ausgeglichen)
             var monthlyExpensesAll = await _sharedDb.SharedExpenses
@@ -76,11 +73,22 @@ public class YearOverviewService
             var user1Confirmed = hasClarificationNeed && reactionsForMonth.Any(r => r.UserId == userId); 
             var user2Confirmed = hasClarificationNeed && reactionsForMonth.Any(r => r.UserId != userId);
             
-            
+            // Vergleiche: liegt dieser Monat in der Zukunft?
+            DateTime referenceMonth = new DateTime(year, month, 1);
+            DateTime today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            string status;
             
             if (hasClarificationNeed)
                 status = "needs-clarification";
-
+            else if (referenceMonth > today)
+                status = "future";
+            else if (referenceMonth < today && monthlyExpensesAll.Count == 0)
+                status = "notTakenIntoAccount";
+            else
+                status = "pending";
+            
+            
+            
             // 🔹 Monatsübersicht erstellen
             var monthly = new MonthlyOverview
             {

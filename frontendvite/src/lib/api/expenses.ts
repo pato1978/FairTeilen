@@ -34,3 +34,8 @@ export async function fetchExpenses(
 
     return await res.json()
 }
+
+// ❌ Löscht eine Ausgabe anhand der ID
+export async function deleteExpense(id: string): Promise<void> {
+    await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
+}

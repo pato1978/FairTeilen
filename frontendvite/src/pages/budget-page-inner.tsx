@@ -6,6 +6,7 @@ import { HelpCircle } from 'lucide-react'
 
 // ✅ Speichern von Ausgaben (POST)
 import { saveExpense } from '@/lib/expense-actions'
+import { deleteExpense as apiDeleteExpense } from '@/lib/api/expenses'
 
 // ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'
@@ -87,9 +88,9 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         setEditingExpense(null)
     }
 
-    // ❌ Löschen einer Ausgabe (jetzt mit Proxy!)
+    // ❌ Löschen einer Ausgabe
     const deleteExpense = async (id: string) => {
-        await fetch(`/api/expenses/${id}`, { method: 'DELETE' }) // ✅ Vite-Proxy aktiv
+        await apiDeleteExpense(id)
         refreshExpenses()
     }
 

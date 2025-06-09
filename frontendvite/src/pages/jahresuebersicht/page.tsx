@@ -9,7 +9,7 @@ import { EnhancedMonthCard } from './enhanced-month-card'
 import { StatusModal } from './status-modal'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { getCurrentUserId } from '@/lib/user-storage'
+import { fetchYearOverview } from '@/lib/api/yearoverview'
 import type { MonthlyOverview, ClarificationReaction } from '@/types/monthly-overview'
 
 export default function JahresUebersicht() {
@@ -20,17 +20,9 @@ export default function JahresUebersicht() {
     const [selectedMonth, setSelectedMonth] = useState<MonthlyOverview | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-    const BASE_URL = '/api'
-
     useEffect(() => {
         const fetchData = async () => {
-            const res = await fetch(
-                `${BASE_URL}/yearoverview/${selectedYear}?userId=${getCurrentUserId()}`
-            )
-            if (!res.ok) throw new Error('Fehler beim Laden der Daten')
-
-            const data = await res.json() // z. B. { year: 2025, months: [...] }
-            // Daten als Array erwartet – wir wandeln es in ein Record um:
+            const data = await fetchYearOverview(selectedYear)
             const recordData: Record<number, MonthlyOverview> = {}
             data.months.forEach((month: MonthlyOverview) => {
                 recordData[month.monthId] = month

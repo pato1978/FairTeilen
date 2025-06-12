@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-
+import { useEffect } from 'react'
 // Layout & Pages
 import RootLayout from '@/pages/layout'
 
@@ -13,9 +13,21 @@ import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import { MultiBudgetProvider } from '@/context/multi-budget-context'
 import { ClarificationReactionsProvider } from '@/context/clarificationContext'
-
+import { sqliteExpenseService } from './services/SqliteExpenseService'
 import HomePage from '@/pages/home/page'
+
 function App() {
+    useEffect(() => {
+        sqliteExpenseService
+            .initDb()
+            .then(() => {
+                console.log('💾 SQLite bereit!')
+            })
+            .catch(err => {
+                console.error('DB Init-Fehler:', err)
+            })
+    }, [])
+
     return (
         <ClarificationReactionsProvider>
             <Routes>

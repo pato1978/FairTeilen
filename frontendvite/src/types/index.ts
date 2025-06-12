@@ -3,6 +3,7 @@ import { ClarificationReaction } from '@/types/monthly-overview.ts'
 
 export interface Expense {
     id: string
+    groupId: string
     name: string
     amount: number
     date: string
@@ -13,7 +14,6 @@ export interface Expense {
     isChild: boolean
     isRecurring: boolean
     isBalanced: boolean
-    clarificationReactionsList: ClarificationReaction[]
 }
 
 export interface BudgetSummary {

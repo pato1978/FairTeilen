@@ -37,9 +37,6 @@ builder.Services.AddHangfireServer();
 // ────────────────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=expenses.db"));
-
 builder.Services.AddDbContext<SharedDbContext>(options =>
     options.UseSqlServer(sharedConnection));
 

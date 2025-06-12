@@ -9,12 +9,10 @@ namespace WebAssembly.Server.Controllers;
 [Route("api/budget")]
 public class BudgetController : ControllerBase
 {
-    private readonly AppDbContext _appDb;
     private readonly SharedDbContext _sharedDb;
 
-    public BudgetController(AppDbContext appDb, SharedDbContext sharedDb)
+    public BudgetController(SharedDbContext sharedDb)
     {
-        _appDb = appDb;
         _sharedDb = sharedDb;
     }
 
@@ -120,7 +118,7 @@ public class BudgetController : ControllerBase
     {
         return scope switch
         {
-            "personal" => _appDb,
+            "personal" => _sharedDb,
             "shared" or "child" => _sharedDb,
             _ => throw new ArgumentException($"Ungültiger scope: {scope}")
         };

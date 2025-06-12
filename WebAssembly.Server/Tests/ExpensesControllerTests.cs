@@ -31,13 +31,7 @@ namespace WebAssembly.Server.Tests
                 .Options;
             _context = new SharedDbContext(options);
 
-            // AppDbContext wird von CopyRecurringSharedExpenses nicht genutzt, aber benötigt für den Controller-Konstruktor
-            var appDbOptions = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-            var appDbContext = new AppDbContext(appDbOptions);
-
-            _controller = new ExpensesController(appDbContext, _context);
+            _controller = new ExpensesController(_context);
         }
 
         [Fact]

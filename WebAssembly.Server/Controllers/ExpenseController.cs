@@ -12,12 +12,10 @@ namespace WebAssembly.Server.Controllers
     [Route("api/[controller]")]
     public class ExpensesController : ControllerBase
     {
-        private readonly AppDbContext _appDb;
         private readonly SharedDbContext _sharedDb;
 
-        public ExpensesController(AppDbContext appDb, SharedDbContext sharedDb)
+        public ExpensesController(SharedDbContext sharedDb)
         {
-            _appDb = appDb;
             _sharedDb = sharedDb;
         }
         [HttpGet("test/copyRecurring")]
@@ -111,10 +109,11 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
 
             var monthEnd = monthStart.AddMonths(1);
 
+            if (scope == "personal")
+                return BadRequest("Scope 'personal' wird nicht mehr unterst\u00fctzt.");
+
             IQueryable<Expense> query = scope switch
             {
-                "personal" => _appDb.Expenses
-                    .Where(e => e.isPersonal && !e.isShared && !e.isChild),
                 "shared" => _sharedDb.SharedExpenses
                     .Where(e => e.isShared && (string.IsNullOrWhiteSpace(group) || e.GroupId == group)),
                 "child" => _sharedDb.SharedExpenses
@@ -123,9 +122,6 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
             };
 
             query = query.Where(e => e.Date >= monthStart && e.Date < monthEnd);
-
-            if (scope == "personal" && !string.IsNullOrWhiteSpace(userId))
-                query = query.Where(e => e.CreatedByUserId == userId);
 
             var result = await query.OrderByDescending(e => e.Date).ToListAsync();
             return Ok(result);
@@ -157,7 +153,7 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
                 CreatedByUserId = dto.createdByUserId // Achtung: „createdByUserId“ kleingeschrieben
             };
 
-            var context = (dto.isShared || dto.isChild) ? (DbContext)_sharedDb : _appDb;
+            var context = (DbContext)_sharedDb;
 
             if (!isNew)
             {
@@ -175,15 +171,7 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteExpense(string id)
         {
-            var expense = await _appDb.Expenses.FirstOrDefaultAsync(e => e.Id == id);
-            if (expense != null)
-            {
-                _appDb.Expenses.Remove(expense);
-                await _appDb.SaveChangesAsync();
-                return NoContent();
-            }
-
-            expense = await _sharedDb.SharedExpenses.FirstOrDefaultAsync(e => e.Id == id);
+            var expense = await _sharedDb.SharedExpenses.FirstOrDefaultAsync(e => e.Id == id);
             if (expense != null)
             {
                 _sharedDb.SharedExpenses.Remove(expense);

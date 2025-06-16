@@ -6,7 +6,7 @@ import { HelpCircle } from 'lucide-react'
 
 // ✅ Speichern von Ausgaben (POST)
 import { useSaveExpense } from '@/services/useSaveExpenseHook.ts'
-import { deleteExpense } from '@/services/expenses.ts'
+import { deleteExpense as deleteExpenseApi } from '@/services/expenses.ts'
 
 // ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'
@@ -90,8 +90,8 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     }
 
     // ❌ Löschen einer Ausgabe
-    const deleteExpense = async (id: string) => {
-        await deleteExpense(id)
+    const handleDelete = async (id: string) => {
+        await deleteExpenseApi(id)
         refreshExpenses()
     }
 
@@ -145,7 +145,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                     ) : (
                         <VerbesserteLitenansicht
                             expenses={mapped}
-                            onDelete={deleteExpense}
+                            onDelete={handleDelete}
                             onEdit={handleEdit}
                             scopeFlags={scopeFlags}
                         />

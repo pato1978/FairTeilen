@@ -1,6 +1,6 @@
 import type { Expense } from '@/types'
 import type { Dispatch, SetStateAction } from 'react'
-import { sqlJsExpenseService } from '@/services/sqlJsExpenseService.ts'
+import { getExpenseService } from '@/services/useDataService'
 import { useUser } from '@/context/user-context.tsx'
 import { useCallback } from 'react'
 
@@ -72,13 +72,14 @@ export function useSaveExpense() {
                 return saved
             } else {
                 // 💾 Lokale Speicherung mit SQLite
+                const service = getExpenseService()
                 if (!expense.id) {
                     console.log('💾 Neue private Ausgabe – wird lokal gespeichert:', finalExpense)
-                    await sqlJsExpenseService.addExpense(finalExpense)
+                    await service.addExpense(finalExpense)
                     console.log('✅ Gespeichert (addExpense):', finalExpense)
                 } else {
                     console.log('✏️ Bestehende private Ausgabe – wird aktualisiert:', finalExpense)
-                    await sqlJsExpenseService.updateExpense(finalExpense)
+                    await service.updateExpense(finalExpense)
                     console.log('✅ Aktualisiert (updateExpense):', finalExpense)
                 }
 

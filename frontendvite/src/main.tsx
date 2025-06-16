@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { MonthProvider } from '@/context/month-context'
-import { sqlJsExpenseService } from '@/services/SqlJsExpenseService' // ✅ Import
+import { getExpenseService } from '@/services/useDataService' // ✅ Import
 import { UserProvider } from './context/user-context'
 const renderApp = () => {
     ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -24,7 +24,8 @@ const renderApp = () => {
 
 async function start() {
     try {
-        await sqlJsExpenseService.initDb() // ✅ Einmalig initialisieren
+        const service = getExpenseService()
+        await service.initDb() // ✅ Einmalig initialisieren
         console.log('✅ Lokale SQL.js-Datenbank initialisiert')
     } catch (err) {
         console.error('❌ Fehler bei initDb():', err)

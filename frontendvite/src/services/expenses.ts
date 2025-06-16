@@ -1,5 +1,5 @@
 import type { Expense } from '@/types'
-import { sqlJsExpenseService } from '@/services/sqlJsExpenseService.ts'
+import { getExpenseService } from '@/services/useDataService'
 
 export type ExpenseScope = 'personal' | 'shared' | 'child' | string
 
@@ -29,7 +29,8 @@ export async function fetchExpenses(
 
     // 💾 Lokale Abfrage für private Ausgaben
     if (scope === 'personal') {
-        const allLocal = await sqlJsExpenseService.getAllExpenses({ monthKey: month })
+        const service = getExpenseService()
+        const allLocal = await service.getAllExpenses({ monthKey: month })
         return allLocal.filter(e => e.isPersonal && !e.isShared && !e.isChild)
     }
 
@@ -78,6 +79,7 @@ export async function deleteExpense(
         }
     } else {
         // 💾 Lokale Ausgabe löschen
-        await sqlJsExpenseService.deleteExpense(id)
+        const service = getExpenseService()
+        await service.deleteExpense(id)
     }
 }

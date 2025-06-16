@@ -1,3 +1,4 @@
+import type { IExpenseService } from "./IExpenseService"
 import initSqlJs, { Database } from 'sql.js'
 import type { Expense } from '@/types'
 
@@ -133,11 +134,4 @@ export const sqlJsExpenseService = {
         if (!db) throw new Error('Database not initialized')
         return db.export()
     },
-} satisfies {
-    initDb: () => Promise<void>
-    getAllExpenses: (filter?: { monthKey?: string }) => Promise<Expense[]>
-    addExpense: (expense: Expense) => Promise<void>
-    updateExpense: (expense: Expense) => Promise<void>
-    deleteExpense: (id: string) => Promise<void>
-    exportDb: () => Uint8Array
-}
+} satisfies IExpenseService & { exportDb: () => Uint8Array }

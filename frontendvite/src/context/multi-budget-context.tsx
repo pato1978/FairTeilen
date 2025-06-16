@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { fetchBudget } from '@/lib/api/budget'
-import { fetchExpenses } from '@/lib/api/expenses'
+import { fetchBudget } from '@/services/budget.ts'
+import { fetchExpenses } from '@/services/expenses.ts'
 import { Expense } from '@/types'
 import { useMonth } from './month-context'
 import { useUser } from './user-context'

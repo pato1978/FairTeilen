@@ -9,7 +9,7 @@ import { EnhancedMonthCard } from './enhanced-month-card'
 import { StatusModal } from './status-modal'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { useFetchYearOverview } from '@/lib/api/yearoverview'
+import { useFetchYearOverview } from '@/services/useYearOverviewHook.ts'
 import type { MonthlyOverview, ClarificationReaction } from '@/types/monthly-overview'
 
 export default function JahresUebersicht() {

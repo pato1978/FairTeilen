@@ -8,8 +8,8 @@ import React, {
 } from 'react'
 
 import { useMonth } from '@/context/month-context'
-import { fetchBudget, saveBudget as saveBudgetApi } from '@/lib/api/budget'
-import { fetchExpenses } from '@/lib/api/expenses'
+import { fetchBudget, saveBudget as saveBudgetApi } from '@/services/budget.ts'
+import { fetchExpenses } from '@/services/expenses.ts'
 import type { Expense } from '@/types'
 import { useUser } from '@/context/user-context.tsx'
 

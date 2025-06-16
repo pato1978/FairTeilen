@@ -5,8 +5,8 @@ import { useState } from 'react'
 import { HelpCircle } from 'lucide-react'
 
 // ✅ Speichern von Ausgaben (POST)
-import { useSaveExpense } from '@/lib/expense-actions'
-import { deleteExpense } from '@/lib/api/expenses'
+import { useSaveExpense } from '@/services/useSaveExpenseHook.ts'
+import { deleteExpense } from '@/services/expenses.ts'
 
 // ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'

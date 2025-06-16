@@ -40,7 +40,7 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                     aria-label="Dashboard"
                 >
                     <Home
-                        className={`h-6 w-6 transition-colors duration-200 ${pathname === '/' ? 'text-blue-600' : 'text-gray-400'}`}
+                        className={`h-6 w-6 transition-colors duration-200 ${pathname === '/' ? 'text-blue-500' : 'text-gray-400'}`}
                     />
                 </button>
 
@@ -50,7 +50,7 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                     aria-label="Jahresübersicht"
                 >
                     <CalendarDays
-                        className={`h-6 w-6 transition-colors duration-200 ${isJahresuebersichtActive ? 'text-blue-600' : 'text-gray-400'}`}
+                        className={`h-6 w-6 transition-colors duration-200 ${isJahresuebersichtActive ? 'text-blue-500' : 'text-gray-400'}`}
                     />
                 </button>
             </div>
@@ -101,7 +101,7 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                     aria-label="Ausgabenanalyse"
                 >
                     <PieChart
-                        className={`h-6 w-6 transition-colors duration-200 ${isAnalyseActive ? 'text-blue-600' : 'text-gray-400'}`}
+                        className={`h-6 w-6 transition-colors duration-200 ${isAnalyseActive ? 'text-blue-500' : 'text-gray-400'}`}
                     />
                 </button>
 
@@ -111,7 +111,7 @@ export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) 
                     aria-label="Profil"
                 >
                     <User
-                        className={`h-6 w-6 transition-colors duration-200 ${isProfileActive ? 'text-blue-600' : 'text-gray-400'}`}
+                        className={`h-6 w-6 transition-colors duration-200 ${isProfileActive ? 'text-blue-500' : 'text-gray-400'}`}
                     />
                 </button>
             </div>

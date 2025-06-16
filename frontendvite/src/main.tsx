@@ -1,23 +1,36 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+
 import App from './App'
 import './index.css'
+import { MonthProvider } from '@/context/month-context'
+import { sqlJsExpenseService } from '@/services/SqlJsExpenseService' // ✅ Import
+import { UserProvider } from './context/user-context'
+const renderApp = () => {
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+        <React.StrictMode>
+            <MonthProvider>
+                <UserProvider>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </UserProvider>
+            </MonthProvider>
+        </React.StrictMode>
+    )
+    console.log('Happy developing with React and Vite ✨')
+}
 
-import {MonthProvider} from "@/context/month-context";
+async function start() {
+    try {
+        await sqlJsExpenseService.initDb() // ✅ Einmalig initialisieren
+        console.log('✅ Lokale SQL.js-Datenbank initialisiert')
+    } catch (err) {
+        console.error('❌ Fehler bei initDb():', err)
+    }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-      <MonthProvider>
+    renderApp()
+}
 
-              <BrowserRouter>
-                  <App />
-              </BrowserRouter>
-
-      </MonthProvider>
-
-
-  </React.StrictMode>,
-)
-
-console.log('Happy developing with React and Vite ✨')
+start()

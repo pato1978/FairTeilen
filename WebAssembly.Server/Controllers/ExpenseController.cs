@@ -110,7 +110,7 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
             var monthEnd = monthStart.AddMonths(1);
 
             if (scope == "personal")
-                return BadRequest("Scope 'personal' wird nicht mehr unterst\u00fctzt.");
+                return BadRequest("Scope 'personal' wird nicht mehr unterstützt.");
 
             IQueryable<Expense> query = scope switch
             {

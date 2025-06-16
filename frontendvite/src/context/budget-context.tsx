@@ -5,11 +5,13 @@ import React, {
     useEffect,
     type Dispatch,
     type SetStateAction,
-} from "react"
-import { useMonth } from "@/context/month-context"
-import { fetchBudget, saveBudget as saveBudgetApi } from "@/lib/api/budget"
-import { fetchExpenses } from "@/lib/api/expenses"
-import type { Expense } from "@/types"
+} from 'react'
+
+import { useMonth } from '@/context/month-context'
+import { fetchBudget, saveBudget as saveBudgetApi } from '@/lib/api/budget'
+import { fetchExpenses } from '@/lib/api/expenses'
+import type { Expense } from '@/types'
+import { useUser } from '@/context/user-context.tsx'
 
 // 💡 Kontextstruktur für Budgetinformationen
 type BudgetContextType = {
@@ -26,7 +28,7 @@ const BudgetContext = createContext<BudgetContextType | undefined>(undefined)
 
 type Props = {
     children: React.ReactNode
-    scope: string // z. B. "personal", "shared"
+    scope: 'personal' | 'shared' // 👉 engerer Typ ist sauberer
 }
 
 // 📦 Provider-Komponente für den gewählten Budgetbereich
@@ -37,32 +39,39 @@ export function BudgetProvider({ children, scope }: Props) {
     const [isLoadingExpenses, setIsLoadingExpenses] = useState(false)
     const [refreshCounter, setRefreshCounter] = useState(0)
 
+    const { userId } = useUser()
     const { currentDate } = useMonth()
     const isLoading = isLoadingBudget || isLoadingExpenses
 
     // 📥 Budget laden, wenn Monat oder Bereich (Scope) wechselt
     useEffect(() => {
+        if (!userId) return
         setIsLoadingBudget(true)
-        fetchBudget(scope, currentDate)
+
+        // 👉 Budget über API laden
+        fetchBudget(scope, currentDate, userId)
             .then(setBudget)
             .catch(() => setBudget(0))
             .finally(() => setIsLoadingBudget(false))
-    }, [currentDate, scope])
+    }, [currentDate, scope, userId])
 
-    // 📥 Ausgaben laden, wenn Monat oder Bereich wechselt oder manuell neu geladen wird
+    // 📥 Ausgaben laden, wenn Monat oder Bereich oder Refresh wechselt
     useEffect(() => {
-        const group = scope === "shared" ? null : null // später ggf. user?.groupId
+        if (!userId) return
+        const group = scope === 'shared' ? null : null // 🔧 ggf. später ersetzen
+
         setIsLoadingExpenses(true)
-        fetchExpenses(scope, group, currentDate)
+
+        fetchExpenses(userId, scope, group, currentDate)
             .then(setExpenses)
             .catch(() => setExpenses([]))
             .finally(() => setIsLoadingExpenses(false))
-    }, [currentDate, refreshCounter, scope])
+    }, [currentDate, refreshCounter, scope, userId])
 
-    // 💾 Budget speichern
+    // 💾 Budget speichern (lokal + remote)
     function saveBudget(newBudget: number) {
         setBudget(newBudget)
-        saveBudgetApi(scope, currentDate, newBudget).catch(console.error)
+        saveBudgetApi(scope, currentDate, newBudget, userId).catch(console.error)
     }
 
     // 🔁 Manuelles Neuladen der Ausgaben
@@ -89,6 +98,6 @@ export function BudgetProvider({ children, scope }: Props) {
 // 🎯 Hook zur Nutzung im UI
 export function useBudget() {
     const ctx = useContext(BudgetContext)
-    if (!ctx) throw new Error("useBudget must be used inside BudgetProvider")
+    if (!ctx) throw new Error('useBudget must be used inside BudgetProvider')
     return ctx
 }

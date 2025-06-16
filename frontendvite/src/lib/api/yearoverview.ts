@@ -1,12 +1,30 @@
-import { getCurrentUserId } from '@/lib/user-storage'
+import { useUser } from '@/context/user-context'
 import type { MonthlyOverview } from '@/types/monthly-overview'
+import type { YearOverview } from '@/types/year-overview'
+import { useCallback } from 'react'
 
-export interface YearOverview { year: number; months: MonthlyOverview[] }
+/**
+ * Liefert eine Funktion, um die Jahresübersicht für den aktuellen Nutzer zu laden.
+ */
+export function useFetchYearOverview() {
+    const { userId } = useUser()
 
-export async function fetchYearOverview(year: number): Promise<YearOverview> {
-    const res = await fetch(`/api/yearoverview/${year}?userId=${getCurrentUserId()}`)
-    if (!res.ok) {
-        throw new Error('Fehler beim Laden der Jahresübersicht')
-    }
-    return await res.json()
+    return useCallback(
+        async (year: number): Promise<YearOverview> => {
+            if (!userId) {
+                throw new Error(
+                    'Kein Nutzer angemeldet – Jahresübersicht kann nicht geladen werden.'
+                )
+            }
+
+            const res = await fetch(`/api/yearoverview/${year}?userId=${userId}`)
+
+            if (!res.ok) {
+                throw new Error('Fehler beim Laden der Jahresübersicht')
+            }
+
+            return await res.json()
+        },
+        [userId]
+    )
 }

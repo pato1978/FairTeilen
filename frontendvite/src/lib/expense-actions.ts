@@ -1,60 +1,91 @@
 import type { Expense } from '@/types'
 import type { Dispatch, SetStateAction } from 'react'
-import { getCurrentUserId } from '@/lib/user-storage'
-import { sqliteExpenseService } from '@/services/SqliteExpenseService'
+import { sqlJsExpenseService } from '@/services/sqlJsExpenseService'
+import { useUser } from '@/context/user-context'
+import { useCallback } from 'react'
 
-export async function saveExpense(
-    expense: Expense,
-    icon: any,
-    setExpenses: Dispatch<SetStateAction<Expense[]>>
-): Promise<Expense | null> {
-    const normalizedDate = expense.date.split('T')[0]
+/**
+ * React Hook: Speichert eine neue oder bestehende Ausgabe (lokal oder zentral)
+ */
+export function useSaveExpense() {
+    const { userId } = useUser()
 
-    const finalExpense: Expense = {
-        ...expense,
-        date: normalizedDate,
-        createdByUserId: getCurrentUserId(),
-    }
+    return useCallback(
+        async (
+            expense: Expense,
+            icon: React.ReactNode,
+            setExpenses: Dispatch<SetStateAction<Expense[]>>
+        ): Promise<Expense | null> => {
+            const normalizedDate = expense.date.split('T')[0]
 
-    if (finalExpense.isShared || finalExpense.isChild) {
-        // 🌐 Gemeinsame Ausgabe → ans Backend senden
-        const response = await fetch('/api/expenses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(finalExpense),
-        })
+            if (!userId) {
+                console.error('⚠️ Kein Nutzer angemeldet – Speichern wird abgebrochen.')
+                return null
+            }
 
-        if (!response.ok) {
-            console.error('❌ Fehler beim Speichern:', response.status, await response.text())
-            return null
-        }
+            const finalExpense: Expense = {
+                id: expense.id || crypto.randomUUID(),
+                name: expense.name || '',
+                amount: Number(expense.amount) || 0,
+                date: normalizedDate,
+                category: expense.category || '',
+                createdByUserId: userId,
+                groupId: expense.groupId || '',
+                isPersonal: expense.isPersonal ?? true,
+                isShared: expense.isShared ?? false,
+                isChild: expense.isChild ?? false,
+                isRecurring: expense.isRecurring ?? false,
+                isBalanced: expense.isBalanced ?? false,
+            }
 
-        const saved: Expense = await response.json()
+            const updateState = (newExpense: Expense) => {
+                setExpenses(prev => {
+                    const exists = prev.some(e => e.id === newExpense.id)
+                    return exists
+                        ? prev.map(e => (e.id === newExpense.id ? { ...newExpense, icon } : e))
+                        : [...prev, { ...newExpense, icon }]
+                })
+            }
 
-        setExpenses(prev => {
-            const alreadyExists = saved.id && prev.some(e => e.id === saved.id)
-            return alreadyExists
-                ? prev.map(e => (e.id === saved.id ? { ...saved, icon } : e))
-                : [...prev, { ...saved, icon }]
-        })
+            if (finalExpense.isShared || finalExpense.isChild) {
+                // 🌐 Zentrale Speicherung via API
+                console.log('🌐 Gemeinsame Ausgabe erkannt – wird an API gesendet:', finalExpense)
 
-        return saved
-    } else {
-        // 💾 Private Ausgabe → lokal mit SQLite speichern
-        if (!finalExpense.id) {
-            finalExpense.id = crypto.randomUUID()
-            await sqliteExpenseService.addExpense(finalExpense)
-        } else {
-            await sqliteExpenseService.updateExpense(finalExpense)
-        }
+                const response = await fetch('/api/expenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(finalExpense),
+                })
 
-        setExpenses(prev => {
-            const alreadyExists = finalExpense.id && prev.some(e => e.id === finalExpense.id)
-            return alreadyExists
-                ? prev.map(e => (e.id === finalExpense.id ? { ...finalExpense, icon } : e))
-                : [...prev, { ...finalExpense, icon }]
-        })
+                if (!response.ok) {
+                    console.error(
+                        '❌ Fehler beim Speichern über API:',
+                        response.status,
+                        await response.text()
+                    )
+                    return null
+                }
 
-        return finalExpense
-    }
+                const saved: Expense = await response.json()
+                console.log('✅ Erfolgreich über API gespeichert:', saved)
+                updateState(saved)
+                return saved
+            } else {
+                // 💾 Lokale Speicherung mit SQLite
+                if (!expense.id) {
+                    console.log('💾 Neue private Ausgabe – wird lokal gespeichert:', finalExpense)
+                    await sqlJsExpenseService.addExpense(finalExpense)
+                    console.log('✅ Gespeichert (addExpense):', finalExpense)
+                } else {
+                    console.log('✏️ Bestehende private Ausgabe – wird aktualisiert:', finalExpense)
+                    await sqlJsExpenseService.updateExpense(finalExpense)
+                    console.log('✅ Aktualisiert (updateExpense):', finalExpense)
+                }
+
+                updateState(finalExpense)
+                return finalExpense
+            }
+        },
+        [userId]
+    )
 }

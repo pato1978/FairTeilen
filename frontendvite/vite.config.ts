@@ -9,8 +9,11 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
         },
     },
+    optimizeDeps: {
+        exclude: ['@capacitor-community/sqlite/dist/loader'], // 🔧 wichtig für Web-Loader
+    },
     server: {
-        port: 5173, // optional, falls du explizit Port 5173 willst
+        port: 5173,
         proxy: {
             '/api': {
                 target: 'http://localhost:5289',

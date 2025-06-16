@@ -9,7 +9,7 @@ import { EnhancedMonthCard } from './enhanced-month-card'
 import { StatusModal } from './status-modal'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { fetchYearOverview } from '@/lib/api/yearoverview'
+import { useFetchYearOverview } from '@/lib/api/yearoverview'
 import type { MonthlyOverview, ClarificationReaction } from '@/types/monthly-overview'
 
 export default function JahresUebersicht() {
@@ -22,7 +22,7 @@ export default function JahresUebersicht() {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     useEffect(() => {
         const fetchData = async () => {
-            const data = await fetchYearOverview(selectedYear)
+            const data = await useFetchYearOverview(selectedYear)
             const recordData: Record<number, MonthlyOverview> = {}
             data.months.forEach((month: MonthlyOverview) => {
                 recordData[month.monthId] = month

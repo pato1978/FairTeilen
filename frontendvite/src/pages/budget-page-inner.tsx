@@ -5,14 +5,14 @@ import { useState } from 'react'
 import { HelpCircle } from 'lucide-react'
 
 // ✅ Speichern von Ausgaben (POST)
-import { saveExpense } from '@/lib/expense-actions'
-import { deleteExpense as apiDeleteExpense } from '@/lib/api/expenses'
+import { useSaveExpense } from '@/lib/expense-actions'
+import { deleteExpense } from '@/lib/api/expenses'
 
 // ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'
 import { availableIcons } from '@/lib/icon-options'
 import { calculateTotalExpenses, calculatePercentageUsed } from '@/lib/budget-utils'
-import { convertDateToISO, toDateInputValue } from '@/lib/utils'
+import { toDateInputValue } from '@/lib/utils'
 
 // ✅ Layout-Komponenten
 import { PageLayout } from '@/components/layout/page-layout'
@@ -53,6 +53,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     const [selectedIcon, setSelectedIcon] = useState<any>(null)
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState('gesamt')
+    const saveExpense = useSaveExpense()
 
     // ➕ Neue Ausgabe hinzufügen
     const handleAdd = () => {
@@ -90,7 +91,7 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     // ❌ Löschen einer Ausgabe
     const deleteExpense = async (id: string) => {
-        await apiDeleteExpense(id)
+        await deleteExpense(id)
         refreshExpenses()
     }
 
@@ -103,6 +104,10 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
     }
 
     const filteredExpenses = getFilteredExpenses(expenses, selectedCategory)
+
+    console.log('📊 Alle geladenen Ausgaben:', expenses)
+    console.log('📊 Gefilterte Ausgaben:', filteredExpenses)
+    console.log('📊 Aktuelle Kategorie:', selectedCategory)
 
     // 🖼️ Icon anhand Kategorie zuweisen
     const mapped = filteredExpenses.map(e => ({

@@ -1,93 +1,120 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { Home, PieChart, CalendarDays, User, Star } from "lucide-react";
-import { EnhancedPlusButton } from "@/components/ui/enhanced-plus-button";
-import { useTooltip } from "@/lib/hooks/use-tooltip";
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Home, PieChart, CalendarDays, User, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface FooterProps {
-    onAddButtonClick?: () => void;
-    showAddButton?: boolean;
+    onAddButtonClick?: () => void
+    showAddButton?: boolean
 }
 
 export function Footer({ onAddButtonClick, showAddButton = true }: FooterProps) {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const pathname = location.pathname;
-    const { isVisible: showTooltip, showAllTooltips } = useTooltip();
+    const navigate = useNavigate()
+    const location = useLocation()
+    const pathname = location.pathname
 
-    const isAnalyseActive = pathname === "/analyse";
-    const isJahresuebersichtActive = pathname === "/jahresuebersicht";
-    const isProfileActive = pathname === "/profile";
+    const isAnalyseActive = pathname === '/analyse'
+    const isJahresuebersichtActive = pathname === '/jahresuebersicht'
+    const isProfileActive = pathname === '/profile'
+
+    // Gemeinsame Button-Styles für bessere Touch-Targets
+    const buttonStyles = cn(
+        'relative flex items-center justify-center',
+        'w-12 h-12', // 48x48px für optimale Touch-Targets
+        'rounded-xl', // Modernere, abgerundete Ecken
+        'transition-all duration-200',
+        'active:scale-95', // Subtiles Feedback
+        'hover:bg-blue-50', // Desktop-Hover
+        'focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2'
+    )
 
     return (
-        <footer className="fixed bottom-0 left-0 right-0 bg-[#EAEFF5] text-gray-200 h-16 flex items-center justify-between z-10 max-w-md mx-auto pb-safe">
-            <div className="absolute top-0 left-0 right-0 h-px bg-blue-300"></div>
+        <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 h-16 flex items-center justify-between z-50 max-w-md mx-auto pb-safe shadow-lg">
+            {/* Safe area für iPhone-Notch */}
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-50/50 to-transparent pointer-events-none" />
 
             {/* Linke Seite */}
             <div className="flex w-2/5 justify-around">
                 <button
-                    className="p-2 active:bg-blue-500 transition-colors rounded-full"
-                    onClick={() => navigate("/")}
+                    className={buttonStyles}
+                    onClick={() => navigate('/')}
                     aria-label="Dashboard"
                 >
-                    <Home className={`h-5 w-5 ${pathname === "/" ? "text-blue-600" : "text-blue-300"}`} />
+                    <Home
+                        className={`h-6 w-6 transition-colors duration-200 ${pathname === '/' ? 'text-blue-600' : 'text-gray-400'}`}
+                    />
                 </button>
 
                 <button
-                    className="p-2 active:bg-blue-500 transition-colors rounded-full"
-                    onClick={() => navigate("/jahresuebersicht")}
+                    className={buttonStyles}
+                    onClick={() => navigate('/jahresuebersicht')}
                     aria-label="Jahresübersicht"
                 >
-                    <CalendarDays className={`h-5 w-5 ${isJahresuebersichtActive ? "text-blue-600" : "text-blue-300"}`} />
+                    <CalendarDays
+                        className={`h-6 w-6 transition-colors duration-200 ${isJahresuebersichtActive ? 'text-blue-600' : 'text-gray-400'}`}
+                    />
                 </button>
             </div>
 
-            {/* Mitte */}
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-                {showAddButton ? (
-                    <div className="-mt-12 active:scale-95 transition-transform duration-150">
-                        <div className="p-2 rounded-full bg-blue-400">
-                            <EnhancedPlusButton variant="outline" onClick={onAddButtonClick} />
-                        </div>
-                    </div>
-                ) : (
+            {/* Mitte - Plus Button optimal positioniert */}
+            <div className="absolute left-1/2 transform -translate-x-1/2 -top-7">
+                <div className="relative">
+                    {/* Schatten-Effekt - gedimmt wenn disabled */}
+                    <div
+                        className={cn(
+                            'absolute inset-0 rounded-full blur-xl',
+                            showAddButton ? 'bg-blue-500/40 scale-110' : 'bg-gray-400/20 scale-105'
+                        )}
+                    />
+
+                    {/* Button Container */}
                     <button
-                        className="p-2 active:bg-blue-500 transition-colors rounded-full"
-                        onClick={() => navigate("/profile")}
-                        aria-label="Profil"
+                        onClick={showAddButton ? onAddButtonClick : undefined}
+                        disabled={!showAddButton}
+                        className={cn(
+                            'relative rounded-full shadow-lg',
+                            'transition-all duration-200',
+                            'focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2',
+                            'w-14 h-14', // 56x56px - perfekte Größe für FAB
+                            showAddButton
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600 active:scale-95 cursor-pointer hover:shadow-xl'
+                                : 'bg-gray-300 cursor-not-allowed'
+                        )}
+                        aria-label="Neue Ausgabe hinzufügen"
+                        aria-disabled={!showAddButton}
                     >
-                        <User className={`h-5 w-5 ${isProfileActive ? "text-blue-600" : "text-blue-300"}`} />
+                        <Plus
+                            className={cn(
+                                'h-6 w-6 transition-colors duration-200',
+                                'absolute inset-0 m-auto', // Perfekt zentriert
+                                showAddButton ? 'text-white' : 'text-gray-500'
+                            )}
+                        />
                     </button>
-                )}
+                </div>
             </div>
 
             {/* Rechte Seite */}
             <div className="flex w-2/5 justify-around">
                 <button
-                    className="p-2 active:bg-blue-500 transition-colors rounded-full"
-                    onClick={() => navigate("/analyse")}
+                    className={buttonStyles}
+                    onClick={() => navigate('/analyse')}
                     aria-label="Ausgabenanalyse"
                 >
-                    <PieChart className={`h-5 w-5 ${isAnalyseActive ? "text-blue-600" : "text-blue-300"}`} />
+                    <PieChart
+                        className={`h-6 w-6 transition-colors duration-200 ${isAnalyseActive ? 'text-blue-600' : 'text-gray-400'}`}
+                    />
                 </button>
 
-                <div className="relative">
-                    <button
-                        className="p-2 active:bg-blue-500 transition-colors rounded-full"
-                        onClick={showAllTooltips}
-                        aria-label="Share2Gether Plus"
-                    >
-                        <Star className="h-5 w-5 text-yellow-300" />
-                    </button>
-
-                    {showTooltip && (
-                        <div className="absolute bottom-16 right-0 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-xs z-20 transform transition-all">
-                            <div className="font-medium text-blue-600 mb-1">Share2Gether Plus</div>
-                            <p>Mehr Funktionen für Paare & WGs – individuelle Aufteilungen, Export & mehr.</p>
-                            <div className="absolute -bottom-2 right-3 w-3 h-3 bg-white transform rotate-45"></div>
-                        </div>
-                    )}
-                </div>
+                <button
+                    className={buttonStyles}
+                    onClick={() => navigate('/profile')}
+                    aria-label="Profil"
+                >
+                    <User
+                        className={`h-6 w-6 transition-colors duration-200 ${isProfileActive ? 'text-blue-600' : 'text-gray-400'}`}
+                    />
+                </button>
             </div>
         </footer>
-    );
+    )
 }

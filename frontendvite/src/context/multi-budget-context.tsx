@@ -1,30 +1,37 @@
-import { createContext, useContext, useEffect, useState } from "react"
-import { fetchBudget } from "@/lib/api/budget"
-import { fetchExpenses } from "@/lib/api/expenses"
-import { Expense } from "@/types"
-import { useMonth } from "./month-context"
+import { createContext, useContext, useEffect, useState } from 'react'
+import { fetchBudget } from '@/lib/api/budget'
+import { fetchExpenses } from '@/lib/api/expenses'
+import { Expense } from '@/types'
+import { useMonth } from './month-context'
+import { useUser } from './user-context'
 
-// 🔢 Zustand eines einzelnen Budgetbereichs
+// 🔢 Zustand eines einzelnen Budgetbereichs (z. B. personal, shared, child)
 type BudgetState = {
     budget: number
     expenses: Expense[]
     isLoading: boolean
 }
 
-// 🧠 Struktur für drei getrennte Bereiche gleichzeitig
+// 🧠 Gesamtstruktur für mehrere Budgetbereiche
 type MultiBudgetContextType = {
     personal: BudgetState
     shared: BudgetState
     child: BudgetState
 }
 
-// 🧱 React-Kontext erstellen
+// 🧱 React-Kontext für den Zugriff von überall
 const MultiBudgetContext = createContext<MultiBudgetContextType | undefined>(undefined)
 
-// 📦 Provider für alle Budgetbereiche: personal, shared, child
+/**
+ * 📦 Provider-Komponente, die alle Budgetdaten verwaltet.
+ * Lädt Budget und Ausgaben getrennt für personal, shared und child,
+ * abhängig vom aktuellen Monat und Benutzer.
+ */
 export function MultiBudgetProvider({ children }: { children: React.ReactNode }) {
-    const { currentDate } = useMonth()
-    const scopes = ["personal", "shared", "child"] as const
+    const { currentDate } = useMonth() // 📆 Aktuell ausgewählter Monat
+    const { userId } = useUser() // 👤 Aktuell eingeloggter Benutzer
+
+    const scopes = ['personal', 'shared', 'child'] as const
 
     const [states, setStates] = useState<Record<string, BudgetState>>({
         personal: { budget: 0, expenses: [], isLoading: true },
@@ -32,16 +39,21 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
         child: { budget: 0, expenses: [], isLoading: true },
     })
 
-    // 📡 Budget + Ausgaben für alle Bereiche laden (bei Monatswechsel)
     useEffect(() => {
-        scopes.forEach(async (scope) => {
+        if (!userId) {
+            console.warn(
+                '[MultiBudgetProvider] ⚠️ Kein Benutzer angemeldet – Budgetdaten werden nicht geladen.'
+            )
+            return
+        }
+
+        scopes.forEach(async scope => {
             try {
-                // 🔧 Testweise keine Gruppen-ID – später user?.groupId einsetzen
-                const group = scope === "shared" ? null : null
+                const group = null // 🔧 Gruppenlogik noch nicht implementiert
 
                 const [budget, expenses] = await Promise.all([
-                    fetchBudget(scope, currentDate),
-                    fetchExpenses(scope, group, currentDate),
+                    fetchBudget(scope, currentDate, userId),
+                    fetchExpenses(userId, scope, group, currentDate),
                 ])
 
                 setStates(prev => ({
@@ -52,8 +64,12 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
                         isLoading: false,
                     },
                 }))
-            } catch {
-                // Fehler: Bereich auf leeren Zustand setzen
+            } catch (err) {
+                console.error(
+                    `[MultiBudgetProvider] ❌ Fehler beim Laden von Scope "${scope}"`,
+                    err
+                )
+
                 setStates(prev => ({
                     ...prev,
                     [scope]: {
@@ -64,7 +80,7 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
                 }))
             }
         })
-    }, [currentDate])
+    }, [currentDate, userId, fetchExpenses]) // 🧠 fetchExpenses gehört in die Dependency-List
 
     return (
         <MultiBudgetContext.Provider value={states as MultiBudgetContextType}>
@@ -73,9 +89,13 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
     )
 }
 
-// 🎯 Hook zum Zugriff auf alle drei Bereiche
+/**
+ * 🎯 Hook zum Zugriff auf alle Budgetbereiche (z. B. in Komponenten)
+ */
 export function useMultiBudget() {
     const context = useContext(MultiBudgetContext)
-    if (!context) throw new Error("useMultiBudget must be used inside MultiBudgetProvider")
+    if (!context) {
+        throw new Error('useMultiBudget must be used inside MultiBudgetProvider')
+    }
     return context
 }

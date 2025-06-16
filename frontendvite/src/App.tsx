@@ -13,18 +13,19 @@ import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import { MultiBudgetProvider } from '@/context/multi-budget-context'
 import { ClarificationReactionsProvider } from '@/context/clarificationContext'
-import { sqliteExpenseService } from './services/SqliteExpenseService'
+import { sqlJsExpenseService } from './services/SqlJsExpenseService.ts'
 import HomePage from '@/pages/home/page'
 
 function App() {
+    // ✅ neu
     useEffect(() => {
-        sqliteExpenseService
+        sqlJsExpenseService
             .initDb()
             .then(() => {
-                console.log('💾 SQLite bereit!')
+                console.log('💾 sql.js (WASM) Datenbank bereit!')
             })
             .catch(err => {
-                console.error('DB Init-Fehler:', err)
+                console.error('❌ Fehler beim Initialisieren der sql.js DB:', err)
             })
     }, [])
 

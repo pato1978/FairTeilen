@@ -1,8 +1,9 @@
+import type { IExpenseService } from "./IExpenseService"
 import { CapacitorSQLite, SQLiteDBConnection, SQLiteConnection } from '@capacitor-community/sqlite'
 import type { Expense } from '@/types'
 import { Capacitor } from '@capacitor/core'
 
-export class CapacitorSqliteExpenseService {
+export class CapacitorSqliteExpenseService implements IExpenseService {
     private db: SQLiteDBConnection | null = null
 
     async initDb(): Promise<void> {

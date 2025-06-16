@@ -13,13 +13,14 @@ import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import { MultiBudgetProvider } from '@/context/multi-budget-context'
 import { ClarificationReactionsProvider } from '@/context/clarificationContext'
-import { sqlJsExpenseService } from './services/SqlJsExpenseService.ts'
+import { getExpenseService } from './services/useDataService'
 import HomePage from '@/pages/home/page'
 
 function App() {
     // ✅ neu
     useEffect(() => {
-        sqlJsExpenseService
+        const service = getExpenseService()
+        service
             .initDb()
             .then(() => {
                 console.log('💾 sql.js (WASM) Datenbank bereit!')

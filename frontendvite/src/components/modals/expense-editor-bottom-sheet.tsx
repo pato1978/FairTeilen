@@ -1,24 +1,10 @@
 'use client'
 import { iconMap } from '@/lib/icon-map'
-import { useState, useEffect, useRef } from 'react'
-import {
-    X,
-    Calendar,
-    Check,
-    User,
-    Users,
-    Baby,
-    ShoppingCart,
-    ChevronDown,
-    HelpCircle,
-    Euro,
-    Percent,
-    Star,
-    Repeat,
-} from 'lucide-react'
-import { ToggleSwitch } from '@/components/ui/toggle-switch'
+import { useEffect, useRef, useState } from 'react'
+import { Baby, Check, Euro, HelpCircle, Repeat, ShoppingCart, User, Users } from 'lucide-react'
 import { IconSelector } from './icon-selector'
 import { DistributionModal, type Participant } from './distribution-modal'
+import { SplitOption } from '@/components/modals/split-option.tsx'
 
 export interface Expense {
     id?: string | null
@@ -332,32 +318,13 @@ export function ExpenseEditorBottomSheet({
                             </div>
                         </div>
 
-                        {/* Verteilung */}
-                        {!editingExpense.isPersonal && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Verteilung
-                                </label>
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation()
-                                        setShowDistributionModal(true)
-                                    }}
-                                    className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
-                                >
-                                    <div className="flex items-center">
-                                        <div className="bg-blue-50 p-2 rounded-lg mr-3">
-                                            <Percent className="h-4 w-4 text-blue-600" />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Gleichmäßig
-                                        </span>
-                                        <Star className="h-4 w-4 text-yellow-300 ml-2" />
-                                    </div>
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                                </button>
-                            </div>
-                        )}
+                        <SplitOption
+                            editingExpense={editingExpense}
+                            onClick={e => {
+                                e.stopPropagation()
+                                setShowDistributionModal(true)
+                            }}
+                        />
 
                         {/* Symbol + Häufigkeit + Ausgeglichen */}
                         <div className="grid grid-cols-3 gap-4">

@@ -15,22 +15,27 @@ import type { MonthlyOverview, ClarificationReaction } from '@/types/monthly-ove
 export default function JahresUebersicht() {
     const navigate = useNavigate()
     const currentYear = new Date().getFullYear()
+    const fetchYearOverview = useFetchYearOverview() // ✅ Hook-Aufruf direkt im Component Body
     const [selectedYear, setSelectedYear] = useState(currentYear)
     const [monthsData, setMonthsData] = useState<Record<number, MonthlyOverview>>({})
     const [selectedMonth, setSelectedMonth] = useState<MonthlyOverview | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     useEffect(() => {
-        const fetchData = async () => {
-            const data = await useFetchYearOverview(selectedYear)
-            const recordData: Record<number, MonthlyOverview> = {}
-            data.months.forEach((month: MonthlyOverview) => {
-                recordData[month.monthId] = month
-            })
-            setMonthsData(recordData)
+        const load = async () => {
+            try {
+                const result = await fetchYearOverview(selectedYear)
+                const record: Record<number, MonthlyOverview> = {}
+                result.months.forEach(month => {
+                    record[month.monthId] = month
+                })
+                setMonthsData(record)
+            } catch (error) {
+                console.error('[Jahresübersicht] Fehler beim Laden:', error)
+            }
         }
-        fetchData()
-    }, [selectedYear])
+        load()
+    }, [fetchYearOverview, selectedYear])
 
     const handleYearChange = (year: number) => {
         setSelectedYear(year)

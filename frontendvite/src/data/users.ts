@@ -30,22 +30,4 @@ export const users: Record<string, AppUser> = {
         icon: Users,
         color: 'green-500',
     },
-    '3fcb1191-1741-4b1d-87be-c0be899b356c': {
-        id: '3fcb1191-1741-4b1d-87be-c0be899b356c',
-        name: 'Partner 3',
-        email: 'partner3@example.com',
-        initials: 'SS',
-        role: 'Partner',
-        icon: Users,
-        color: 'bg-purple-500',
-    },
-    'guest-user-0000': {
-        id: 'guest-user-0000',
-        name: 'Gast',
-        email: 'gast@example.com',
-        initials: 'G',
-        role: 'Gastnutzer',
-        icon: UserIcon,
-        color: 'bg-orange-500',
-    },
 }

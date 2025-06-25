@@ -6,8 +6,8 @@ import { useNavigate } from 'react-router-dom'
 /**
  * Komponente zur Auswahl des Nutzers beim ersten Start
  */
-export function UserSelectPage() {
-    const { userId, setUserId, isReady } = useUser()
+export function Page() {
+    const { setUserId, isReady } = useUser()
 
     if (!isReady) {
         return (
@@ -49,7 +49,20 @@ export function UserSelectPage() {
  * Komponente zur Begrüßung nach der Auswahl (wird nur 1x gezeigt)
  */
 export function WelcomePage() {
-    const { user } = useUser()
+    const { userId } = useUser()
+
+    if (!userId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center text-red-600 bg-red-100 p-4">
+                Fehler: Keine User-ID gesetzt.
+            </div>
+        )
+    }
+
+    const user = users[userId]
+
+    console.log('[WelcomePage] userId:', userId, '→ user:', users[userId])
+
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -84,19 +97,30 @@ export function WelcomePage() {
  */
 export function UserEntryGate({ children }: { children: React.ReactNode }) {
     const { userId, isReady } = useUser()
+    const [hasSeenWelcome, setHasSeenWelcome] = useState<boolean | null>(null)
 
-    if (!isReady) {
-        return null // oder z. B. <SplashScreen />
+    // Einmal beim Mount prüfen, ob das Willkommensfenster schon gesehen wurde
+    useEffect(() => {
+        const seen = localStorage.getItem('hasSeenWelcome') === 'true'
+        setHasSeenWelcome(seen)
+    }, [])
+
+    // Warten, bis alles bereit ist
+    if (!isReady || hasSeenWelcome === null) return null
+
+    // Ungültige ID → zurück zur Auswahl
+    if (userId && !users[userId]) {
+        localStorage.clear()
+        return <Page />
     }
 
     if (!userId) {
-        return <UserSelectPage />
+        return <Page />
     }
 
-    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome') === 'true'
     if (!hasSeenWelcome) {
         return <WelcomePage />
     }
 
-    return <>{children}</> // → App starten
+    return <>{children}</>
 }

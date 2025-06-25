@@ -37,15 +37,9 @@ export function UserProvider({ children }: Props): JSX.Element {
     // NEU: Beim ersten Laden → ID aus Service holen (SQLite oder localStorage, je nach Umgebung)
     useEffect(() => {
         const init = async () => {
-            let id = await loadUserId() // holt bestehende ID oder gibt null zurück
-
-            if (!id) {
-                id = crypto.randomUUID() // Wenn keine vorhanden → neue ID generieren
-                await saveUserId(id) // und dauerhaft speichern
-            }
-
-            setUserId(id) // in den Zustand setzen → App kann damit arbeiten
-            setIsReady(true) // Signalisiert, dass ID bereit ist
+            const id = await loadUserId() // Nur laden, nicht erzeugen!
+            setUserId(id) // kann null sein – ist okay
+            setIsReady(true)
         }
 
         init()

@@ -10,11 +10,11 @@ import StatisticsPage from '@/pages/statistics/page'
 import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import HomePage from '@/pages/home/page'
-import { UserEntryGate } from '@/pages/login/UserEntryGate'
+
 import { MultiBudgetProvider } from '@/context/multi-budget-context'
 import { ClarificationReactionsProvider } from '@/context/clarificationContext'
 import { UserProvider, useUser } from '@/context/user-context' // ✅ NEU
-import { UserSelectPage } from '@/pages/user-select/page' // ✅ Deine neue Seite
+import { Page as UserSelectPage, UserEntryGate } from '@/pages/user-select/page' // ✅ Deine neue Seite
 import { getExpenseService } from './services/useDataService'
 
 function AppRouter() {

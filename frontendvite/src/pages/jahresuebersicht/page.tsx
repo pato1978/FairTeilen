@@ -21,6 +21,7 @@ export default function JahresUebersicht() {
     const [selectedMonth, setSelectedMonth] = useState<MonthlyOverview | null>(null)
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
     useEffect(() => {
         const load = async () => {
             try {

@@ -14,7 +14,7 @@ export interface AppUser {
 export const users: Record<string, AppUser> = {
     '4dfde3f4-d9c2-4b0b-875f-2e5e41b531f7': {
         id: '4dfde3f4-d9c2-4b0b-875f-2e5e41b531f7',
-        name: 'Partner 1',
+        name: 'Patrizio',
         email: 'partner1@example.com',
         initials: 'PV',
         role: 'Hauptnutzer',
@@ -23,7 +23,7 @@ export const users: Record<string, AppUser> = {
     },
     '9aaf8e82-6d38-4b2b-84ce-9130c6dd98a9': {
         id: '9aaf8e82-6d38-4b2b-84ce-9130c6dd98a9',
-        name: 'Partner 2',
+        name: 'Martyna',
         email: 'partner2@example.com',
         initials: 'MS',
         role: 'Partner',

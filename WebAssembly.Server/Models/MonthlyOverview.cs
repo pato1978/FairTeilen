@@ -1,27 +1,25 @@
-namespace WebAssembly.Server.Models
+using System.ComponentModel.DataAnnotations.Schema;
+
+public class MonthlyOverview
 {
-    public class MonthlyOverview
-    {
-        public int Id { get; set; } // ✅ Primärschlüssel (wird automatisch erkannt und verwaltet)
+    public int MonthId { get; set; }
+    public string Name { get; set; }
+    public string Status { get; set; }
 
-        public int MonthId { get; set; }
-        public string Name { get; set; }
-        public string Status { get; set; }
+    public decimal Total { get; set; }
+    public decimal Shared { get; set; }
+    public decimal Child { get; set; }
+    public decimal Balance { get; set; }
 
-        public bool User1Confirmed { get; set; }
-        public bool User2Confirmed { get; set; }
+    // 🔄 Neu: strukturierte User-Zuordnung
 
-        public decimal Total { get; set; }
-        public decimal Shared { get; set; }
-        public decimal SharedUser1 { get; set; }
-        public decimal SharedUser2 { get; set; }
+    [NotMapped] public Dictionary<string, decimal> SharedByUser { get; set; } = new();
 
-        public decimal Child { get; set; }
-        public decimal ChildUser1 { get; set; }
-        public decimal ChildUser2 { get; set; }
+    [NotMapped] public Dictionary<string, decimal> ChildByUser { get; set; } = new();
 
-        public decimal Balance { get; set; }
+    [NotMapped] public Dictionary<string, decimal> TotalByUser { get; set; } = new();
 
-        
-    }
+    [NotMapped] public Dictionary<string, decimal> BalanceByUser { get; set; } = new();
+
+    [NotMapped] public Dictionary<string, bool> RejectionsByUser { get; set; } = new();
 }

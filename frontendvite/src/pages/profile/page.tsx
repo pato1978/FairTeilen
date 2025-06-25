@@ -3,7 +3,7 @@ import { Check, Settings, LogOut, Users, Crown, Star, User as UserIcon } from 'l
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { useNavigate } from 'react-router-dom'
-import { useUser } from '@/context/user-context' // ✅ Zentraler Zugriff auf userId
+import { useUser } from '@/context/user-context.tsx' // ✅ Zentraler Zugriff auf userId
 
 // 🔧 Benutzerliste – später ggf. aus Backend laden
 const users = [

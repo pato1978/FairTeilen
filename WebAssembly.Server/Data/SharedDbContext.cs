@@ -8,14 +8,15 @@ namespace WebAssembly.Server.Data
         public DbSet<Expense> SharedExpenses { get; set; }
         public DbSet<BudgetEntry> SharedBudgets { get; set; }
         public DbSet<User> SharedUsers { get; set; }
-        public DbSet<YearOverview> SharedYearOverviews { get; set; }
+        
         public DbSet<MonthlyOverview> SharedMonthlyOverviews { get; set; }
         public DbSet<ClarificationReaction> ClarificationReactions { get; set; }
-
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
+            // ✅ Markiere MonthlyOverview als keyless ViewModel
+            modelBuilder.Entity<MonthlyOverview>().HasNoKey();
             // 🔗 Beziehung zur Ausgabe – optional (nur nötig, wenn Navigation verwendet wird)
             // Wenn du KEIN `Include(r => r.Expense)` benutzt, kannst du das hier sogar ganz weglassen.
             modelBuilder.Entity<ClarificationReaction>()

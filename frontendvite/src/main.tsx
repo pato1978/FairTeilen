@@ -6,7 +6,7 @@ import App from './App'
 import './index.css'
 import { MonthProvider } from '@/context/month-context'
 import { getExpenseService } from '@/services/useDataService' // ✅ Import
-import { UserProvider } from './context/user-context'
+import { UserProvider } from './context/user-context.tsx'
 const renderApp = () => {
     ReactDOM.createRoot(document.getElementById('root')!).render(
         <React.StrictMode>

@@ -3,7 +3,7 @@ import { fetchBudget } from '@/services/budget.ts'
 import { fetchExpenses } from '@/services/expenses.ts'
 import { Expense } from '@/types'
 import { useMonth } from './month-context'
-import { useUser } from './user-context'
+import { useUser } from './user-context.tsx'
 
 // 🔢 Zustand eines einzelnen Budgetbereichs (z. B. personal, shared, child)
 type BudgetState = {

@@ -46,26 +46,11 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
     const isOwnItem = createdByUserId === currentUserId
     const showInitials = scopeFlags?.isShared || scopeFlags?.isChild
 
-    // ─── Color‐Berechnung (nur ein Mal!) ─────────────────────────────────────────
     const rawColor = users[createdByUserId]?.color ?? 'gray-400'
     const { text: textClass, border: borderClass } =
         userColorMap[rawColor] ?? userColorMap['gray-400']
 
-    // **Hier das Debug‐Log, vor dem return**:
-    console.log(
-        '📌 ExpenseItem Debug:',
-        'createdByUserId =',
-        createdByUserId,
-        '| rawColor =',
-        rawColor,
-        '| textClass =',
-        textClass,
-        '| borderClass =',
-        borderClass
-    )
-    // ────────────────────────────────────────────────────────────────────────────
-
-    // Swipe‐Hook
+    // Swipe-Verhalten nur bei eigenen Ausgaben aktiv
     const { ref, touchProps, style, state } = useSwipe(
         -80,
         80,
@@ -77,7 +62,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             : {}
     )
 
-    // Wechsel der Bestätigung (Accepted ↔ Rejected)
+    // ➕ Reaktion setzen oder entfernen (nur bei fremden Ausgaben)
     const toggleConfirmationStatus = async (
         e: React.MouseEvent<HTMLButtonElement>,
         item: Expense
@@ -87,7 +72,6 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
 
         if (existing) {
             await deleteClarificationReaction(item.id, currentUserId)
-            refresh()
         } else {
             const newReaction: ClarificationReaction = {
                 id: uuidv4(),
@@ -97,19 +81,18 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 timestamp: new Date().toISOString(),
             }
             await postClarificationReaction(newReaction)
-            refresh()
         }
+        refresh()
     }
 
-    const userHasClarified = reactions.some(
-        r =>
-            r.expenseId === item.id &&
-            r.userId === currentUserId &&
-            r.status === ClarificationStatus.Rejected
-    )
+    // 🔍 Reaktion des aktuellen Nutzers ermitteln
+    const myReaction = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
+
+    const hasRejected = myReaction?.status === ClarificationStatus.Rejected
 
     return (
         <div className="relative overflow-visible rounded-lg mb-2">
+            {/* 🔄 Swipe-Aktionen (nur bei eigenen Ausgaben) */}
             {isOwnItem && (
                 <>
                     <div
@@ -137,7 +120,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 style={style}
                 {...touchProps}
             >
-                {/* 🟢 Statusicon oder Initialen */}
+                {/* 🔰 Initialen oder Ausgleichsicon */}
                 {item.isBalanced ? (
                     <div className="w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center bg-green-100 text-green-600">
                         <Scale className="h-4 w-4" />
@@ -145,18 +128,15 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                 ) : (
                     showInitials && (
                         <div
-                            className={`
-                w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center
-                bg-white text-xs font-semibold mr-2
-                ${textClass} ${borderClass} border-2 border-solid
-              `}
+                            className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center
+                bg-white text-xs font-semibold mr-2 ${textClass} ${borderClass} border-2 border-solid`}
                         >
                             {users[createdByUserId]?.initials ?? '?'}
                         </div>
                     )
                 )}
 
-                {/* 💬 Details */}
+                {/* 🧾 Detailbereich: Titel, Icon, Datum, Flags */}
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
                         <div>
@@ -188,28 +168,38 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                         </div>
                     </div>
 
-                    {/* 💰 Betrag + Reaktions-Button */}
+                    {/* 💶 Betrag + Reaktionssymbol */}
                     <div className="flex items-center gap-2 ml-2">
                         <div className="text-sm font-medium">{formatEuro(item.amount)}</div>
                         <div className="relative group">
                             {showInitials && (
-                                <button
-                                    onClick={e => toggleConfirmationStatus(e, item)}
-                                    className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-                                    aria-label={
-                                        userHasClarified ? 'Needs Clarification' : 'Confirmed'
-                                    }
-                                >
-                                    {userHasClarified ? (
-                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                <div className="p-1 rounded-full transition-colors">
+                                    {/* Eigene Ausgaben: nicht klickbar, immer bestätigt */}
+                                    {isOwnItem ? (
+                                        <CheckCircle
+                                            className="h-4 w-4 text-green-300"
+                                            title="Eigene Ausgabe – automatisch bestätigt"
+                                        />
                                     ) : (
-                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                        // Fremde Ausgaben: klickbar, togglebar
+                                        <button
+                                            onClick={e => toggleConfirmationStatus(e, item)}
+                                            className="hover:bg-gray-100 rounded-full p-1"
+                                            aria-label={hasRejected ? 'Beanstandet' : 'Bestätigt'}
+                                        >
+                                            {hasRejected ? (
+                                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                            ) : (
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                            )}
+                                        </button>
                                     )}
-                                </button>
+                                </div>
                             )}
-                            {userHasClarified && (
+                            {/* Tooltip für Beanstandung */}
+                            {!isOwnItem && hasRejected && (
                                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
-                                    Clarification submitted
+                                    Klärungsbedarf eingereicht
                                 </div>
                             )}
                         </div>

@@ -18,15 +18,18 @@ export interface MonthlyOverview {
     monthId: number
     name: string
     status: 'completed' | 'pending' | 'needs-clarification' | 'future' | 'notTakenIntoAccount'
-    user1Confirmed: boolean
-    user2Confirmed: boolean
-    total: number
-    shared: number
-    sharedUser1: number
-    sharedUser2: number
-    child: number
-    childUser1: number
-    childUser2: number
-    balance: number
-    clarificationReactionsList: ClarificationReaction[]
+
+    // Gesamtbeträge des Monats
+    total: number // Gesamt aller Ausgaben (shared + child)
+    shared: number // Nur geteilte Ausgaben (Summe)
+    child: number // Nur Kind-bezogene Ausgaben (Summe)
+
+    // Neu: Gruppierung pro Nutzer (nach userId)
+    sharedByUser: Record<string, number> // z. B. { "abc123": 40.50, "xyz456": 21.00 }
+    childByUser: Record<string, number>
+    totalByUser: Record<string, number> // shared + child
+    balanceByUser: Record<string, number> // Differenz zu den anderen
+
+    // Rejected-Status pro Nutzer (für Klärung)
+    rejectionsByUser: Record<string, boolean>
 }

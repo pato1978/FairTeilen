@@ -91,7 +91,10 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     // ❌ Löschen einer Ausgabe
     const handleDelete = async (id: string) => {
-        await deleteExpenseApi(id)
+        await deleteExpenseApi(id, {
+            isShared: scopeFlags.isShared,
+            isChild: scopeFlags.isChild,
+        })
         refreshExpenses()
     }
 

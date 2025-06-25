@@ -1,114 +1,122 @@
 'use client'
-
-import { useState } from 'react'
-import {
-    CheckCircle,
-    AlertTriangle,
-    Clock,
-    Info,
-    Lock,
-    Users,
-    Baby,
-    ArrowRight,
-    UserCheck,
-    UserX,
-    Star,
-    ArrowUpRight,
-} from 'lucide-react'
-import { useTooltip } from '@/lib/hooks/use-tooltip'
+import React, { useState } from 'react'
+import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'
 
+import { getStatusInfo } from '@/pages/jahresuebersicht/status-info'
+import {
+    ArrowUpRight,
+    Users,
+    Baby,
+    ArrowRight,
+    UserX,
+    UserCheck,
+    CheckCircle,
+    Clock,
+    AlertTriangle,
+    Calendar,
+    ChevronDown,
+    ChevronUp,
+    Eye,
+    MousePointer,
+} from 'lucide-react'
+import { users } from '@/data/users'
+
 interface EnhancedMonthCardProps {
     month: MonthlyOverview
-    onClick: () => void
-    onStatusClick: (e: React.MouseEvent) => void
+    onClick?: () => void
+    onStatusClick?: (e: React.MouseEvent) => void
+}
+
+function ClickableCard({
+    children,
+    onClick,
+    className = '',
+    disabled = false,
+}: React.PropsWithChildren<{ onClick?: () => void; className?: string; disabled?: boolean }>) {
+    return (
+        <div
+            className={`${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${className}`}
+            onClick={disabled ? undefined : onClick}
+        >
+            {children}
+        </div>
+    )
+}
+
+type ActionButtonVariant =
+    | 'primary'
+    | 'secondary'
+    | 'success'
+    | 'warning'
+    | 'confirmed'
+    | 'unconfirmed'
+    | 'disabled'
+type ActionButtonSize = 'sm' | 'md' | 'lg'
+
+function ActionButton({
+    children,
+    onClick,
+    variant = 'primary',
+    size = 'sm',
+    className = '',
+    disabled = false,
+}: React.PropsWithChildren<{
+    onClick?: (e: React.MouseEvent) => void
+    variant?: ActionButtonVariant
+    size?: ActionButtonSize
+    className?: string
+    disabled?: boolean
+}>) {
+    const base =
+        'inline-flex items-center font-medium focus:outline-none focus:ring-2 focus:ring-offset-2'
+    const variants: Record<ActionButtonVariant, string> = {
+        primary: 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 focus:ring-blue-500',
+        secondary: 'text-gray-600 hover:text-gray-800 hover:bg-gray-50 focus:ring-gray-500',
+        success: 'text-green-600 hover:text-green-800 hover:bg-green-50 focus:ring-green-500',
+        warning: 'text-amber-600 hover:text-amber-800 hover:bg-amber-50 focus:ring-amber-500',
+        confirmed: 'text-white bg-green-600 border-2 border-green-600',
+        unconfirmed: 'text-gray-700 bg-gray-100 border-2 border-gray-300',
+        disabled: 'text-gray-400 bg-gray-50 border-2 border-gray-200 cursor-not-allowed',
+    }
+    const sizes: Record<ActionButtonSize, string> = {
+        sm: 'px-2 py-1 text-xs sm:text-sm rounded h-8',
+        md: 'px-3 py-1 text-sm sm:text-base rounded-md h-8',
+        lg: 'px-4 py-2 text-base sm:text-lg rounded-lg h-10',
+    }
+
+    return (
+        <button
+            onClick={disabled ? undefined : onClick}
+            disabled={disabled}
+            className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        >
+            {children}
+        </button>
+    )
 }
 
 export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
-    const [showDetails, setShowDetails] = useState(false)
+    const [showExpenseDetails, setShowExpenseDetails] = useState(false)
+    const [reactions, setReactions] = useState<Record<string, boolean | null>>(
+        month.rejectionsByUser ?? {}
+    )
+
     const navigate = useNavigate()
+    const { userId } = useUser()
+    const statusInfo = getStatusInfo(month.status)
+    if (!userId) return null
 
-    const toggleExpand = (e: React.MouseEvent) => {
-        e.stopPropagation()
-        setIsExpanded(!isExpanded)
-    }
-
-    const { isVisible: showStarTooltip, showTooltip: displayStarTooltip } = useTooltip({
-        isGlobal: true,
-    })
-
-    const statusInfo = (() => {
-        switch (month.status) {
-            case 'completed':
-                return {
-                    icon: <CheckCircle className="h-5 w-5 text-green-500" />,
-                    text: 'Abgeschlossen',
-                    statusBgColor: 'bg-green-50',
-                    textColor: 'text-green-600',
-                    borderColor: 'border-gray-200',
-                }
-            case 'pending':
-                return {
-                    icon: <Clock className="h-5 w-5 text-amber-500" />,
-                    text: 'Offen',
-                    statusBgColor: 'bg-amber-50',
-                    textColor: 'text-amber-600',
-                    borderColor: 'border-amber-200',
-                }
-            case 'needs-clarification':
-                return {
-                    icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
-                    text: 'Klärungsbedarf',
-                    statusBgColor: 'bg-amber-50',
-                    textColor: 'text-amber-600',
-                    borderColor: 'border-amber-200',
-                }
-            case 'future':
-                return {
-                    icon: <Lock className="h-5 w-5 text-gray-400" />,
-                    text: 'Nicht verfügbar',
-                    statusBgColor: 'bg-gray-50',
-                    textColor: 'text-gray-400',
-                    borderColor: 'border-gray-200',
-                }
-            case 'notTakenIntoAccount':
-                return {
-                    icon: <Lock className="h-5 w-5 text-gray-400" />,
-                    text: 'Nicht verfügbar',
-                    statusBgColor: 'bg-gray-50',
-                    textColor: 'text-gray-400',
-                    borderColor: 'border-gray-200',
-                }
-            default:
-                return {
-                    icon: <Info className="h-5 w-5 text-gray-500" />,
-                    text: 'Unbekannt',
-                    statusBgColor: 'bg-gray-50',
-                    textColor: 'text-gray-500',
-                    borderColor: 'border-gray-200',
-                }
-        }
-    })()
-
-    const expenses = {
-        shared: month.shared,
-        child: month.child,
-        total: month.total,
-        sharedBy: {
-            partner1: month.sharedUser1,
-            partner2: month.sharedUser2,
-        },
-        childBy: {
-            partner1: month.childUser1,
-            partner2: month.childUser2,
-        },
-        totalBy: {
-            partner1: month.sharedUser1 + month.childUser1,
-            partner2: month.sharedUser2 + month.childUser2,
-        },
-    }
+    const allUserIds = Object.keys(month.totalByUser)
+    const partnerIds = allUserIds.filter(id => id !== userId)
+    const me = users[userId]
+    const youPaid = month.totalByUser[userId] ?? 0
+    const partnerId = partnerIds[0]
+    const partnerPaid = month.totalByUser[partnerId] ?? 0
+    const difference = Math.abs(youPaid - partnerPaid)
+    const youOwe = youPaid < partnerPaid
 
     const isPending = month.status === 'pending'
     const isCompleted = month.status === 'completed'
@@ -116,225 +124,269 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
     const needsClarification = month.status === 'needs-clarification'
     const notTakenIntoAccount = month.status === 'notTakenIntoAccount'
 
+    const handleToggleConfirmation = (id: string) =>
+        setReactions(prev => ({ ...prev, [id]: prev[id] === false ? null : false }))
+
+    const handleHeaderClick = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        setIsExpanded(prev => !prev)
+        onClick?.()
+    }
+
     return (
         <div
-            className={`bg-white rounded-lg shadow-sm border ${statusInfo.borderColor} overflow-hidden transition-colors ${!isFuture && 'cursor-pointer'}`}
+            className={`group relative bg-white rounded-lg shadow-sm border-2 ${statusInfo.borderColor} overflow-hidden`}
         >
-            <div
-                className="flex items-center justify-between p-3 border-b border-gray-100"
-                onClick={toggleExpand}
-            >
-                <h3 className="text-lg font-semibold">{month.name}</h3>
-                <div className="flex items-center">
-                    <div
-                        className={`flex items-center px-2 py-1 rounded-full ${statusInfo.statusBgColor}`}
-                    >
-                        {statusInfo.icon}
-                        <span className={`ml-1.5 text-sm font-normal ${statusInfo.textColor}`}>
-                            {statusInfo.text}
-                        </span>
-                    </div>
-                    <div className="relative ml-2">
-                        <Star
-                            className="h-4 w-4 text-yellow-300 cursor-pointer"
-                            onClick={e => {
-                                e.stopPropagation()
-                                displayStarTooltip()
-                            }}
-                        />
-                        {showStarTooltip && (
-                            <div className="absolute top-0 right-6 w-48 p-2 bg-white text-gray-800 rounded-lg shadow-lg text-sm font-normal z-20">
-                                <p>
-                                    Premium-Funktion: Detaillierte Monatsanalyse und
-                                    Exportmöglichkeiten.
-                                </p>
-                                <div className="absolute top-2 -right-2 w-3 h-3 bg-white transform rotate-45"></div>
-                            </div>
+            <ClickableCard onClick={handleHeaderClick} disabled={false} className="relative">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900">{month.name}</h3>
+                    <div className="flex items-center space-x-2">
+                        <div
+                            onClick={onStatusClick}
+                            className={`flex items-center px-3 py-1 rounded-full ${statusInfo.statusBgColor}`}
+                        >
+                            {statusInfo.icon}
+                            <span className={`ml-1.5 text-sm font-medium ${statusInfo.textColor}`}>
+                                {statusInfo.text}
+                            </span>
+                        </div>
+                        {isExpanded ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                        ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
                         )}
                     </div>
                 </div>
-            </div>
+            </ClickableCard>
 
             {isExpanded && (
-                <div className="p-3 space-y-4">
-                    {/* Ausgabenübersicht */}
-                    {!isFuture && !notTakenIntoAccount && (
-                        <div>
-                            <h4 className="text-base font-medium text-gray-700 mb-2">Ausgaben</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {/* Gemeinsam */}
-                                <div
-                                    className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center"
-                                    onClick={() => setShowDetails(!showDetails)}
-                                >
-                                    <div className="flex items-center mb-1">
-                                        <Users className="h-5 w-5 text-blue-600 mr-1" />
-                                        <span className="text-base font-normal text-blue-600">
-                                            Gemeinsam
-                                        </span>
-                                    </div>
-                                    <div className="text-base font-bold text-black">
-                                        €{expenses.shared.toFixed(2)}
-                                    </div>
-                                    {showDetails && (
-                                        <div className="mt-2 text-sm text-gray-700">
-                                            <div>
-                                                Partner 1: €{expenses.sharedBy.partner1.toFixed(2)}
-                                            </div>
-                                            <div>
-                                                Partner 2: €{expenses.sharedBy.partner2.toFixed(2)}
-                                            </div>
-                                            <button
-                                                onClick={e => {
-                                                    e.stopPropagation()
-                                                    navigate('/shared')
-                                                }}
-                                                className="mt-3 flex items-center text-blue-600 font-medium"
-                                            >
-                                                <ArrowUpRight className="h-4 w-4 mr-1" />
-                                                <span>Ausgaben anzeigen</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Kind */}
-                                <div
-                                    className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm cursor-pointer flex flex-col items-center text-center"
-                                    onClick={() => setShowDetails(!showDetails)}
-                                >
-                                    <div className="flex items-center mb-1">
-                                        <Baby className="h-5 w-5 text-blue-600 mr-1" />
-                                        <span className="text-base font-normal text-blue-600">
-                                            Kind
-                                        </span>
-                                    </div>
-                                    <div className="text-base font-bold text-black">
-                                        €{expenses.child.toFixed(2)}
-                                    </div>
-                                    {showDetails && (
-                                        <div className="mt-2 text-sm text-gray-700 w-full">
-                                            <div>
-                                                Partner 1: €{expenses.childBy.partner1.toFixed(2)}
-                                            </div>
-                                            <div>
-                                                Partner 2: €{expenses.childBy.partner2.toFixed(2)}
-                                            </div>
-                                            <button
-                                                onClick={e => {
-                                                    e.stopPropagation()
-                                                    navigate('/child')
-                                                }}
-                                                className="mt-3 flex items-center text-blue-600 font-medium"
-                                            >
-                                                <ArrowUpRight className="h-4 w-4 mr-1" />
-                                                <span>Ausgaben anzeigen</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Gesamtausgaben */}
-                            <div
-                                className="bg-gray-50 p-2 rounded text-center cursor-pointer mt-2"
-                                onClick={() => setShowDetails(!showDetails)}
-                            >
-                                <span className="text-base font-normal text-gray-600">Gesamt</span>
-                                <div className="text-base font-bold">
-                                    €{expenses.total.toFixed(2)}
-                                </div>
-                                {showDetails && (
-                                    <div className="mt-2 text-sm text-gray-700">
-                                        <div>
-                                            Partner 1: €{expenses.totalBy.partner1.toFixed(2)}
-                                        </div>
-                                        <div>
-                                            Partner 2: €{expenses.totalBy.partner2.toFixed(2)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bestätigungen */}
-                    {!isFuture && !notTakenIntoAccount && (
-                        <div>
-                            <h4 className="text-base font-medium text-gray-700 mb-2">
-                                Bestätigungsstatus
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                    <span>Partner 1</span>
-                                    {month.user1Confirmed ? (
-                                        <UserCheck className="text-green-500" />
-                                    ) : (
-                                        <UserX className="text-gray-400" />
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                    <span>Partner 2</span>
-                                    {month.user2Confirmed ? (
-                                        <UserCheck className="text-green-500" />
-                                    ) : (
-                                        <UserX className="text-gray-400" />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Ausgleich */}
-                    {(isPending || isCompleted) && (
-                        <div>
-                            <h4 className="text-base font-medium text-gray-700 mb-2">
-                                Ausgleichszahlung
-                            </h4>
-                            <div className="p-2 rounded bg-blue-50 border border-blue-50 shadow-sm text-center">
-                                <div className="flex justify-center items-center">
-                                    <span className="text-sm text-blue-600 font-medium">
-                                        {expenses.totalBy.partner1 > expenses.totalBy.partner2
-                                            ? 'Partner 2'
-                                            : 'Partner 1'}
-                                    </span>
-                                    <ArrowRight className="mx-2 h-3 w-3 text-blue-600" />
-                                    <span className="text-sm text-blue-600 font-medium">
-                                        {expenses.totalBy.partner1 > expenses.totalBy.partner2
-                                            ? 'Partner 1'
-                                            : 'Partner 2'}
-                                    </span>
-                                </div>
-                                <div className="text-lg font-bold text-black mt-1">
-                                    €
-                                    {Math.abs(
-                                        expenses.totalBy.partner1 - expenses.totalBy.partner2
-                                    ).toFixed(2)}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Hinweis für Klärungsbedarf */}
-                    {needsClarification && month.clarificationReactionsList?.length > 0 && (
-                        <div className="bg-amber-100 text-amber-700 p-2 rounded text-sm">
-                            Dieser Monat hat offene Klärungspunkte.
-                        </div>
-                    )}
-
-                    {/* Zukunfts-Hinweis */}
+                <div className="p-4 space-y-6 bg-gray-50">
                     {isFuture && (
-                        <div className="mt-2 text-xs bg-gray-100 text-gray-500 p-2 rounded">
-                            Dieser Monat ist noch nicht verfügbar. Ausgaben können erst nach
-                            Monatsende bearbeitet werden.
+                        <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center text-gray-600">
+                                <Calendar className="h-5 w-5 mr-3" />
+                                <span className="text-sm">
+                                    Dieser Monat ist noch nicht verfügbar. Ausgaben können erst nach
+                                    Monatsende bearbeitet werden.
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                    {notTakenIntoAccount && (
+                        <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center text-gray-600">
+                                <Calendar className="h-5 w-5 mr-3" />
+                                <span className="text-sm">
+                                    Dieser Monat ist hat keine Ausgaben und wird daher nicht
+                                    berücksichtigt.
+                                </span>
+                            </div>
                         </div>
                     )}
 
-                    {/* Abgeschlossen-Hinweis */}
+                    {!isFuture && !notTakenIntoAccount && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-gray-900">Ausgaben</h4>
+                                <ActionButton
+                                    onClick={e => {
+                                        e.stopPropagation()
+                                        setShowExpenseDetails(s => !s)
+                                    }}
+                                    variant="primary"
+                                >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    {showExpenseDetails ? 'Weniger Details' : 'Details anzeigen'}
+                                </ActionButton>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Gemeinsam */}
+                                <div className="bg-blue-50 border-2 border-blue-100 rounded-lg p-4 text-center">
+                                    <div className="flex items-center justify-center mb-2">
+                                        <Users className="h-5 w-5 text-blue-600 mr-2" />
+                                        <span className="text-base text-blue-900">Gemeinsam</span>
+                                    </div>
+                                    <div className="text-base font-bold text-blue-900 mb-2">
+                                        €{month.shared.toFixed(2)}
+                                    </div>
+                                    {showExpenseDetails && (
+                                        <div className="text-sm text-blue-700 space-y-1 mb-3">
+                                            <div>
+                                                {me.name}: €
+                                                {month.sharedByUser[userId]?.toFixed(2) ?? '0.00'}
+                                            </div>
+                                            {partnerIds.map(id => (
+                                                <div key={id}>
+                                                    {users[id].name}: €
+                                                    {month.sharedByUser[id]?.toFixed(2) ?? '0.00'}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <ActionButton
+                                        onClick={e => {
+                                            e.stopPropagation()
+                                            navigate('/shared')
+                                        }}
+                                        variant="primary"
+                                        size="sm"
+                                    >
+                                        <ArrowUpRight className="h-4 w-4 mr-1" />
+                                        Ausgaben verwalten
+                                    </ActionButton>
+                                </div>
+                                {/* Kind */}
+                                <div className="bg-purple-50 border-2 border-purple-100 rounded-lg p-4 text-center">
+                                    <div className="flex items-center justify-center mb-2">
+                                        <Baby className="h-5 w-5 text-purple-600 mr-2" />
+                                        <span className="text-base text-purple-900">Kind</span>
+                                    </div>
+                                    <div className="text-base font-bold text-purple-900 mb-2">
+                                        €{month.child.toFixed(2)}
+                                    </div>
+                                    {showExpenseDetails && (
+                                        <div className="text-sm text-purple-700 space-y-1 mb-3">
+                                            <div>
+                                                {me.name}: €
+                                                {month.childByUser[userId]?.toFixed(2) ?? '0.00'}
+                                            </div>
+                                            {partnerIds.map(id => (
+                                                <div key={id}>
+                                                    {users[id].name}: €
+                                                    {month.childByUser[id]?.toFixed(2) ?? '0.00'}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <ActionButton
+                                        onClick={e => {
+                                            e.stopPropagation()
+                                            navigate('/child')
+                                        }}
+                                        variant="primary"
+                                        size="sm"
+                                    >
+                                        <ArrowUpRight className="h-4 w-4 mr-1" />
+                                        Ausgaben verwalten
+                                    </ActionButton>
+                                </div>
+                                {/* Gesamt */}
+                                <div className="bg-gray-100 border-2 border-gray-200 rounded-lg p-4 text-center">
+                                    <div className="flex items-center justify-center mb-2">
+                                        <span className="text-base text-gray-700">Gesamt</span>
+                                    </div>
+                                    <div className="text-base font-bold text-gray-900 mb-2">
+                                        €{month.total.toFixed(2)}
+                                    </div>
+                                    {showExpenseDetails && (
+                                        <div className="text-sm text-gray-600 space-y-1">
+                                            <div>
+                                                {me.name}: €
+                                                {month.totalByUser[userId]?.toFixed(2) ?? '0.00'}
+                                            </div>
+                                            {partnerIds.map(id => (
+                                                <div key={id}>
+                                                    {users[id].name}: €
+                                                    {month.totalByUser[id]?.toFixed(2) ?? '0.00'}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {!isFuture && !isCompleted && !notTakenIntoAccount && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                Bestätigungen
+                            </h4>
+                            <div className="space-y-3">
+                                {Object.keys(month.totalByUser).map(id => {
+                                    const isMe = id === userId
+                                    const name = isMe
+                                        ? 'Du'
+                                        : (users[id]?.name ?? `Partner (${id})`)
+                                    const hasRejected = reactions[id] === true
+                                    const hasConfirmed = false
+                                    const iHaveRedebedarf = reactions[userId] === true
+
+                                    return (
+                                        <div
+                                            key={id}
+                                            className="grid grid-cols-2 gap-4 items-center p-3 rounded-lg border border-gray-200 bg-gray-50 h-[60px]"
+                                        >
+                                            <span className="font-medium text-gray-800">
+                                                {name}
+                                            </span>
+                                            <div className="flex justify-end">
+                                                {hasRejected ? (
+                                                    <div className="flex items-center text-amber-600 font-medium h-8">
+                                                        <UserX className="h-5 w-5 mr-2" />
+                                                        <span>Hat noch Redebedarf</span>
+                                                    </div>
+                                                ) : isMe ? (
+                                                    <ActionButton
+                                                        onClick={e => {
+                                                            e.stopPropagation()
+                                                            if (!iHaveRedebedarf)
+                                                                handleToggleConfirmation(id)
+                                                        }}
+                                                        variant={
+                                                            iHaveRedebedarf
+                                                                ? 'disabled'
+                                                                : hasConfirmed
+                                                                  ? 'confirmed'
+                                                                  : 'unconfirmed'
+                                                        }
+                                                        size="md"
+                                                        disabled={iHaveRedebedarf}
+                                                    >
+                                                        <UserCheck className="h-5 w-5 mr-2" />
+                                                        <span>
+                                                            {iHaveRedebedarf
+                                                                ? 'Bestätigen'
+                                                                : hasConfirmed
+                                                                  ? 'Zurücknehmen'
+                                                                  : 'Bestätigen'}
+                                                        </span>
+                                                    </ActionButton>
+                                                ) : (
+                                                    <div className="flex items-center text-green-600 font-medium h-8">
+                                                        <UserCheck className="h-5 w-5 mr-2" />
+                                                        <span>Bestätigt</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {needsClarification && (
+                        <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded">
+                            <div className="flex items-center">
+                                <AlertTriangle className="h-6 w-6 text-orange-600 mr-3" />
+                                <span className="text-orange-700 font-medium">
+                                    Dieser Monat hat offene Klärungspunkte und benötigt Ihre
+                                    Aufmerksamkeit.
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
                     {isCompleted && (
-                        <div className="mt-2 text-xs bg-green-100 text-green-700 p-2 rounded">
-                            Dieser Monat ist vollständig abgeschlossen und von beiden Partnern
-                            bestätigt.
+                        <div className="bg-green-100 border-l-4 border-green-500 p-4 rounded">
+                            <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                                <span className="text-green-700 font-medium">
+                                    Dieser Monat ist vollständig abgeschlossen und von allen
+                                    bestätigt.
+                                </span>
+                            </div>
                         </div>
                     )}
                 </div>

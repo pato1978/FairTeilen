@@ -129,8 +129,9 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 <PageHeader title={title} /> {/* z. B. „Persönlich“ oder „Gemeinsam“ */}
             </div>
 
-            <div className="flex-1 px-4 pb-6 mt-8 flex flex-col overflow-hidden">
-                <div className="bg-white shadow-md rounded-lg p-4 flex-1 flex flex-col overflow-hidden mb-0">
+            <div className="bg-white shadow-md rounded-lg p-4 flex flex-col h-full min-h-0 overflow-hidden">
+                {/* 💳 BudgetCard oben – nicht scrollbar */}
+                <div className="pb-4">
                     <BudgetSummaryCard
                         title={budgetTitle}
                         budget={budget}
@@ -140,7 +141,10 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                         onBudgetClick={() => setIsBudgetModalOpen(true)}
                         onCategoryChange={newCat => setSelectedCategory(newCat)}
                     />
+                </div>
 
+                {/* 🧾 Listenansicht mit Scrollverhalten */}
+                <div className="flex-1 min-h-0">
                     {isLoading ? (
                         <div className="text-center text-sm text-gray-500 py-8">
                             🔄 Lade Ausgaben…

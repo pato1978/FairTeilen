@@ -1,9 +1,11 @@
 'use client'
 
-import { Trash2, Edit, Repeat, CheckCircle, AlertTriangle, Lock, Scale } from 'lucide-react'
+import { Trash2, Edit, Repeat, CheckCircle, AlertTriangle, Scale } from 'lucide-react'
+
 import { useSwipe } from '@/lib/hooks/use-swipe'
 import { convertDateToDisplay } from '@/lib/utils'
 import { useClarificationReactions } from '@/context/clarificationContext'
+import { useUser } from '@/context/user-context' // 🆕 Zugriff auf den eingeloggten User
 import { users } from '@/data/users'
 import { userColorMap } from '@/lib/colorMap'
 import { v4 as uuidv4 } from 'uuid'
@@ -38,19 +40,29 @@ const formatEuro = (amount: string | number) => {
 export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemProps) {
     const Icon = item.icon
 
+    // 📦 Zugriff auf den aktuellen Benutzer über den zentralen UserContext
+    const { userId: currentUserId, isReady } = useUser()
+
+    // ⛔ Sicherheitsprüfung: solange der Benutzer noch nicht geladen ist, nichts rendern
+    if (!isReady || !currentUserId) return null
+
+    // 💬 Zugriff auf Reaktionen (z. B. Klärungsbedarf) und Aktualisierung
     const { getAllReactions, refresh } = useClarificationReactions()
     const reactions = getAllReactions()
 
-    const currentUserId = localStorage.getItem('user_id') ?? 'unknown'
+    // ✅ Feststellen, ob es sich um die eigene Ausgabe handelt
     const createdByUserId = item.createdByUserId
     const isOwnItem = createdByUserId === currentUserId
+
+    // 👥 Zeige Initialen bei gemeinsamen oder Kinder-Ausgaben
     const showInitials = scopeFlags?.isShared || scopeFlags?.isChild
 
+    // 🎨 Farbzuordnung für den Avatar
     const rawColor = users[createdByUserId]?.color ?? 'gray-400'
     const { text: textClass, border: borderClass } =
         userColorMap[rawColor] ?? userColorMap['gray-400']
 
-    // Swipe-Verhalten nur bei eigenen Ausgaben aktiv
+    // 👉 Swipe-Funktionalität (nur bei eigenen Ausgaben aktiv)
     const { ref, touchProps, style, state } = useSwipe(
         -80,
         80,
@@ -62,12 +74,13 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             : {}
     )
 
-    // ➕ Reaktion setzen oder entfernen (nur bei fremden Ausgaben)
+    // 🔁 Reaktionsstatus setzen oder entfernen
     const toggleConfirmationStatus = async (
         e: React.MouseEvent<HTMLButtonElement>,
         item: Expense
     ) => {
         e.stopPropagation()
+
         const existing = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
 
         if (existing) {
@@ -82,17 +95,17 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             }
             await postClarificationReaction(newReaction)
         }
+
         refresh()
     }
 
-    // 🔍 Reaktion des aktuellen Nutzers ermitteln
+    // 🔍 Eigene Reaktion zu dieser Ausgabe abrufen
     const myReaction = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
-
     const hasRejected = myReaction?.status === ClarificationStatus.Rejected
 
     return (
-        <div className="relative overflow-visible rounded-lg mb-2">
-            {/* 🔄 Swipe-Aktionen (nur bei eigenen Ausgaben) */}
+        <div className="relative overflow-visible">
+            {/* 🔄 Swipe-Aktionen sichtbar nur bei eigenen Ausgaben */}
             {isOwnItem && (
                 <>
                     <div
@@ -113,96 +126,81 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
             <div
                 ref={ref}
                 className={`
-          flex items-center p-2 rounded-lg border border-gray-200 z-10 shadow-sm mb-[0.125rem] text-sm
-          ${state.isTouched ? 'bg-blue-50' : 'bg-white'}
+          h-[72px] flex items-center p-4 rounded-xl border shadow-sm bg-white transition-colors relative
+          ${state.isTouched ? 'bg-blue-50' : ''}
           ${state.isDragging ? '' : 'transition-transform duration-300'}
         `}
                 style={style}
                 {...touchProps}
+                onClick={() => isOwnItem && onEdit(item)}
             >
-                {/* 🔰 Initialen oder Ausgleichsicon */}
-                {item.isBalanced ? (
-                    <div className="w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center bg-green-100 text-green-600">
-                        <Scale className="h-4 w-4" />
-                    </div>
-                ) : (
-                    showInitials && (
+                {/* 🧍 Avatar oder Ausgleichs-Icon */}
+                <div className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center mr-3">
+                    {item.isBalanced ? (
+                        <div className="bg-green-100 text-green-600 w-full h-full rounded-full flex items-center justify-center">
+                            <Scale className="w-4 h-4" />
+                        </div>
+                    ) : showInitials ? (
                         <div
-                            className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center
-                bg-white text-xs font-semibold mr-2 ${textClass} ${borderClass} border-2 border-solid`}
+                            className={`bg-white text-sm font-semibold border-2 flex items-center justify-center w-full h-full rounded-full ${textClass} ${borderClass}`}
                         >
                             {users[createdByUserId]?.initials ?? '?'}
                         </div>
-                    )
-                )}
+                    ) : (
+                        <Icon className="w-5 h-5 text-blue-600" />
+                    )}
+                </div>
 
-                {/* 🧾 Detailbereich: Titel, Icon, Datum, Flags */}
-                <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                        <div>
-                            <div className="flex items-center gap-1">
-                                <span className="text-sm font-medium">{item.name}</span>
-                                <span className="flex items-center justify-center bg-blue-100 rounded-full p-0.5">
-                                    <Icon className="h-4 w-4 text-blue-600" />
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-start mt-0.5 gap-2">
-                                <div className="text-xs text-gray-500">
-                                    {convertDateToDisplay(item.date)}
-                                </div>
+                {/* 🧾 Hauptinhalt: Titel, Betrag, Datum, Reaktionen */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h3 className="font-semibold text-base text-gray-900 truncate">
+                                {item.name}
+                            </h3>
+                            <div className="bg-blue-50 text-blue-600 p-1 rounded-full">
+                                <Icon className="w-4 h-4" />
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 ">
-                            <div className="flex items-center gap-1">
-                                {item.isRecurring && (
-                                    <span className="bg-gray-100 rounded-full p-0.5">
-                                        <Repeat className="h-3 w-3 text-gray-500" />
-                                    </span>
-                                )}
-                                {!isOwnItem && (
-                                    <span className="bg-gray-100 rounded-full p-0.5">
-                                        <Lock className="h-3 w-3 text-gray-500" />
-                                    </span>
-                                )}
-                            </div>
+                        <div className="font-semibold text-base text-gray-900 flex-shrink-0 ml-2">
+                            {formatEuro(item.amount)}
                         </div>
                     </div>
 
-                    {/* 💶 Betrag + Reaktionssymbol */}
-                    <div className="flex items-center gap-2 ml-2">
-                        <div className="text-sm font-medium">{formatEuro(item.amount)}</div>
-                        <div className="relative group">
-                            {showInitials && (
-                                <div className="p-1 rounded-full transition-colors">
-                                    {/* Eigene Ausgaben: nicht klickbar, immer bestätigt */}
-                                    {isOwnItem ? (
-                                        <CheckCircle
-                                            className="h-4 w-4 text-green-300"
-                                            title="Eigene Ausgabe – automatisch bestätigt"
-                                        />
-                                    ) : (
-                                        // Fremde Ausgaben: klickbar, togglebar
-                                        <button
-                                            onClick={e => toggleConfirmationStatus(e, item)}
-                                            className="hover:bg-gray-100 rounded-full p-1"
-                                            aria-label={hasRejected ? 'Beanstandet' : 'Bestätigt'}
-                                        >
-                                            {hasRejected ? (
-                                                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                            ) : (
-                                                <CheckCircle className="h-4 w-4 text-green-500" />
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                            {/* Tooltip für Beanstandung */}
-                            {!isOwnItem && hasRejected && (
-                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-700 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none">
-                                    Klärungsbedarf eingereicht
-                                </div>
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                        <div className="flex items-center gap-3">
+                            <span>{convertDateToDisplay(item.date)}</span>
+                            {item.isRecurring && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                                    <Repeat className="w-3 h-3" />
+                                    Wiederkehrend
+                                </span>
                             )}
                         </div>
+
+                        {/* ✅ Reaktionssymbol (Bestätigung / Klärungsbedarf) */}
+                        {showInitials && (
+                            <div className="relative group">
+                                {isOwnItem ? (
+                                    <CheckCircle
+                                        className="w-5 h-5 text-green-300"
+                                        title="Eigene Ausgabe – automatisch bestätigt"
+                                    />
+                                ) : (
+                                    <button
+                                        onClick={e => toggleConfirmationStatus(e, item)}
+                                        className="hover:bg-gray-100 rounded-full p-1"
+                                        aria-label={hasRejected ? 'Beanstandet' : 'Bestätigt'}
+                                    >
+                                        {hasRejected ? (
+                                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                                        ) : (
+                                            <CheckCircle className="w-5 h-5 text-green-500" />
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -6,7 +6,15 @@ import type { Expense } from '@/types'
 import { ExpenseItem } from '@/components/dashboard/expense-item'
 import { useClarificationReactions } from '@/context/clarificationContext'
 
-// 📦 Props für diese Komponente
+// 🔘 Kleiner Kategorie-Button für obere Schnellnavigation
+function CategoryChip({ label }: { label: string }) {
+    return (
+        <button className="whitespace-nowrap text-sm bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition">
+            {label}
+        </button>
+    )
+}
+
 interface VerbesserteLitenansichtProps {
     expenses: Expense[]
     onDelete: (id: string) => void | Promise<void>
@@ -30,7 +38,6 @@ export function VerbesserteLitenansicht({
     const { getIsConfirmed, getUnconfirmedCount } = useClarificationReactions()
     const unconfirmedCount = getUnconfirmedCount()
 
-    // 🔢 Betrag als Zahl interpretieren
     const parseAmount = (amount: string | number): number => {
         if (typeof amount === 'number') return amount
         if (typeof amount === 'string') {
@@ -39,21 +46,17 @@ export function VerbesserteLitenansicht({
         return 0
     }
 
-    // ✅ Zusätzliche Info: isConfirmed vom Kontext
+    // 🔄 Erweiterung der Ausgaben mit Bestätigungsstatus
     type ExpenseWithConfirmation = Expense & { isConfirmed: boolean }
 
     const enrichedExpenses: ExpenseWithConfirmation[] = useMemo(() => {
-        return expenses.map(expense => {
-            const confirmed = getIsConfirmed?.(expense.id) ?? false
-            console.log('→', expense.id, confirmed)
-            return {
-                ...expense,
-                isConfirmed: confirmed,
-            }
-        })
+        return expenses.map(expense => ({
+            ...expense,
+            isConfirmed: getIsConfirmed?.(expense.id) ?? false,
+        }))
     }, [expenses, getIsConfirmed, unconfirmedCount])
 
-    // 🔃 Sortierung anhand ausgewähltem Kriterium
+    // 🔃 Sortierung anwenden je nach Auswahl
     const sortedExpenses = useMemo(() => {
         const list = [...enrichedExpenses]
         if (!sortBy) return list
@@ -72,28 +75,27 @@ export function VerbesserteLitenansicht({
                     dateStr === 'Heute'
                         ? new Date()
                         : new Date(dateStr.split('.').reverse().join('-'))
-                const dateA = parseDate(a.date).getTime()
-                const dateB = parseDate(b.date).getTime()
-                return sortDirection === 'asc' ? dateA - dateB : dateB - dateA
+                return sortDirection === 'asc'
+                    ? parseDate(a.date).getTime() - parseDate(b.date).getTime()
+                    : parseDate(b.date).getTime() - parseDate(a.date).getTime()
             }
 
             if (sortBy === 'amount') {
-                const amountA = parseAmount(a.amount)
-                const amountB = parseAmount(b.amount)
-                return sortDirection === 'asc' ? amountA - amountB : amountB - amountA
+                return sortDirection === 'asc'
+                    ? parseAmount(a.amount) - parseAmount(b.amount)
+                    : parseAmount(b.amount) - parseAmount(a.amount)
             }
 
             if (sortBy === 'confirmed') {
-                const confirmedA = a.isConfirmed ? 1 : 0
-                const confirmedB = b.isConfirmed ? 1 : 0
-                return sortDirection === 'asc' ? confirmedA - confirmedB : confirmedB - confirmedA
+                return sortDirection === 'asc'
+                    ? Number(a.isConfirmed) - Number(b.isConfirmed)
+                    : Number(b.isConfirmed) - Number(a.isConfirmed)
             }
 
             return 0
         })
     }, [enrichedExpenses, sortBy, sortDirection])
 
-    // 🔁 Sortier-Button-Verhalten
     const handleSort = (field: string) => {
         if (sortBy === field) {
             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
@@ -104,101 +106,100 @@ export function VerbesserteLitenansicht({
     }
 
     return (
-        <div className="border-t pt-4 mt-4 flex-1 flex flex-col overflow-hidden">
+        // 📦 Wichtig: Diese Komponente muss in einem Eltern-Container mit fester Höhe (z. B. h-full oder h-screen) verwendet werden!
+        <div className="flex flex-col h-full px-1 pt-1">
+            {/* 🔷 Horizontale Schnellnavigation nach Kategorie */}
+            <div className="overflow-x-auto no-scrollbar">
+                <div className="flex gap-2 w-max">
+                    <CategoryChip label="Alle" />
+                    <CategoryChip label="Kind" />
+                    <CategoryChip label="Lebensmittel" />
+                    <CategoryChip label="Fixkosten" />
+                    <CategoryChip label="Freizeit" />
+                </div>
+            </div>
+
             {/* 🔠 Kopfzeile mit Sortieroptionen */}
-            <div className="px-4 py-2 flex items-center text-xs font-medium text-gray-500">
-                {/* Symbolspalte ganz links */}
+            <div className="px-0 py-2 flex items-center text-xs font-medium text-gray-500">
                 <div className="w-8 flex justify-center">
                     <ArrowUpDown className="h-3 w-3" />
                 </div>
 
-                {/* Flex-Container für Sortierbuttons */}
                 <div className="flex flex-1 gap-1 items-center">
-                    {/* Nutzer-Sortierung – nur wenn NICHT personal */}
                     {!scopeFlags?.isPersonal && (
                         <button
                             onClick={() => handleSort('user')}
                             className="flex items-center text-blue-600 font-semibold"
                         >
                             <span>Nutzer</span>
-                            <span className="ml-1 w-3 h-3 inline-flex items-center justify-center">
-                                <ChevronDown
-                                    className={`w-3 h-3 transition-transform ${
-                                        sortBy === 'user' ? '' : 'invisible'
-                                    } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
-                                />
-                            </span>
+                            <ChevronDown
+                                className={`ml-1 w-3 h-3 transition-transform ${
+                                    sortBy === 'user' ? '' : 'invisible'
+                                } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+                            />
                         </button>
                     )}
 
-                    {/* Datum immer sichtbar */}
                     <button
                         onClick={() => handleSort('date')}
                         className="flex items-center text-blue-600 font-semibold"
                     >
                         <span>Datum</span>
-                        <span className="ml-1 w-3 h-3 inline-flex items-center justify-center">
-                            <ChevronDown
-                                className={`w-3 h-3 transition-transform ${
-                                    sortBy === 'date' ? '' : 'invisible'
-                                } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
-                            />
-                        </span>
+                        <ChevronDown
+                            className={`ml-1 w-3 h-3 transition-transform ${
+                                sortBy === 'date' ? '' : 'invisible'
+                            } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+                        />
                     </button>
 
-                    {/* Betrag + OK-Spalte rechtsbündig */}
                     <div className="flex ml-auto">
-                        {/* Betrag immer sichtbar */}
                         <button
                             onClick={() => handleSort('amount')}
                             className="flex items-center text-blue-600 font-semibold"
                         >
                             <span>Betrag</span>
-                            <span className="ml-1 w-3 h-3 inline-flex items-center justify-center">
-                                <ChevronDown
-                                    className={`w-3 h-3 transition-transform ${
-                                        sortBy === 'amount' ? '' : 'invisible'
-                                    } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
-                                />
-                            </span>
+                            <ChevronDown
+                                className={`ml-1 w-3 h-3 transition-transform ${
+                                    sortBy === 'amount' ? '' : 'invisible'
+                                } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+                            />
                         </button>
 
-                        {/* OK-Sortierung – nur wenn NICHT personal */}
                         {!scopeFlags?.isPersonal && (
                             <button
                                 onClick={() => handleSort('confirmed')}
                                 className="flex items-center text-blue-600 font-semibold ml-2"
                             >
                                 <span>OK</span>
-                                <span className="ml-1 w-3 h-3 inline-flex items-center justify-center">
-                                    <ChevronDown
-                                        className={`w-3 h-3 transition-transform ${
-                                            sortBy === 'confirmed' ? '' : 'invisible'
-                                        } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
-                                    />
-                                </span>
+                                <ChevronDown
+                                    className={`ml-1 w-3 h-3 transition-transform ${
+                                        sortBy === 'confirmed' ? '' : 'invisible'
+                                    } ${sortDirection === 'desc' ? 'rotate-180' : ''}`}
+                                />
                             </button>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* 📜 Scrollbereich für Einträge */}
-            <div className="expenses-scroll-area rounded-lg p-4 flex-1 [&>div]:mb-[0.125rem]">
+            {/* 📜 Scrollbarer Bereich für die Liste der Items */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-0 py-2">
                 {sortedExpenses.length === 0 ? (
                     <div className="text-center text-sm text-gray-400 py-8">
                         Keine Ausgaben vorhanden
                     </div>
                 ) : (
-                    sortedExpenses.map(item => (
-                        <ExpenseItem
-                            key={item.id}
-                            item={item}
-                            onDelete={onDelete}
-                            onEdit={onEdit}
-                            scopeFlags={scopeFlags}
-                        />
-                    ))
+                    <div className="grid grid-cols-1 auto-rows-auto gap-[0.125rem]">
+                        {sortedExpenses.map(item => (
+                            <ExpenseItem
+                                key={item.id}
+                                item={item}
+                                onDelete={onDelete}
+                                onEdit={onEdit}
+                                scopeFlags={scopeFlags}
+                            />
+                        ))}
+                    </div>
                 )}
             </div>
         </div>

@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'
-
+import { useMonth } from '@/context/month-context.tsx'
 import { getStatusInfo } from '@/pages/jahresuebersicht/status-info'
 import {
     ArrowUpRight,
@@ -104,7 +104,25 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
         month.rejectionsByUser ?? {}
     )
 
+    // Aktuelles Jahr berechnen, z. B. 2025
+    const selectedYear = new Date().getFullYear()
+
+    // Hook zum Setzen des aktuellen Monats (z. B. für globale Monatsnavigation)
+    const { setCurrentDate } = useMonth()
+
+    // Hook aus react-router-dom, um zu einer neuen Route zu navigieren
     const navigate = useNavigate()
+
+    // Funktion, um zu einer bestimmten Monatsansicht (Scope) zu navigieren
+    const redirectTo = (scope: string, month: number) => {
+        // Setzt das aktuelle Datum im globalen Kontext auf den 1. Tag des gewünschten Monats
+        // Achtung: month - 1, da JS-Monate 0-basiert sind (Januar = 0)
+        setCurrentDate(new Date(selectedYear, month - 1, 1))
+
+        // Navigiert zur Zielseite, z. B. '/shared' oder '/child'
+        navigate(scope)
+    }
+
     const { userId } = useUser()
     const statusInfo = getStatusInfo(month.status)
     if (!userId) return null
@@ -226,7 +244,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                     <ActionButton
                                         onClick={e => {
                                             e.stopPropagation()
-                                            navigate('/shared')
+                                            redirectTo('/shared', month.monthId)
                                         }}
                                         variant="primary"
                                         size="sm"
@@ -261,7 +279,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                     <ActionButton
                                         onClick={e => {
                                             e.stopPropagation()
-                                            navigate('/child')
+                                            redirectTo('/child', month.monthId)
                                         }}
                                         variant="primary"
                                         size="sm"

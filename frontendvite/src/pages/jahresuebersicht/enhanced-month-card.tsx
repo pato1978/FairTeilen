@@ -1,4 +1,5 @@
 'use client'
+
 import React, { useState } from 'react'
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
@@ -104,22 +105,12 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
         month.rejectionsByUser ?? {}
     )
 
-    // Aktuelles Jahr berechnen, z. B. 2025
     const selectedYear = new Date().getFullYear()
-
-    // Hook zum Setzen des aktuellen Monats (z. B. für globale Monatsnavigation)
     const { setCurrentDate } = useMonth()
-
-    // Hook aus react-router-dom, um zu einer neuen Route zu navigieren
     const navigate = useNavigate()
 
-    // Funktion, um zu einer bestimmten Monatsansicht (Scope) zu navigieren
     const redirectTo = (scope: string, month: number) => {
-        // Setzt das aktuelle Datum im globalen Kontext auf den 1. Tag des gewünschten Monats
-        // Achtung: month - 1, da JS-Monate 0-basiert sind (Januar = 0)
         setCurrentDate(new Date(selectedYear, month - 1, 1))
-
-        // Navigiert zur Zielseite, z. B. '/shared' oder '/child'
         navigate(scope)
     }
 
@@ -130,12 +121,6 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
     const allUserIds = Object.keys(month.totalByUser)
     const partnerIds = allUserIds.filter(id => id !== userId)
     const me = users[userId]
-    const youPaid = month.totalByUser[userId] ?? 0
-    const partnerId = partnerIds[0]
-    const partnerPaid = month.totalByUser[partnerId] ?? 0
-    const difference = Math.abs(youPaid - partnerPaid)
-    const youOwe = youPaid < partnerPaid
-
     const isPending = month.status === 'pending'
     const isCompleted = month.status === 'completed'
     const isFuture = month.status === 'future'
@@ -155,7 +140,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
         <div
             className={`group relative bg-white rounded-lg shadow-sm border-2 ${statusInfo.borderColor} overflow-hidden`}
         >
-            <ClickableCard onClick={handleHeaderClick} disabled={false} className="relative">
+            <ClickableCard onClick={handleHeaderClick} className="relative">
                 <div className="flex items-center justify-between p-4 border-b border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-900">{month.name}</h3>
                     <div className="flex items-center space-x-2">
@@ -182,7 +167,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                     {isFuture && (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
                             <div className="flex items-center text-gray-600">
-                                <Calendar className="h-5 w-5 mr-3" />
+                                <Calendar className="h-5 w-5 mr-2 text-gray-600" />
                                 <span className="text-sm">
                                     Dieser Monat ist noch nicht verfügbar. Ausgaben können erst nach
                                     Monatsende bearbeitet werden.
@@ -193,7 +178,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                     {notTakenIntoAccount && (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
                             <div className="flex items-center text-gray-600">
-                                <Calendar className="h-5 w-5 mr-3" />
+                                <Calendar className="h-5 w-5 mr-2 text-gray-600" />
                                 <span className="text-sm">
                                     Dieser Monat ist hat keine Ausgaben und wird daher nicht
                                     berücksichtigt.
@@ -207,21 +192,20 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-lg font-semibold text-gray-900">Ausgaben</h4>
                                 <ActionButton
+                                    variant="primary"
                                     onClick={e => {
                                         e.stopPropagation()
                                         setShowExpenseDetails(s => !s)
                                     }}
-                                    variant="primary"
                                 >
                                     <Eye className="h-4 w-4 mr-1" />
                                     {showExpenseDetails ? 'Weniger Details' : 'Details anzeigen'}
                                 </ActionButton>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Gemeinsam */}
                                 <div className="bg-blue-50 border-2 border-blue-100 rounded-lg p-4 text-center">
                                     <div className="flex items-center justify-center mb-2">
-                                        <Users className="h-5 w-5 text-blue-600 mr-2" />
+                                        <Users className="h-5 w-5 mr-2 text-blue-600" />
                                         <span className="text-base text-blue-900">Gemeinsam</span>
                                     </div>
                                     <div className="text-base font-bold text-blue-900 mb-2">
@@ -242,21 +226,20 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                         </div>
                                     )}
                                     <ActionButton
+                                        variant="primary"
+                                        size="sm"
                                         onClick={e => {
                                             e.stopPropagation()
                                             redirectTo('/shared', month.monthId)
                                         }}
-                                        variant="primary"
-                                        size="sm"
                                     >
                                         <ArrowUpRight className="h-4 w-4 mr-1" />
                                         Ausgaben verwalten
                                     </ActionButton>
                                 </div>
-                                {/* Kind */}
                                 <div className="bg-purple-50 border-2 border-purple-100 rounded-lg p-4 text-center">
                                     <div className="flex items-center justify-center mb-2">
-                                        <Baby className="h-5 w-5 text-purple-600 mr-2" />
+                                        <Baby className="h-5 w-5 mr-2 text-purple-600" />
                                         <span className="text-base text-purple-900">Kind</span>
                                     </div>
                                     <div className="text-base font-bold text-purple-900 mb-2">
@@ -277,18 +260,17 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                         </div>
                                     )}
                                     <ActionButton
+                                        variant="primary"
+                                        size="sm"
                                         onClick={e => {
                                             e.stopPropagation()
                                             redirectTo('/child', month.monthId)
                                         }}
-                                        variant="primary"
-                                        size="sm"
                                     >
                                         <ArrowUpRight className="h-4 w-4 mr-1" />
                                         Ausgaben verwalten
                                     </ActionButton>
                                 </div>
-                                {/* Gesamt */}
                                 <div className="bg-gray-100 border-2 border-gray-200 rounded-lg p-4 text-center">
                                     <div className="flex items-center justify-center mb-2">
                                         <span className="text-base text-gray-700">Gesamt</span>
@@ -341,7 +323,9 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                             <div className="flex justify-end">
                                                 {hasRejected ? (
                                                     <div className="flex items-center text-amber-600 font-medium h-8">
-                                                        <UserX className="h-5 w-5 mr-2" />
+                                                        <div className="w-5 h-5 mr-2 flex items-center justify-center shrink-0">
+                                                            <UserX className="w-full h-full text-amber-600" />
+                                                        </div>
                                                         <span>Hat noch Redebedarf</span>
                                                     </div>
                                                 ) : isMe ? (
@@ -361,7 +345,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                                         size="md"
                                                         disabled={iHaveRedebedarf}
                                                     >
-                                                        <UserCheck className="h-5 w-5 mr-2" />
+                                                        <UserCheck className="h-5 w-5 mr-2 text-green-600" />
                                                         <span>
                                                             {iHaveRedebedarf
                                                                 ? 'Bestätigen'
@@ -372,7 +356,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                                     </ActionButton>
                                                 ) : (
                                                     <div className="flex items-center text-green-600 font-medium h-8">
-                                                        <UserCheck className="h-5 w-5 mr-2" />
+                                                        <UserCheck className="h-5 w-5 mr-2 text-green-600" />
                                                         <span>Bestätigt</span>
                                                     </div>
                                                 )}
@@ -387,7 +371,9 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                     {needsClarification && (
                         <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded">
                             <div className="flex items-center">
-                                <AlertTriangle className="h-6 w-6 text-orange-600 mr-3" />
+                                <div className="w-5 h-5 mr-2 flex items-center justify-center shrink-0">
+                                    <AlertTriangle className="w-full h-full text-orange-600" />
+                                </div>
                                 <span className="text-orange-700 font-medium">
                                     Dieser Monat hat offene Klärungspunkte und benötigt Ihre
                                     Aufmerksamkeit.
@@ -399,7 +385,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                     {isCompleted && (
                         <div className="bg-green-100 border-l-4 border-green-500 p-4 rounded">
                             <div className="flex items-center">
-                                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                                <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
                                 <span className="text-green-700 font-medium">
                                     Dieser Monat ist vollständig abgeschlossen und von allen
                                     bestätigt.

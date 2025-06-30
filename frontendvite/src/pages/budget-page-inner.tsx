@@ -2,7 +2,7 @@
 import { useState } from 'react'
 
 // ✅ Standard-Icon, falls keine Kategorie zugeordnet ist
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, ShoppingCart } from 'lucide-react'
 
 // ✅ Speichern von Ausgaben (POST)
 import { useSaveExpense } from '@/services/useSaveExpenseHook.ts'
@@ -29,16 +29,17 @@ import { useMonth } from '@/context/month-context'
 import { useBudget } from '@/context/budget-context'
 
 // ✅ Datentyp für einzelne Ausgaben
-import type { Expense } from '@/types'
+import { ExpenseType } from '@/types/index'
+import type { Expense } from '@/types/index'
 
 // 🧱 Typisierung der Props für die Komponente
 type Props = {
     title: string
     budgetTitle: string
     scopeFlags: {
-        isPersonal: boolean
-        isShared: boolean
-        isChild: boolean
+        isPersonal: ExpenseType.Personal
+        isShared: ExpenseType.Shared
+        isChild: ExpenseType.Child
     }
 }
 
@@ -63,14 +64,14 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
             amount: 0,
             date: new Date().toISOString().split('T')[0],
             category: '',
-            icon: HelpCircle,
+            icon: ShoppingCart,
             isPersonal: scopeFlags.isPersonal,
             isShared: scopeFlags.isShared,
             isChild: scopeFlags.isChild,
             isRecurring: false,
             isBalanced: false,
         })
-        setSelectedIcon(HelpCircle)
+        setSelectedIcon(ShoppingCart)
         setIsModalOpen(true)
     }
 
@@ -91,10 +92,11 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     // ❌ Löschen einer Ausgabe
     const handleDelete = async (id: string) => {
-        await deleteExpenseApi(id, {
-            isShared: scopeFlags.isShared,
-            isChild: scopeFlags.isChild,
-        })
+        let expenseType: ExpenseType = ExpenseType.Personal
+        if (scopeFlags.isShared) expenseType = ExpenseType.Shared
+        else if (scopeFlags.isChild) expenseType = ExpenseType.Child
+
+        await deleteExpenseApi(id, expenseType)
         refreshExpenses()
     }
 
@@ -167,6 +169,8 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                 expense={editingExpense}
                 onSave={handleSave}
                 availableIcons={availableIcons}
+                selectedIcon={selectedIcon} // ✅ hinzufügen
+                onIconChange={setSelectedIcon} // ✅ hinzufügen
             />
 
             {/* 💵 Modal: Budget bearbeiten */}

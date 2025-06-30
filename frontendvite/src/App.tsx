@@ -86,14 +86,7 @@ function AppRouter() {
                             </RootLayout>
                         }
                     />
-                    <Route
-                        path="/statistics"
-                        element={
-                            <RootLayout>
-                                <StatisticsPage />
-                            </RootLayout>
-                        }
-                    />
+
                     <Route
                         path="/trends"
                         element={

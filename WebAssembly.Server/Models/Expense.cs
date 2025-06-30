@@ -20,6 +20,8 @@ public class Expense
     public bool isPersonal { get; set; }
     public bool isChild { get; set; }
     public bool isShared { get; set; }
+    
+    
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
     

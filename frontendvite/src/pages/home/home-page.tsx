@@ -52,7 +52,7 @@ export default function HomePage() {
     return (
         <PageLayout onAddButtonClick={handleAddButtonClick}>
             {/* Header - Kompakterer Stil mit reduzierter Skalierung */}
-            <div className="page-header-container scale-90 transform-origin-top -mb-2">
+            <div className="page-header-container  transform-origin-top -mb-2">
                 <PageHeader
                     title="Overview"
                     initialDate={currentDate}

@@ -26,6 +26,8 @@ export interface ExpenseEditorBottomSheetProps {
     expense: Expense
     onSave: (expense: Expense) => void
     availableIcons?: Array<{ icon: any; name: string; defaultLabel: string }>
+    selectedIcon: any // ✅ NEU
+    onIconChange: (icon: any) => void // ✅ NEU
 }
 
 function formatDate(dateInput?: string | null): string {
@@ -128,6 +130,7 @@ export function ExpenseEditorBottomSheet({
 
     useEffect(() => {
         if (expense && isOpen) {
+            // 🧱 Ausgangspunkt: neue oder bestehende Ausgabe zusammenbauen
             const updatedExpense: Expense = {
                 ...defaultExpense,
                 ...expense,
@@ -137,10 +140,25 @@ export function ExpenseEditorBottomSheet({
 
             setEditingExpense(updatedExpense)
 
-            // ✅ Icon korrekt über Kategorie bestimmen
-            const selectedFromMap = iconMap[expense.category] || HelpCircle
-            setSelectedIcon(selectedFromMap)
+            // 🛒 Symbol bestimmen:
+            // 1. bereits gesetztes Icon (z. B. von handleAdd)
+            // 2. Icon anhand Kategorie
+            // 3. Fallback: ShoppingCart
+            const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
+            setSelectedIcon(chosenIcon)
 
+            // 🏷️ Bezeichnung automatisch setzen, wenn leer
+            const iconEntry = availableIcons.find(i => i.icon === chosenIcon)
+            const defaultLabel = iconEntry?.defaultLabel || 'Lebensmittel'
+
+            if (!expense.name || expense.name.trim() === '') {
+                setEditingExpense(prev => ({
+                    ...prev,
+                    name: defaultLabel,
+                }))
+            }
+
+            // 👪 Verteilung laden oder erzeugen (nur bei gemeinsamen oder Kind-Ausgaben)
             if (!updatedExpense.isPersonal) {
                 if (updatedExpense.distribution) {
                     const updatedDistribution = updatedExpense.distribution.map(p => ({
@@ -167,9 +185,9 @@ export function ExpenseEditorBottomSheet({
     if (animation === 'exited' && !isOpen) return null
 
     const selectedIconComponent = availableIcons.find(icon => icon.icon === selectedIcon) || {
-        icon: HelpCircle,
-        name: 'Sonstiges',
-        defaultLabel: 'Sonstiges',
+        icon: ShoppingCart,
+        name: 'Lebensmittel',
+        defaultLabel: 'Lebensmittel',
     }
 
     const handleSave = () => {
@@ -177,7 +195,7 @@ export function ExpenseEditorBottomSheet({
 
         const expenseToSave: Expense = {
             ...editingExpense,
-            category: selectedIconEntry?.name || 'Sonstiges', // speichert z. B. "Essen"
+            category: selectedIconEntry?.name || 'Lebensmittel', // speichert z. B. "Essen"
         }
 
         if (!editingExpense.isPersonal) {

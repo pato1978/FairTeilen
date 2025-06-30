@@ -1,6 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import { ClarificationReaction } from '@/types/monthly-overview.ts'
-
+export enum ExpenseType {
+    Personal = 'personal',
+    Shared = 'shared',
+    Child = 'child',
+}
 export interface Expense {
     id: string
     groupId: string
@@ -9,9 +13,7 @@ export interface Expense {
     date: string
     category: string
     createdByUserId: string
-    isPersonal: boolean
-    isShared: boolean
-    isChild: boolean
+    type: ExpenseType // ✅ NEU
     isRecurring: boolean
     isBalanced: boolean
 }

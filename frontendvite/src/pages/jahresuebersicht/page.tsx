@@ -42,12 +42,6 @@ export default function JahresUebersicht() {
         setSelectedYear(year)
     }
 
-    const handleMonthClick = (month: MonthlyOverview) => {
-        if (month.status !== 'completed' && month.status !== 'future') {
-            navigate(`/statistics?month=${selectedYear}-${month.id.toString().padStart(2, '0')}`)
-        }
-    }
-
     const handleStatusClick = (month: MonthlyOverview, e: React.MouseEvent) => {
         e.stopPropagation()
         if (month.status !== 'future') {
@@ -101,7 +95,6 @@ export default function JahresUebersicht() {
                         <EnhancedMonthCard
                             key={month.monthId}
                             month={month}
-                            onClick={() => handleMonthClick(month)}
                             onStatusClick={e => handleStatusClick(month, e)}
                         />
                     ))}

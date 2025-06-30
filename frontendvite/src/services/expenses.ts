@@ -1,4 +1,5 @@
-import type { Expense } from '@/types'
+import { ExpenseType } from '@/types/index'
+import type { Expense } from '@/types/index'
 import { getExpenseService } from '@/services/useDataService'
 
 export type ExpenseScope = 'personal' | 'shared' | 'child' | string
@@ -31,7 +32,7 @@ export async function fetchExpenses(
     if (scope === 'personal') {
         const service = getExpenseService()
         const allLocal = await service.getAllExpenses({ monthKey: month })
-        return allLocal.filter(e => e.isPersonal && !e.isShared && !e.isChild)
+        return allLocal.filter(e => e.type === ExpenseType.Personal)
     }
 
     // 🌐 Zentrale Abfrage für "shared" oder "child"
@@ -62,15 +63,10 @@ export async function fetchExpenses(
  * 🗑️ Löscht eine einzelne Ausgabe – entweder lokal oder über die zentrale API.
  *
  * @param id     Die ID der zu löschenden Ausgabe
- * @param flags  Kennzeichnung, ob es sich um eine zentrale Ausgabe handelt
+ * @param type   Der Typ der Ausgabe (personal, shared, child)
  */
-export async function deleteExpense(
-    id: string,
-    flags: { isShared: boolean; isChild: boolean }
-): Promise<void> {
-    const { isShared, isChild } = flags
-
-    if (isShared || isChild) {
+export async function deleteExpense(id: string, type: ExpenseType): Promise<void> {
+    if (type === ExpenseType.Shared || type === ExpenseType.Child) {
         // 🌐 Zentrale Ausgabe via API löschen
         const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
         if (!res.ok) {

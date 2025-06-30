@@ -20,9 +20,9 @@ export function PageHeader({ title, showMonthSelector = true }: PageHeaderProps)
     }
 
     return (
-        <div className="relative px-6 py-4 text-left rounded-xl w-full mb-2 backdrop-blur-sm shadow-lg -mt-4">
+        <div className="relative px-6 overflow-hidden py-4 text-left rounded-lg w-full mb-2 backdrop-blur-sm shadow-md -mt-4">
             {/* Hintergrund – hell statt blau */}
-            <div className="absolute inset-0 bg-white -z-10 pl-3" />
+            <div className="absolute inset-0 rounded-lg bg-white -z-10 pl-3" />
 
             {/* Dezente Designakzente */}
             <div className="absolute -top-4 -right-6 w-20 h-20 bg-blue-100/50 rounded-full blur-xl"></div>

@@ -98,7 +98,7 @@ function ActionButton({
     )
 }
 
-export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMonthCardProps) {
+export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showExpenseDetails, setShowExpenseDetails] = useState(false)
     const [reactions, setReactions] = useState<Record<string, boolean | null>>(
@@ -110,7 +110,7 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
     const navigate = useNavigate()
 
     const redirectTo = (scope: string, month: number) => {
-        setCurrentDate(new Date(selectedYear, month - 1, 1))
+        setCurrentDate(new Date(selectedYear, month, 1))
         navigate(scope)
     }
 
@@ -126,6 +126,11 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
     const isFuture = month.status === 'future'
     const needsClarification = month.status === 'needs-clarification'
     const notTakenIntoAccount = month.status === 'notTakenIntoAccount'
+
+    const hasOpenReactions = Object.values(reactions).some(val => val === true)
+
+    const showSettlementBlock =
+        !['future', 'completed', 'notTakenIntoAccount'].includes(month.status) && !hasOpenReactions
 
     const handleToggleConfirmation = (id: string) =>
         setReactions(prev => ({ ...prev, [id]: prev[id] === false ? null : false }))
@@ -145,7 +150,6 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                     <h3 className="text-lg font-semibold text-gray-900">{month.name}</h3>
                     <div className="flex items-center space-x-2">
                         <div
-                            onClick={onStatusClick}
                             className={`flex items-center px-3 py-1 rounded-full ${statusInfo.statusBgColor}`}
                         >
                             {statusInfo.icon}
@@ -364,6 +368,72 @@ export function EnhancedMonthCard({ month, onClick, onStatusClick }: EnhancedMon
                                         </div>
                                     )
                                 })}
+                            </div>
+                        </div>
+                    )}
+                    {showSettlementBlock && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm mt-4">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                Ausgleichszahlungen
+                            </h4>
+
+                            <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 mb-4">
+                                <div className="space-y-3">
+                                    {Object.entries(month.balanceByUser).map(([id, balance]) => {
+                                        if (Math.abs(balance) < 0.01) return null
+                                        const name = users[id]?.name ?? `Partner (${id})`
+                                        const isPayment = balance < 0
+                                        const amount = Math.abs(balance)
+
+                                        return (
+                                            <div
+                                                key={id}
+                                                className="flex items-center justify-between"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <div
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                                            isPayment
+                                                                ? 'bg-amber-100 text-amber-600'
+                                                                : 'bg-green-100 text-green-600'
+                                                        }`}
+                                                    >
+                                                        {isPayment ? (
+                                                            <ArrowUpRight className="h-4 w-4 rotate-45" />
+                                                        ) : (
+                                                            <ArrowUpRight className="h-4 w-4 -rotate-45" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-gray-900">
+                                                            {name}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 font-medium">
+                                                            {isPayment ? 'gibt' : 'erhält'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="font-bold text-base text-gray-900">
+                                                    €{amount.toFixed(2)}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                                <ActionButton
+                                    onClick={e => {
+                                        e.stopPropagation()
+                                        redirectTo('/settlement', month.monthId)
+                                    }}
+                                    variant="primary"
+                                    size="sm"
+                                >
+                                    <ArrowRight className="h-4 w-4 mr-1" />
+                                    Monat abschliessen
+                                </ActionButton>
                             </div>
                         </div>
                     )}

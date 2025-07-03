@@ -1,101 +1,65 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { fetchBudget } from '@/services/budget.ts'
-import { fetchExpenses } from '@/services/expenses.ts'
-import { Expense } from '@/types'
+import { fetchExpenses } from '@/services/expenses'
+import type { Expense } from '@/types'
 import { useMonth } from './month-context'
-import { useUser } from './user-context.tsx'
+import { useUser } from './user-context'
+import { getBudgetService } from '@/services/budgetFactory'
 
-// 🔢 Zustand eines einzelnen Budgetbereichs (z. B. personal, shared, child)
-type BudgetState = {
-    budget: number
-    expenses: Expense[]
-    isLoading: boolean
-}
+import { GROUP_ID } from '@/config/group-config'
 
-// 🧠 Gesamtstruktur für mehrere Budgetbereiche
-type MultiBudgetContextType = {
-    personal: BudgetState
-    shared: BudgetState
-    child: BudgetState
-}
+type BudgetState = { budget: number; expenses: Expense[]; isLoading: boolean }
+type MultiBudgetContextType = Record<'personal' | 'shared' | 'child', BudgetState>
 
-// 🧱 React-Kontext für den Zugriff von überall
 const MultiBudgetContext = createContext<MultiBudgetContextType | undefined>(undefined)
 
-/**
- * 📦 Provider-Komponente, die alle Budgetdaten verwaltet.
- * Lädt Budget und Ausgaben getrennt für personal, shared und child,
- * abhängig vom aktuellen Monat und Benutzer.
- */
 export function MultiBudgetProvider({ children }: { children: React.ReactNode }) {
-    const { currentDate } = useMonth() // 📆 Aktuell ausgewählter Monat
-    const { userId } = useUser() // 👤 Aktuell eingeloggter Benutzer
-
+    const { currentDate } = useMonth()
+    const { userId } = useUser()
     const scopes = ['personal', 'shared', 'child'] as const
 
-    const [states, setStates] = useState<Record<string, BudgetState>>({
+    const [states, setStates] = useState<MultiBudgetContextType>({
         personal: { budget: 0, expenses: [], isLoading: true },
         shared: { budget: 0, expenses: [], isLoading: true },
         child: { budget: 0, expenses: [], isLoading: true },
     })
 
     useEffect(() => {
-        if (!userId) {
-            console.warn(
-                '[MultiBudgetProvider] ⚠️ Kein Benutzer angemeldet – Budgetdaten werden nicht geladen.'
-            )
-            return
-        }
+        if (!userId) return
 
-        scopes.forEach(async scope => {
-            try {
-                const group = null // 🔧 Gruppenlogik noch nicht implementiert
+        const monthKey = currentDate.toISOString().slice(0, 7)
 
-                const [budget, expenses] = await Promise.all([
-                    fetchBudget(scope, currentDate, userId),
-                    fetchExpenses(userId, scope, group, currentDate),
-                ])
+        Promise.all(
+            scopes.map(async scope => {
+                const isPersonal = scope === 'personal'
+                const groupId = isPersonal ? undefined : GROUP_ID
 
-                setStates(prev => ({
-                    ...prev,
-                    [scope]: {
-                        budget,
-                        expenses,
-                        isLoading: false,
-                    },
-                }))
-            } catch (err) {
-                console.error(
-                    `[MultiBudgetProvider] ❌ Fehler beim Laden von Scope "${scope}"`,
-                    err
-                )
+                try {
+                    const budgetService = await getBudgetService()
+                    const budget = await budgetService.getBudget(scope, monthKey, userId, groupId)
 
-                setStates(prev => ({
-                    ...prev,
-                    [scope]: {
-                        budget: 0,
-                        expenses: [],
-                        isLoading: false,
-                    },
-                }))
-            }
-        })
-    }, [currentDate, userId, fetchExpenses]) // 🧠 fetchExpenses gehört in die Dependency-List
+                    // Nutze überall fetchExpenses
+                    const expenses = await fetchExpenses(userId, scope, currentDate)
 
-    return (
-        <MultiBudgetContext.Provider value={states as MultiBudgetContextType}>
-            {children}
-        </MultiBudgetContext.Provider>
-    )
+                    setStates(prev => ({
+                        ...prev,
+                        [scope]: { budget, expenses, isLoading: false },
+                    }))
+                } catch (err) {
+                    console.error(`[MultiBudgetProvider] ❌ Fehler bei Scope "${scope}"`, err)
+                    setStates(prev => ({
+                        ...prev,
+                        [scope]: { budget: 0, expenses: [], isLoading: false },
+                    }))
+                }
+            })
+        )
+    }, [currentDate, userId])
+
+    return <MultiBudgetContext.Provider value={states}>{children}</MultiBudgetContext.Provider>
 }
 
-/**
- * 🎯 Hook zum Zugriff auf alle Budgetbereiche (z. B. in Komponenten)
- */
 export function useMultiBudget() {
-    const context = useContext(MultiBudgetContext)
-    if (!context) {
-        throw new Error('useMultiBudget must be used inside MultiBudgetProvider')
-    }
-    return context
+    const ctx = useContext(MultiBudgetContext)
+    if (!ctx) throw new Error('useMultiBudget must be used inside MultiBudgetProvider')
+    return ctx
 }

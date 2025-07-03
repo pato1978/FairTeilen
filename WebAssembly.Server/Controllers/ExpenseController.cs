@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
+using WebAssembly.Server.Enums;
 using WebAssembly.Server.Models;
 
 namespace WebAssembly.Server.Controllers
@@ -18,6 +19,10 @@ namespace WebAssembly.Server.Controllers
         {
             _sharedDb = sharedDb;
         }
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // 📌 TESTENDPUNKT für das Kopieren wiederkehrender Ausgaben (Datum simulierbar)
+        // ─────────────────────────────────────────────────────────────────────────────
         [HttpGet("test/copyRecurring")]
         public async Task<IActionResult> TestCopyRecurring([FromQuery] DateTime simulatedToday)
         {
@@ -25,70 +30,80 @@ namespace WebAssembly.Server.Controllers
             return Ok("✅ Testlauf erfolgreich für " + simulatedToday.ToString("yyyy-MM-dd"));
         }
 
-public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
-{
-    var firstOfThisMonth = new DateTime(simulatedToday.Year, simulatedToday.Month, 1);
-
-    var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
-        (e.isShared || e.isChild) &&
-        e.isRecurring &&
-        e.Date >= firstOfThisMonth &&
-        e.Date < firstOfThisMonth.AddMonths(1)
-    );
-
-    if (alreadyCopied)
-        return;
-
-    var lastMonthStart = firstOfThisMonth.AddMonths(-1);
-    var lastMonthEnd = firstOfThisMonth;
-
-    var recurringInLastMonth = await _sharedDb.SharedExpenses
-        .Where(e =>
-            (e.isShared || e.isChild) &&
-            e.isRecurring &&
-            e.Date >= lastMonthStart &&
-            e.Date < lastMonthEnd
-        )
-        .ToListAsync();
-
-    foreach (var oldExp in recurringInLastMonth)
-    {
-        var newDate = oldExp.Date.AddMonths(1);
-
-        var exists = await _sharedDb.SharedExpenses.AnyAsync(e =>
-            (e.isShared || e.isChild) &&
-            e.isRecurring &&
-            e.Name == oldExp.Name &&
-            e.Amount == oldExp.Amount &&
-            e.Date == newDate &&
-            e.GroupId == oldExp.GroupId
-        );
-
-        if (exists)
-            continue;
-
-        var copy = new Expense
+        // 🔁 Kopiert wiederkehrende geteilte Ausgaben vom Vormonat in den aktuellen Monat
+        public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
         {
-            Id = Guid.NewGuid().ToString(),
-            Name = oldExp.Name,
-            Amount = oldExp.Amount,
-            Date = newDate,
-            MonthKey = newDate.ToString("yyyy-MM"),
-            YearKey = newDate.Year.ToString(),
-            Category = oldExp.Category,
-            isRecurring = true,
-            isShared = oldExp.isShared,
-            isChild = oldExp.isChild,
-            isBalanced = false,
-            GroupId = oldExp.GroupId,
-            CreatedByUserId = oldExp.CreatedByUserId
-        };
+            var firstOfThisMonth = new DateTime(simulatedToday.Year, simulatedToday.Month, 1);
 
-        _sharedDb.SharedExpenses.Add(copy);
-    }
+            // 👉 Bereits kopiert? (gilt nur für Shared/Child!)
+            var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
+                (e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child) &&
+                e.isRecurring &&
+                e.Date >= firstOfThisMonth &&
+                e.Date < firstOfThisMonth.AddMonths(1)
+            );
 
-    await _sharedDb.SaveChangesAsync();
-}
+            if (alreadyCopied)
+                return;
+
+            var lastMonthStart = firstOfThisMonth.AddMonths(-1);
+            var lastMonthEnd = firstOfThisMonth;
+
+            var recurringInLastMonth = await _sharedDb.SharedExpenses
+                .Where(e =>
+                    (e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child) &&
+                    e.isRecurring &&
+                    e.Date >= lastMonthStart &&
+                    e.Date < lastMonthEnd
+                )
+                .ToListAsync();
+
+            foreach (var oldExp in recurringInLastMonth)
+            {
+                var newDate = oldExp.Date.AddMonths(1);
+
+                // Sicherheitsprüfung: GroupId darf nicht fehlen
+                if (string.IsNullOrWhiteSpace(oldExp.GroupId))
+                {
+                    Console.WriteLine($"⚠️ WARNUNG: Ausgabenkopie ohne gültige GroupId blockiert: {oldExp.Name} ({oldExp.Id})");
+                    continue;
+                }
+
+                var exists = await _sharedDb.SharedExpenses.AnyAsync(e =>
+                    e.Type == oldExp.Type &&
+                    e.isRecurring &&
+                    e.Name == oldExp.Name &&
+                    e.Amount == oldExp.Amount &&
+                    e.Date == newDate &&
+                    e.GroupId == oldExp.GroupId
+                );
+
+                if (exists)
+                    continue;
+
+                var copy = new Expense
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = oldExp.Name,
+                    Amount = oldExp.Amount,
+                    Date = newDate,
+                    MonthKey = newDate.ToString("yyyy-MM"),
+                    YearKey = newDate.Year.ToString(),
+                    Category = oldExp.Category,
+                    isRecurring = true,
+                    Type = oldExp.Type,
+                    isBalanced = false,
+                    GroupId = oldExp.GroupId,
+                    CreatedByUserId = oldExp.CreatedByUserId
+                };
+
+                _sharedDb.SharedExpenses.Add(copy);
+            }
+
+            await _sharedDb.SaveChangesAsync();
+        }
+
+        // 📥 GET: Ausgaben abrufen (nach scope + Zeitraum gefiltert)
         [HttpGet]
         public async Task<IActionResult> GetExpenses(
             [FromQuery] string scope,
@@ -115,9 +130,9 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
             IQueryable<Expense> query = scope switch
             {
                 "shared" => _sharedDb.SharedExpenses
-                    .Where(e => e.isShared && (string.IsNullOrWhiteSpace(group) || e.GroupId == group)),
+                    .Where(e => e.Type == ExpenseType.Shared && (string.IsNullOrWhiteSpace(group) || e.GroupId == group)),
                 "child" => _sharedDb.SharedExpenses
-                    .Where(e => e.isChild),
+                    .Where(e => e.Type == ExpenseType.Child),
                 _ => throw new ArgumentException($"Unbekannter scope: {scope}")
             };
 
@@ -127,9 +142,17 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
             return Ok(result);
         }
 
+        // 📤 POST: Neue Ausgabe speichern oder bestehende ersetzen
         [HttpPost]
         public async Task<IActionResult> SaveExpense([FromBody] ExpenseDto dto)
         {
+            // ❗ Sicherheitsprüfung: GroupId muss vorhanden sein bei Shared/Child
+            if ((dto.Type == ExpenseType.Shared || dto.Type == ExpenseType.Child) &&
+                string.IsNullOrWhiteSpace(dto.GroupId))
+            {
+                return BadRequest("Für gemeinsame oder Kind-bezogene Ausgaben ist eine gültige GroupId erforderlich.");
+            }
+
             var monthKey = dto.Date.ToString("yyyy-MM");
             var yearKey = dto.Date.Year.ToString();
             var isNew = string.IsNullOrWhiteSpace(dto.Id);
@@ -144,13 +167,11 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
                 MonthKey = monthKey,
                 YearKey = yearKey,
                 Category = dto.Category,
-                isPersonal = dto.isPersonal,
-                isChild = dto.isChild,
-                isShared = dto.isShared,
+                Type = dto.Type,
                 isRecurring = dto.isRecurring,
                 isBalanced = dto.isBalanced,
                 GroupId = dto.GroupId,
-                CreatedByUserId = dto.createdByUserId // Achtung: „createdByUserId“ kleingeschrieben
+                CreatedByUserId = dto.createdByUserId
             };
 
             var context = (DbContext)_sharedDb;
@@ -169,56 +190,58 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteExpense(string id)
+        public async Task<IActionResult> DeleteExpense(string id, [FromQuery] string? group)
         {
             var expense = await _sharedDb.SharedExpenses.FirstOrDefaultAsync(e => e.Id == id);
-            if (expense != null)
+            if (expense == null)
+                return NotFound();
+
+            // ❗ Sicherheitsprüfung: GroupId bei Shared/Child erforderlich und muss stimmen
+            if ((expense.Type == ExpenseType.Shared || expense.Type == ExpenseType.Child))
             {
-                _sharedDb.SharedExpenses.Remove(expense);
-                await _sharedDb.SaveChangesAsync();
-                return NoContent();
+                if (string.IsNullOrWhiteSpace(group))
+                    return BadRequest("GroupId fehlt – geteilte Ausgaben dürfen nur mit gültiger Gruppen-ID gelöscht werden.");
+
+                if (expense.GroupId != group)
+                    return BadRequest("GroupId stimmt nicht mit der gespeicherten Gruppen-ID überein.");
             }
 
-            return NotFound();
+            _sharedDb.SharedExpenses.Remove(expense);
+            await _sharedDb.SaveChangesAsync();
+            return NoContent();
         }
 
-        // ───────────────────────────────────────────────────────────────────────────
-        // ❗️ NEU: Diese Methode ist jetzt PUBLIC und ohne Übergabe‐Parameter.
-        // Hangfire fragt hier selbst ab, ob für den aktuellen Monat schon kopiert ist.
-        // ───────────────────────────────────────────────────────────────────────────
+        // 📅 Hangfire-Aufruf für automatisches Kopieren wiederkehrender Ausgaben
         [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 60 * 60)]
         public async Task CopyRecurringSharedExpenses()
         {
-            // 1) Aktuellen Monatsanfang ermitteln
             var today = DateTime.Today;
             var firstOfThisMonth = new DateTime(today.Year, today.Month, 1);
-
-            // ─────────────────────────────────────────────────────────────────────────────────
-            // Entfernt: globaler Abbruch, wenn irgendeine Kopie bereits existiert.
-            // Stattdessen findet die Duplikatprüfung pro Eintrag in der Schleife statt.
-            // ─────────────────────────────────────────────────────────────────────────────────
-
-            // 2) Wiederkehrende Ausgaben aus dem Vormonat auslesen
             var lastMonthStart = firstOfThisMonth.AddMonths(-1);
-            var lastMonthEnd = firstOfThisMonth; // exklusiv
+            var lastMonthEnd = firstOfThisMonth;
 
             var recurringInLastMonth = await _sharedDb.SharedExpenses
                 .Where(e =>
-                    (e.isShared || e.isChild) &&
+                    (e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child) &&
                     e.isRecurring &&
                     e.Date >= lastMonthStart &&
                     e.Date < lastMonthEnd
                 )
                 .ToListAsync();
 
-            // 3) Für jeden alten Eintrag: prüfen und ggf. kopieren
             foreach (var oldExp in recurringInLastMonth)
             {
                 var newDate = oldExp.Date.AddMonths(1);
 
-                // Duplikatprüfungen (nur identische Einträge überspringen)
+                // Sicherheitsprüfung
+                if (string.IsNullOrWhiteSpace(oldExp.GroupId))
+                {
+                    Console.WriteLine($"⚠️ WARNUNG: Ausgabenkopie ohne gültige GroupId blockiert: {oldExp.Name} ({oldExp.Id})");
+                    continue;
+                }
+
                 var exists = await _sharedDb.SharedExpenses.AnyAsync(e =>
-                    (e.isShared || e.isChild) &&
+                    e.Type == oldExp.Type &&
                     e.isRecurring &&
                     e.Name == oldExp.Name &&
                     e.Amount == oldExp.Amount &&
@@ -239,8 +262,7 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
                     YearKey = newDate.Year.ToString(),
                     Category = oldExp.Category,
                     isRecurring = true,
-                    isShared = oldExp.isShared,
-                    isChild = oldExp.isChild,
+                    Type = oldExp.Type,
                     isBalanced = false,
                     GroupId = oldExp.GroupId,
                     CreatedByUserId = oldExp.CreatedByUserId
@@ -249,7 +271,6 @@ public async Task CopyRecurringSharedExpensesAtDate(DateTime simulatedToday)
                 _sharedDb.SharedExpenses.Add(copy);
             }
 
-            // 4) Änderungen in die Datenbank schreiben
             await _sharedDb.SaveChangesAsync();
         }
     }

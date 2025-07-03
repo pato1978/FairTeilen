@@ -1,62 +1,46 @@
-// ✅ React-Import für State-Management
 import { useState } from 'react'
-
-// ✅ Standard-Icon, falls keine Kategorie zugeordnet ist
 import { HelpCircle, ShoppingCart } from 'lucide-react'
 
-// ✅ Speichern von Ausgaben (POST)
 import { useSaveExpense } from '@/services/useSaveExpenseHook.ts'
 import { deleteExpense as deleteExpenseApi } from '@/services/expenses.ts'
-
-// ✅ Hilfsfunktionen und Daten für Icons, Budgetberechnung und Datum
 import { iconMap } from '@/lib/icon-map'
 import { availableIcons } from '@/lib/icon-options'
 import { calculateTotalExpenses, calculatePercentageUsed } from '@/lib/budget-utils'
 import { toDateInputValue } from '@/lib/utils'
 
-// ✅ Layout-Komponenten
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
-
-// ✅ UI-Komponenten (Budgetanzeige, Modale, Ausgabenliste)
 import { BudgetSummaryCard } from '@/components/dashboard/budget-summary-card'
 import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
 import BudgetEditorModal from '@/components/modals/budget-editor-modal'
 import { VerbesserteLitenansicht } from '@/components/dashboard/verbesserte-listenansicht'
 
-// ✅ Kontexte: Monat und Budgetdaten (globaler Zustand)
 import { useMonth } from '@/context/month-context'
 import { useBudget } from '@/context/budget-context'
 
-// ✅ Datentyp für einzelne Ausgaben
 import { ExpenseType } from '@/types/index'
 import type { Expense } from '@/types/index'
 
-// 🧱 Typisierung der Props für die Komponente
+// 🧱 Nur noch `type` statt `scopeFlags`
 type Props = {
     title: string
     budgetTitle: string
-    scopeFlags: {
-        isPersonal: ExpenseType.Personal
-        isShared: ExpenseType.Shared
-        isChild: ExpenseType.Child
-    }
+    type: ExpenseType // 'personal' | 'shared' | 'child'
 }
 
-// 📦 Hauptkomponente für persönliche, gemeinsame und Kinder-Ausgaben
-export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
+export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     const { currentDate } = useMonth()
     const { budget, setBudget, expenses, setExpenses, isLoading, refreshExpenses } = useBudget()
 
-    // 🎛️ UI-Zustände
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [selectedIcon, setSelectedIcon] = useState<any>(null)
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState('gesamt')
+
     const saveExpense = useSaveExpense()
 
-    // ➕ Neue Ausgabe hinzufügen
+    // ➕ Neue Ausgabe
     const handleAdd = () => {
         setEditingExpense({
             id: '',
@@ -65,16 +49,17 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
             date: new Date().toISOString().split('T')[0],
             category: '',
             icon: ShoppingCart,
-            isPersonal: scopeFlags.isPersonal,
-            isShared: scopeFlags.isShared,
-            isChild: scopeFlags.isChild,
+            type: type, // ✅ Nur `type` verwenden
             isRecurring: false,
             isBalanced: false,
+            isPersonal: type === 'personal',
+            isChild: type === 'child',
+            isShared: type === 'shared',
         })
         setSelectedIcon(ShoppingCart)
         setIsModalOpen(true)
     }
-
+    console.log('🔎 Alle geladenen Ausgaben:', expenses)
     // ✏️ Vorhandene Ausgabe bearbeiten
     const handleEdit = (e: Expense) => {
         setEditingExpense({ ...e, date: toDateInputValue(e.date) })
@@ -82,25 +67,35 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
         setIsModalOpen(true)
     }
 
-    // 💾 Speichern (neu oder Update)
+    // 💾 Speichern
     const handleSave = async (exp: Expense) => {
-        await saveExpense(exp, selectedIcon, setExpenses)
-        refreshExpenses()
+        console.log('💾 Speichern mit Typ:', exp.type)
+        const saved = await saveExpense(exp, selectedIcon)
+
+        // 🔁 Lokal aktualisieren statt refresh
+        setExpenses(prev => {
+            const exists = prev.find(e => e.id === saved.id)
+            if (exists) {
+                // ✅ bestehende Ausgabe ersetzen
+                return prev.map(e => (e.id === saved.id ? saved : e))
+            } else {
+                // ➕ neue Ausgabe hinzufügen
+                return [...prev, saved]
+            }
+        })
+
         setIsModalOpen(false)
         setEditingExpense(null)
     }
 
-    // ❌ Löschen einer Ausgabe
+    // ❌ Löschen
+    // ✅ Löscht lokal aus der Liste, kein unnötiger API-Aufruf
     const handleDelete = async (id: string) => {
-        let expenseType: ExpenseType = ExpenseType.Personal
-        if (scopeFlags.isShared) expenseType = ExpenseType.Shared
-        else if (scopeFlags.isChild) expenseType = ExpenseType.Child
-
-        await deleteExpenseApi(id, expenseType)
-        refreshExpenses()
+        await deleteExpenseApi(id, type)
+        setExpenses(prev => prev.filter(e => e.id !== id))
     }
 
-    // 🔎 Ausgaben nach Kategorie filtern
+    // 🔎 Filterlogik
     function getFilteredExpenses(expenses: Expense[], selectedCategory: string): Expense[] {
         if (selectedCategory === 'gesamt') return expenses
         if (selectedCategory === 'wiederkehrend') return expenses.filter(e => e.isRecurring)
@@ -110,29 +105,23 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
 
     const filteredExpenses = getFilteredExpenses(expenses, selectedCategory)
 
-    console.log('📊 Alle geladenen Ausgaben:', expenses)
-    console.log('📊 Gefilterte Ausgaben:', filteredExpenses)
-    console.log('📊 Aktuelle Kategorie:', selectedCategory)
-
-    // 🖼️ Icon anhand Kategorie zuweisen
+    // 🖼️ Icons zuweisen
     const mapped = filteredExpenses.map(e => ({
         ...e,
         icon: iconMap[e.category] || HelpCircle,
     }))
 
-    // 💡 Budgetberechnungen
+    // 💡 Budgetberechnung
     const totalExpenses = calculateTotalExpenses(filteredExpenses)
     const percentageUsed = calculatePercentageUsed(totalExpenses, budget)
 
-    // 🖥️ JSX – Seitengestaltung
     return (
         <PageLayout onAddButtonClick={handleAdd}>
             <div className="page-header-container">
-                <PageHeader title={title} /> {/* z. B. „Persönlich“ oder „Gemeinsam“ */}
+                <PageHeader title={title} />
             </div>
 
             <div className="bg-white shadow-md rounded-lg p-4 flex flex-col h-full min-h-0 overflow-hidden">
-                {/* 💳 BudgetCard oben – nicht scrollbar */}
                 <div className="pb-4">
                     <BudgetSummaryCard
                         title={budgetTitle}
@@ -141,11 +130,10 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                         expenses={expenses}
                         percentageUsed={percentageUsed}
                         onBudgetClick={() => setIsBudgetModalOpen(true)}
-                        onCategoryChange={newCat => setSelectedCategory(newCat)}
+                        onCategoryChange={setSelectedCategory}
                     />
                 </div>
 
-                {/* 🧾 Listenansicht mit Scrollverhalten */}
                 <div className="flex-1 min-h-0">
                     {isLoading ? (
                         <div className="text-center text-sm text-gray-500 py-8">
@@ -156,24 +144,22 @@ export function BudgetPageInner({ title, budgetTitle, scopeFlags }: Props) {
                             expenses={mapped}
                             onDelete={handleDelete}
                             onEdit={handleEdit}
-                            scopeFlags={scopeFlags}
+                            type={type} // ✅ Statt scopeFlags
                         />
                     )}
                 </div>
             </div>
 
-            {/* 🔽 Modal: Neue oder bearbeitete Ausgabe */}
             <ExpenseEditorBottomSheet
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 expense={editingExpense}
                 onSave={handleSave}
                 availableIcons={availableIcons}
-                selectedIcon={selectedIcon} // ✅ hinzufügen
-                onIconChange={setSelectedIcon} // ✅ hinzufügen
+                selectedIcon={selectedIcon}
+                onIconChange={setSelectedIcon}
             />
 
-            {/* 💵 Modal: Budget bearbeiten */}
             <BudgetEditorModal
                 isOpen={isBudgetModalOpen}
                 onClose={() => setIsBudgetModalOpen(false)}

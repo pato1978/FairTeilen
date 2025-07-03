@@ -1,11 +1,7 @@
-import { BudgetPageInner } from "@/pages/budget-page-inner"
-
+import { BudgetPageInner } from '@/pages/budget-page-inner'
+import { ExpenseType } from '@/types'
 export function ChildPageInner() {
-  return (
-      <BudgetPageInner
-          title="Kind"
-          budgetTitle="Jährliche Ausgaben"
-          scopeFlags={{ isPersonal: false, isShared: false, isChild: true }}
-      />
-  )
+    return (
+        <BudgetPageInner title="Kind" budgetTitle="Jährliche Ausgaben" type={ExpenseType.Child} />
+    )
 }

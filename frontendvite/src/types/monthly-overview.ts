@@ -15,21 +15,22 @@ export interface ClarificationReaction {
 }
 
 export interface MonthlyOverview {
-    monthId: number
-    name: string
-    status: 'completed' | 'pending' | 'needs-clarification' | 'future' | 'notTakenIntoAccount'
+    id: string // GUID – eindeutiger Monatsbezeichner
+    groupId: string
+    monthId: string
+    monthKey: string // "2025-07"
+    yearKey: string // "2025"
+    status: 'open' | 'completed' | 'future'
+    name?: string
 
-    // Gesamtbeträge des Monats
-    total: number // Gesamt aller Ausgaben (shared + child)
-    shared: number // Nur geteilte Ausgaben (Summe)
-    child: number // Nur Kind-bezogene Ausgaben (Summe)
+    total: number
+    shared: number
+    child: number
+    balance: number
 
-    // Neu: Gruppierung pro Nutzer (nach userId)
-    sharedByUser: Record<string, number> // z. B. { "abc123": 40.50, "xyz456": 21.00 }
-    childByUser: Record<string, number>
-    totalByUser: Record<string, number> // shared + child
-    balanceByUser: Record<string, number> // Differenz zu den anderen
-
-    // Rejected-Status pro Nutzer (für Klärung)
-    rejectionsByUser: Record<string, boolean>
+    sharedByUser?: Record<string, number>
+    childByUser?: Record<string, number>
+    totalByUser?: Record<string, number>
+    balanceByUser?: Record<string, number>
+    rejectionsByUser?: Record<string, boolean>
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
+using WebAssembly.Server.Enums;
 using WebAssembly.Server.Models;
 
 namespace WebAssembly.Server.Services;
@@ -14,7 +15,7 @@ public class YearOverviewService
         _sharedDb = sharedDb;
     }
 
-    public async Task<YearOverview> GetOverviewForYearAsync(int year, string userId)
+    public async Task<YearOverview> GetOverviewForYearAsync(int year, string userId,string groupId)
     {
         // 📦 Initialisiere die Jahresübersicht
         var overview = new YearOverview
@@ -39,14 +40,14 @@ public class YearOverviewService
                 .ToListAsync();
 
             // 🔸 Gemeinschaftsausgaben extrahieren
-            var monthlyExpensesShared = monthlyExpensesAll.Where(e => e.isShared).ToList();
+            var monthlyExpensesShared = monthlyExpensesAll.Where(e => e.Type == ExpenseType.Shared).ToList();
             var totalShared = monthlyExpensesShared.Sum(e => e.Amount);
             var sharedAmountsByUser = monthlyExpensesShared
                 .GroupBy(e => e.CreatedByUserId!)
                 .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
 
             // 🔸 Kinderausgaben extrahieren
-            var monthlyExpensesChild = monthlyExpensesAll.Where(e => e.isChild).ToList();
+            var monthlyExpensesChild = monthlyExpensesAll.Where(e => e.Type == ExpenseType.Child).ToList();
             var totalChild = monthlyExpensesChild.Sum(e => e.Amount);
             var childAmountsByUser = monthlyExpensesChild
                 .GroupBy(e => e.CreatedByUserId!)
@@ -94,15 +95,23 @@ public class YearOverviewService
                 u => totalByUser[u.Key] - totalByUser.Where(kvp => kvp.Key != u.Key).Sum(kvp => kvp.Value)
             );
 
-            // 📦 Monatsübersicht für diesen Monat erzeugen
+            var monthKey = $"{year:D4}-{month:D2}";
+            var yearKey = $"{year}";
+            
+
             var monthly = new MonthlyOverview
             {
-                MonthId = month,
+                Id = $"{groupId}_{monthKey}", // z. B. "test-group_2025-07"
+                GroupId = groupId,
+                MonthKey = monthKey,
+                YearKey = yearKey,
                 Name = monthName,
                 Status = status,
+
                 Total = totalShared + totalChild,
                 Shared = totalShared,
                 Child = totalChild,
+
                 SharedByUser = sharedAmountsByUser,
                 ChildByUser = childAmountsByUser,
                 TotalByUser = totalByUser,

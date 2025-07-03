@@ -19,18 +19,14 @@ interface VerbesserteLitenansichtProps {
     expenses: Expense[]
     onDelete: (id: string) => void | Promise<void>
     onEdit: (expense: Expense) => void
-    scopeFlags?: {
-        isPersonal: boolean
-        isShared: boolean
-        isChild: boolean
-    }
+    type: 'personal' | 'shared' | 'child'
 }
 
 export function VerbesserteLitenansicht({
     expenses,
     onDelete,
     onEdit,
-    scopeFlags,
+    type,
 }: VerbesserteLitenansichtProps) {
     const [sortBy, setSortBy] = useState<string | null>(null)
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -126,7 +122,7 @@ export function VerbesserteLitenansicht({
                 </div>
 
                 <div className="flex flex-1 gap-1 items-center">
-                    {!scopeFlags?.isPersonal && (
+                    {type !== 'personal' && (
                         <button
                             onClick={() => handleSort('user')}
                             className="flex items-center text-blue-600 font-semibold"
@@ -165,7 +161,7 @@ export function VerbesserteLitenansicht({
                             />
                         </button>
 
-                        {!scopeFlags?.isPersonal && (
+                        {type !== 'personal' && (
                             <button
                                 onClick={() => handleSort('confirmed')}
                                 className="flex items-center text-blue-600 font-semibold ml-2"
@@ -196,7 +192,6 @@ export function VerbesserteLitenansicht({
                                 item={item}
                                 onDelete={onDelete}
                                 onEdit={onEdit}
-                                scopeFlags={scopeFlags}
                             />
                         ))}
                     </div>

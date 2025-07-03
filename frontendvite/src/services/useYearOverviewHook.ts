@@ -2,6 +2,7 @@ import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview.ts'
 import type { YearOverview } from '@/types/year-overview'
 import { useCallback } from 'react'
+import { GROUP_ID } from '@/config/group-config'
 
 /**
  * Liefert eine Funktion, um die Jahresübersicht für den aktuellen Nutzer zu laden.
@@ -17,7 +18,9 @@ export function useFetchYearOverview() {
                 )
             }
 
-            const res = await fetch(`/api/yearoverview/${year}?userId=${userId}`)
+            const res = await fetch(
+                `/api/yearoverview/${year}?userId=${userId}&groupId=${GROUP_ID}`
+            )
 
             if (!res.ok) {
                 throw new Error('Fehler beim Laden der Jahresübersicht')

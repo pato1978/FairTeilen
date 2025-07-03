@@ -1,33 +1,44 @@
-// 💸 Holt das Budget für einen bestimmten Scope und Monat für einen bestimmten Nutzer
-export async function fetchBudget(scope: string, date: Date, userId: string): Promise<number> {
-    const month = date.toISOString().slice(0, 7)
+// src/services/budget.ts
 
-    const res = await fetch(`/api/budget?scope=${scope}&month=${month}&userId=${userId}`)
+import { GROUP_ID } from '@/config/group-config'
+import { getBudgetService } from './budgetFactory'
+import type { IBudgetService } from './IBudgetService'
 
-    if (!res.ok) {
-        console.error(`❌ Fehler beim Laden des Budgets für "${scope}" im Monat ${month}`)
-        throw new Error('Fehler beim Laden des Budgets')
-    }
-
-    return await res.json()
+/**
+ * 🔁 Lädt das Budget für einen bestimmten Bereich (Scope) und Monat.
+ *
+ * @param scope  'personal' | 'shared' | 'child'
+ * @param date   Ein Datum innerhalb des Zielmonats
+ * @param userId Die ID des aktuellen Nutzers
+ * @returns      Das Budget als Zahl
+ */
+export async function fetchBudget(
+    scope: 'personal' | 'shared' | 'child',
+    date: Date,
+    userId: string
+): Promise<number> {
+    const monthKey = date.toISOString().slice(0, 7)
+    const service = (await getBudgetService()) as IBudgetService
+    const groupId = scope === 'personal' ? undefined : GROUP_ID
+    return service.getBudget(scope, monthKey, userId, groupId)
 }
 
-// 💾 Speichert oder aktualisiert das Budget für einen Scope und Monat für einen bestimmten Nutzer
+/**
+ * 💾 Speichert oder aktualisiert das Budget für einen bestimmten Bereich und Monat.
+ *
+ * @param scope  'personal' | 'shared' | 'child'
+ * @param date   Ein Datum innerhalb des Zielmonats
+ * @param amount Neuer Budget-Wert
+ * @param userId Die ID des aktuellen Nutzers
+ */
 export async function saveBudget(
-    scope: string,
+    scope: 'personal' | 'shared' | 'child',
     date: Date,
     amount: number,
     userId: string
 ): Promise<void> {
-    const month = date.toISOString().slice(0, 7)
-
-    try {
-        await fetch(`/api/budget`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scope, month, amount, userId }),
-        })
-    } catch (err) {
-        console.error('❌ Fehler beim Speichern des Budgets:', err)
-    }
+    const monthKey = date.toISOString().slice(0, 7)
+    const service = (await getBudgetService()) as IBudgetService
+    const groupId = scope === 'personal' ? undefined : GROUP_ID
+    return service.saveBudget(scope, monthKey, amount, userId, groupId)
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { Trash2, Edit, Repeat, CheckCircle, AlertTriangle, Scale } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Edit, Repeat, Scale, Trash2 } from 'lucide-react'
 
 import { useSwipe } from '@/lib/hooks/use-swipe'
 import { convertDateToDisplay } from '@/lib/utils'
@@ -9,22 +9,18 @@ import { useUser } from '@/context/user-context' // 🆕 Zugriff auf den eingelo
 import { users } from '@/data/users'
 import { userColorMap } from '@/lib/colorMap'
 import { v4 as uuidv4 } from 'uuid'
-import type { Expense, ClarificationReaction } from '@/types'
+import type { ClarificationReaction, Expense } from '@/types'
+import { ExpenseType } from '@/types'
 import { ClarificationStatus } from '@/types/monthly-overview'
 import {
-    postClarificationReaction,
     deleteClarificationReaction,
+    postClarificationReaction,
 } from '@/services/clarificationReactions.ts'
 
 interface ExpenseItemProps {
     item: Expense
     onDelete: (id: string) => void | Promise<void>
     onEdit: (expense: Expense) => void
-    scopeFlags?: {
-        isPersonal: boolean
-        isShared: boolean
-        isChild: boolean
-    }
 }
 
 const formatEuro = (amount: string | number) => {
@@ -37,7 +33,7 @@ const formatEuro = (amount: string | number) => {
     }).format(parsed)
 }
 
-export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemProps) {
+export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     const Icon = item.icon
 
     // 📦 Zugriff auf den aktuellen Benutzer über den zentralen UserContext
@@ -55,7 +51,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
     const isOwnItem = createdByUserId === currentUserId
 
     // 👥 Zeige Initialen bei gemeinsamen oder Kinder-Ausgaben
-    const showInitials = scopeFlags?.isShared || scopeFlags?.isChild
+    const showInitials = ExpenseType.Shared || ExpenseType.Child //scopeFlags?.isShared || scopeFlags?.isChild
 
     // 🎨 Farbzuordnung für den Avatar
     const rawColor = users[createdByUserId]?.color ?? 'gray-400'
@@ -132,7 +128,6 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
         `}
                 style={style}
                 {...touchProps}
-                onClick={() => isOwnItem && onEdit(item)}
             >
                 {/* 🧍 Avatar oder Ausgleichs-Icon */}
                 <div className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center mr-3">
@@ -142,7 +137,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                         </div>
                     ) : showInitials ? (
                         <div
-                            className={`bg-white text-sm font-semibold border-2 flex items-center justify-center w-full h-full rounded-full ${textClass} ${borderClass}`}
+                            className={`bg-white text-base font-semibold border-2 flex items-center justify-center w-full h-full rounded-full ${textClass} ${borderClass}`}
                         >
                             {users[createdByUserId]?.initials ?? '?'}
                         </div>
@@ -182,10 +177,7 @@ export function ExpenseItem({ item, onDelete, onEdit, scopeFlags }: ExpenseItemP
                         {showInitials && (
                             <div className="relative group">
                                 {isOwnItem ? (
-                                    <CheckCircle
-                                        className="w-5 h-5 text-green-300"
-                                        title="Eigene Ausgabe – automatisch bestätigt"
-                                    />
+                                    <CheckCircle className="w-5 h-5 text-green-300" />
                                 ) : (
                                     <button
                                         onClick={e => toggleConfirmationStatus(e, item)}

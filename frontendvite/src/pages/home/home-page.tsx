@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { User, Users, Baby, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'

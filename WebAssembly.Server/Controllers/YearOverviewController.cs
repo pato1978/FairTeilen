@@ -18,9 +18,9 @@ namespace WebAssembly.Server.Controllers;
         }
 
         [HttpGet("{year}")]
-        public async Task<ActionResult<YearOverview>> GetYearOverview(int year,[FromQuery] string userId)
+        public async Task<ActionResult<YearOverview>> GetYearOverview(int year,[FromQuery] string userId,[FromQuery] string groupId)
         {
-            var result = await _yearOverviewService.GetOverviewForYearAsync(year,  userId );
+            var result = await _yearOverviewService.GetOverviewForYearAsync(year,  userId , groupId);
             return Ok(result);
         }
     }

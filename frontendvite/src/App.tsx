@@ -6,7 +6,7 @@ import ChildPage from '@/pages/child/page'
 import AnalysePage from '@/pages/analyse/page'
 import JahresuebersichtPage from '@/pages/jahresuebersicht/page'
 import PersonalPage from '@/pages/personal/page'
-import StatisticsPage from '@/pages/statistics/page'
+
 import ProfilePage from '@/pages/profile/page'
 import TrendsPage from '@/pages/trends/page'
 import HomePage from '@/pages/home/page'
@@ -119,11 +119,12 @@ function AppRouter() {
 
 export default function App() {
     useEffect(() => {
-        const service = getExpenseService()
-        service
-            .initDb()
-            .then(() => console.log('💾 sql.js (WASM) Datenbank bereit!'))
-            .catch(err => console.error('❌ Fehler beim Initialisieren der sql.js DB:', err))
+        getExpenseService()
+            .then(service => {
+                // 💡 Hier KEIN initDb mehr nötig, weil bereits in main.tsx ausgeführt
+                console.log('ℹ️ getExpenseService() erfolgreich geladen:', service)
+            })
+            .catch(err => console.error('❌ Fehler beim Laden des ExpenseService:', err))
     }, [])
 
     return (

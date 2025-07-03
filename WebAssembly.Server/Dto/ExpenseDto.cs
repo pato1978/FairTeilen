@@ -1,3 +1,6 @@
+
+using WebAssembly.Server.Enums;
+
 namespace WebAssembly.Server.Models;
 
 public class ExpenseDto
@@ -7,10 +10,8 @@ public class ExpenseDto
     public decimal Amount { get; set; }
     public DateTime Date { get; set; }
     public string Category { get; set; } = "";
-
-    public bool isPersonal { get; set; }
-    public bool isChild { get; set; }
-    public bool isShared { get; set; }
+  
+    public ExpenseType Type { get; set; }
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
     

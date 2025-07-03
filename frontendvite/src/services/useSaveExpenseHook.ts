@@ -1,27 +1,22 @@
-import type { Expense } from '@/types'
-import type { Dispatch, SetStateAction } from 'react'
-import { getExpenseService } from '@/services/useDataService'
-import { useUser } from '@/context/user-context.tsx'
 import { useCallback } from 'react'
+import { Expense, ExpenseType } from '@/types'
+import { getExpenseService } from '@/services/useDataService'
+import { useUser } from '@/context/user-context'
+import { useBudget } from '@/context/budget-context'
+import { GROUP_ID } from '@/config/group-config'
 
-/**
- * React Hook: Speichert eine neue oder bestehende Ausgabe (lokal oder zentral)
- */
 export function useSaveExpense() {
     const { userId } = useUser()
+    const { expenses, setExpenses } = useBudget()
 
     return useCallback(
-        async (
-            expense: Expense,
-            icon: React.ReactNode,
-            setExpenses: Dispatch<SetStateAction<Expense[]>>
-        ): Promise<Expense | null> => {
-            const normalizedDate = expense.date.split('T')[0]
-
+        async (expense: Expense, icon: React.ReactNode): Promise<Expense | null> => {
             if (!userId) {
                 console.error('⚠️ Kein Nutzer angemeldet – Speichern wird abgebrochen.')
                 return null
             }
+
+            const normalizedDate = expense.date.split('T')[0]
 
             const finalExpense: Expense = {
                 id: expense.id || crypto.randomUUID(),
@@ -30,27 +25,18 @@ export function useSaveExpense() {
                 date: normalizedDate,
                 category: expense.category || '',
                 createdByUserId: userId,
-                groupId: expense.groupId || '',
-                isPersonal: expense.isPersonal ?? true,
-                isShared: expense.isShared ?? false,
-                isChild: expense.isChild ?? false,
+                groupId: expense.groupId || GROUP_ID,
+                type: expense.type ?? ExpenseType.Personal,
                 isRecurring: expense.isRecurring ?? false,
                 isBalanced: expense.isBalanced ?? false,
+                icon,
             }
 
-            const updateState = (newExpense: Expense) => {
-                setExpenses(prev => {
-                    const exists = prev.some(e => e.id === newExpense.id)
-                    return exists
-                        ? prev.map(e => (e.id === newExpense.id ? { ...newExpense, icon } : e))
-                        : [...prev, { ...newExpense, icon }]
-                })
-            }
-
-            if (finalExpense.isShared || finalExpense.isChild) {
-                // 🌐 Zentrale Speicherung via API
-                console.log('🌐 Gemeinsame Ausgabe erkannt – wird an API gesendet:', finalExpense)
-
+            if (
+                finalExpense.type === ExpenseType.Shared ||
+                finalExpense.type === ExpenseType.Child
+            ) {
+                // 🌐 Zentrale Speicherung über API
                 const response = await fetch('/api/expenses', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -68,25 +54,34 @@ export function useSaveExpense() {
 
                 const saved: Expense = await response.json()
                 console.log('✅ Erfolgreich über API gespeichert:', saved)
-                updateState(saved)
+
+                // Lokal zur Liste hinzufügen oder ersetzen
+                setExpenses(prev =>
+                    prev.some(e => e.id === saved.id)
+                        ? prev.map(e => (e.id === saved.id ? saved : e))
+                        : [...prev, saved]
+                )
+
                 return saved
             } else {
-                // 💾 Lokale Speicherung mit SQLite
-                const service = getExpenseService()
+                // 💾 Lokale Speicherung
+                const service = await getExpenseService()
+
                 if (!expense.id) {
-                    console.log('💾 Neue private Ausgabe – wird lokal gespeichert:', finalExpense)
                     await service.addExpense(finalExpense)
-                    console.log('✅ Gespeichert (addExpense):', finalExpense)
+                    setExpenses(prev => [...prev, finalExpense])
+                    console.log('✅ Lokal gespeichert (neu):', finalExpense)
                 } else {
-                    console.log('✏️ Bestehende private Ausgabe – wird aktualisiert:', finalExpense)
                     await service.updateExpense(finalExpense)
-                    console.log('✅ Aktualisiert (updateExpense):', finalExpense)
+                    setExpenses(prev =>
+                        prev.map(e => (e.id === finalExpense.id ? finalExpense : e))
+                    )
+                    console.log('✅ Lokal aktualisiert:', finalExpense)
                 }
 
-                updateState(finalExpense)
                 return finalExpense
             }
         },
-        [userId]
+        [userId, expenses, setExpenses]
     )
 }

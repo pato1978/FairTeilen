@@ -1,81 +1,75 @@
-import { ExpenseType } from '@/types/index'
-import type { Expense } from '@/types/index'
-import { getExpenseService } from '@/services/useDataService'
+// src/services/expenses.ts
 
-export type ExpenseScope = 'personal' | 'shared' | 'child' | string
+import { ExpenseType } from '@/types'
+import type { Expense } from '@/types'
+import { GROUP_ID } from '@/config/group-config'
+import { getExpenseService } from './ExpenseFactory'
+import type { IExpenseService, ExpenseScope } from './IExpenseService'
 
 /**
  * 🔁 Lädt Ausgaben für einen bestimmten Bereich (Scope) und Monat.
- * Diese Funktion ist unabhängig von React und erwartet alle nötigen Parameter.
- *
- * @param userId         Der angemeldete Benutzer (wird vom Context oder Provider übergeben)
- * @param scope          Bereich der Ausgaben: "personal", "shared" oder "child"
- * @param group          Gruppen-ID für gemeinsame Ausgaben (optional)
- * @param date           Das gewählte Datum (z. B. aktueller Monat)
- * @returns              Eine Liste von Ausgaben für den angegebenen Scope und Monat
+ * Entscheidet intern automatisch, ob lokal oder zentral gespeichert wird.
  */
 export async function fetchExpenses(
     userId: string | null,
     scope: ExpenseScope,
-    group: string | null,
     date: Date
 ): Promise<Expense[]> {
-    const month = date.toISOString().slice(0, 7)
+    console.log('[fetchExpenses] Aufruf gestartet', { userId, scope, date })
 
-    // 🔐 Kein eingeloggter Benutzer → keine Daten laden
     if (!userId) {
-        console.warn(`[fetchExpenses] ⚠️ Kein Nutzer angemeldet – ${scope} wird nicht geladen.`)
+        console.warn(`[fetchExpenses] ⚠️ Kein Nutzer – ${scope} wird nicht geladen.`)
         return []
     }
 
-    // 💾 Lokale Abfrage für private Ausgaben
-    if (scope === 'personal') {
-        const service = getExpenseService()
-        const allLocal = await service.getAllExpenses({ monthKey: month })
-        return allLocal.filter(e => e.type === ExpenseType.Personal)
-    }
+    const monthKey = date.toISOString().slice(0, 7)
+    const groupId = scope === 'personal' ? undefined : GROUP_ID
 
-    // 🌐 Zentrale Abfrage für "shared" oder "child"
-    const isValidGroup = group && group !== 'null' && group !== 'undefined' && group !== ''
+    console.log('[fetchExpenses] Params', { monthKey, groupId })
 
-    const params = new URLSearchParams({
-        scope,
-        ...(isValidGroup ? { group } : {}),
-        month,
-        userId,
-    })
+    const service = (await getExpenseService(scope)) as IExpenseService
+    const result = await service.getExpenses(userId, scope, monthKey, groupId)
 
-    const url = `/api/expenses?${params.toString()}`
-    console.log('[fetchExpenses] URL:', url)
-
-    const res = await fetch(url)
-    if (!res.ok) {
-        console.error(
-            `[fetchExpenses] ❌ Fehler bei scope=${scope}, group=${group}, month=${month}`
-        )
-        throw new Error('Fehler beim Laden der Ausgaben')
-    }
-
-    return await res.json()
+    console.log('[fetchExpenses] Ergebnis von service.getExpenses:', result)
+    return result
 }
 
 /**
- * 🗑️ Löscht eine einzelne Ausgabe – entweder lokal oder über die zentrale API.
- *
- * @param id     Die ID der zu löschenden Ausgabe
- * @param type   Der Typ der Ausgabe (personal, shared, child)
+ * 🗑️ Löscht eine einzelne Ausgabe – lokal oder zentral.
+ * Intern wird automatisch die richtige groupId gesetzt.
  */
 export async function deleteExpense(id: string, type: ExpenseType): Promise<void> {
-    if (type === ExpenseType.Shared || type === ExpenseType.Child) {
-        // 🌐 Zentrale Ausgabe via API löschen
-        const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
-        if (!res.ok) {
-            console.error(`[deleteExpense] ❌ Fehler beim Löschen zentraler Ausgabe: ${id}`)
-            throw new Error('Fehler beim Löschen der zentralen Ausgabe')
-        }
-    } else {
-        // 💾 Lokale Ausgabe löschen
-        const service = getExpenseService()
-        await service.deleteExpense(id)
-    }
+    const scope: ExpenseScope =
+        type === ExpenseType.Personal
+            ? 'personal'
+            : type === ExpenseType.Shared
+              ? 'shared'
+              : type === ExpenseType.Child
+                ? 'child'
+                : 'personal'
+
+    const groupId = scope === 'personal' ? undefined : GROUP_ID
+
+    const service = (await getExpenseService(scope)) as IExpenseService
+    await service.deleteExpense(id, groupId)
+}
+
+/**
+ * ✏️ Aktualisiert eine einzelne Ausgabe – lokal oder zentral.
+ * Intern wird automatisch die richtige groupId gesetzt.
+ */
+export async function updateExpense(expense: Expense): Promise<void> {
+    const scope: ExpenseScope =
+        expense.type === ExpenseType.Personal
+            ? 'personal'
+            : expense.type === ExpenseType.Shared
+              ? 'shared'
+              : expense.type === ExpenseType.Child
+                ? 'child'
+                : 'personal'
+
+    const groupId = scope === 'personal' ? undefined : GROUP_ID
+
+    const service = (await getExpenseService(scope)) as IExpenseService
+    await service.updateExpense(expense, groupId)
 }

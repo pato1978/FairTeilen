@@ -28,7 +28,8 @@ export default function JahresUebersicht() {
                 const result = await fetchYearOverview(selectedYear)
                 const record: Record<number, MonthlyOverview> = {}
                 result.months.forEach(month => {
-                    record[month.monthId] = month
+                    const monthNumber = new Date(month.monthKey).getMonth() + 1
+                    record[monthNumber] = month
                 })
                 setMonthsData(record)
             } catch (error) {
@@ -59,8 +60,12 @@ export default function JahresUebersicht() {
         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     }
 
+    const getMonthId = (month: MonthlyOverview) => parseInt(month.monthKey.split('-')[1], 10)
+
     const sortedMonths = Object.values(monthsData).sort((a, b) => {
-        return sortOrder === 'asc' ? a.monthId - b.monthId : b.monthId - a.monthId
+        const aId = getMonthId(a)
+        const bId = getMonthId(b)
+        return sortOrder === 'asc' ? aId - bId : bId - aId
     })
 
     return (
@@ -93,7 +98,7 @@ export default function JahresUebersicht() {
                 <div className="space-y-4 mb-20">
                     {sortedMonths.map(month => (
                         <EnhancedMonthCard
-                            key={month.monthId}
+                            key={month.id}
                             month={month}
                             onStatusClick={e => handleStatusClick(month, e)}
                         />

@@ -1,89 +1,56 @@
-import React, {
-    createContext,
-    useContext,
-    useState,
-    useEffect,
-    type Dispatch,
-    type SetStateAction,
-} from 'react'
-
-import { useMonth } from '@/context/month-context'
-import { fetchBudget, saveBudget as saveBudgetApi } from '@/services/budget.ts'
-import { fetchExpenses } from '@/services/expenses.ts'
+// src/context/budget-context.tsx
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { ExpenseType } from '@/types'
 import type { Expense } from '@/types'
-import { useUser } from '@/context/user-context.tsx'
+import { useMultiBudget } from './multi-budget-context'
 
-// 💡 Kontextstruktur für Budgetinformationen
+// 🔢 Struktur für den Context
 type BudgetContextType = {
     budget: number
     setBudget: (b: number) => void
     expenses: Expense[]
-    setExpenses: Dispatch<SetStateAction<Expense[]>>
+    setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>
     isLoading: boolean
     refreshExpenses: () => void
 }
 
-// 🧱 Budget-Kontext erstellen
+// 🧱 Context erstellen
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined)
 
-type Props = {
-    children: React.ReactNode
-    scope: 'personal' | 'shared' // 👉 engerer Typ ist sauberer
-}
+// 📦 Provider für einen bestimmten Ausgabentyp (personal / shared / child)
+export function BudgetProvider({ children, type }: { children: ReactNode; type: ExpenseType }) {
+    const { personal, shared, child } = useMultiBudget()
 
-// 📦 Provider-Komponente für den gewählten Budgetbereich
-export function BudgetProvider({ children, scope }: Props) {
+    // 🧠 Lokaler State für Budget-Daten
     const [budget, setBudget] = useState(0)
     const [expenses, setExpenses] = useState<Expense[]>([])
-    const [isLoadingBudget, setIsLoadingBudget] = useState(false)
-    const [isLoadingExpenses, setIsLoadingExpenses] = useState(false)
-    const [refreshCounter, setRefreshCounter] = useState(0)
+    const [isLoading, setIsLoading] = useState(true)
 
-    const { userId } = useUser()
-    const { currentDate } = useMonth()
-    const isLoading = isLoadingBudget || isLoadingExpenses
-
-    // 📥 Budget laden, wenn Monat oder Bereich (Scope) wechselt
+    // 🔁 Aktualisiere Daten bei Änderung des globalen MultiBudget-Contexts
     useEffect(() => {
-        if (!userId) return
-        setIsLoadingBudget(true)
+        const currentScope =
+            type === ExpenseType.Personal ? personal : type === ExpenseType.Shared ? shared : child
 
-        // 👉 Budget über API laden
-        fetchBudget(scope, currentDate, userId)
-            .then(setBudget)
-            .catch(() => setBudget(0))
-            .finally(() => setIsLoadingBudget(false))
-    }, [currentDate, scope, userId])
+        setBudget(currentScope.budget)
+        setExpenses(currentScope.expenses)
+        setIsLoading(currentScope.isLoading)
+    }, [type, personal, shared, child]) // ← wichtig!
 
-    // 📥 Ausgaben laden, wenn Monat oder Bereich oder Refresh wechselt
-    useEffect(() => {
-        if (!userId) return
-        const group = scope === 'shared' ? null : null // 🔧 ggf. später ersetzen
-
-        setIsLoadingExpenses(true)
-
-        fetchExpenses(userId, scope, group, currentDate)
-            .then(setExpenses)
-            .catch(() => setExpenses([]))
-            .finally(() => setIsLoadingExpenses(false))
-    }, [currentDate, refreshCounter, scope, userId])
-
-    // 💾 Budget speichern (lokal + remote)
-    function saveBudget(newBudget: number) {
-        setBudget(newBudget)
-        saveBudgetApi(scope, currentDate, newBudget, userId).catch(console.error)
-    }
-
-    // 🔁 Manuelles Neuladen der Ausgaben
+    // 🔄 Manuelles Refresh (z. B. nach Speichern)
     function refreshExpenses() {
-        setRefreshCounter(c => c + 1)
+        const currentScope =
+            type === ExpenseType.Personal ? personal : type === ExpenseType.Shared ? shared : child
+
+        setBudget(currentScope.budget)
+        setExpenses(currentScope.expenses)
+        setIsLoading(currentScope.isLoading)
     }
 
     return (
         <BudgetContext.Provider
             value={{
                 budget,
-                setBudget: saveBudget,
+                setBudget,
                 expenses,
                 setExpenses,
                 isLoading,
@@ -95,9 +62,11 @@ export function BudgetProvider({ children, scope }: Props) {
     )
 }
 
-// 🎯 Hook zur Nutzung im UI
+// 🎯 Custom Hook für Zugriff
 export function useBudget() {
     const ctx = useContext(BudgetContext)
-    if (!ctx) throw new Error('useBudget must be used inside BudgetProvider')
+    if (!ctx) {
+        throw new Error('useBudget must be used inside a BudgetProvider')
+    }
     return ctx
 }

@@ -1,8 +1,23 @@
+// src/services/useDataService.ts
 import { Capacitor } from '@capacitor/core'
 import type { IExpenseService } from './IExpenseService'
-import { sqlJsExpenseService } from './sqljs-expense-service'
-import { CapacitorSqliteExpenseService } from './sqlite-expense-service'
+import { SqlJsExpenseService } from './SqlJsExpenseService'
+import { CapacitorSqliteExpenseService } from './CapacitorSqliteExpenseService'
 
-export function getExpenseService(): IExpenseService {
-  return Capacitor.isNativePlatform() ? new CapacitorSqliteExpenseService() : sqlJsExpenseService
+let instance: IExpenseService | null = null
+let initialized = false
+
+export async function getExpenseService(): Promise<IExpenseService> {
+    if (!instance) {
+        instance = Capacitor.isNativePlatform()
+            ? new CapacitorSqliteExpenseService()
+            : new SqlJsExpenseService()
+    }
+
+    if (!initialized) {
+        await instance.initDb()
+        initialized = true
+    }
+
+    return instance
 }

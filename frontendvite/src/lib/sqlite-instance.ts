@@ -12,11 +12,16 @@ export async function getDb(): Promise<SQLiteDBConnection> {
     await db.open()
 
     await db.execute(`
-    CREATE TABLE IF NOT EXISTS AppSettings (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    )
-  `)
+        CREATE TABLE IF NOT EXISTS AppSettings
+        (
+            key
+            TEXT
+            PRIMARY
+            KEY,
+            value
+            TEXT
+        )
+    `)
 
     return db
 }

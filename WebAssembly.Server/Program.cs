@@ -1,25 +1,23 @@
-using System;
 using System.Text.Json;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System.Text.Json.Serialization;           // Für JsonStringEnumConverter
+using System.Text.Json.Serialization;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.SqlServer;
+using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔑 1. Verbindung zur Shared-Datenbank (MSSQL) aus Konfiguration holen
+// ✅ Sichere Connection
 var sharedConnection = builder.Configuration.GetConnectionString("SharedDb")
     ?? throw new InvalidOperationException("❌ Verbindung 'SharedDb' ist nicht gesetzt.");
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 📦 2. Hangfire-Services registrieren
-// ────────────────────────────────────────────────────────────────────────────────
+// 🔧 Datenbank-Kontext
+builder.Services.AddDbContext<SharedDbContext>(options =>
+    options.UseSqlServer(sharedConnection));
+
+// 🔧 Hangfire Setup
 builder.Services.AddHangfire(config => config
     .UseSqlServerStorage(sharedConnection, new SqlServerStorageOptions
     {
@@ -30,37 +28,24 @@ builder.Services.AddHangfire(config => config
         DisableGlobalLocks = true
     })
     .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-);
+    .UseRecommendedSerializerSettings());
+
 builder.Services.AddHangfireServer();
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 📦 3. MVC / API-Controller registrieren mit globaler Enum-String-Konvertierung
-// ────────────────────────────────────────────────────────────────────────────────
+// 🔧 MVC / JSON Enum-Handling
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
     {
-        // Wir nutzen CamelCase-NamingPolicy, damit JSON-Werte wie "shared" in ExpenseType.Shared konvertiert werden
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)
         );
     });
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 📦 4. DbContext für SharedDbContext (MSSQL) hinzufügen
-// ────────────────────────────────────────────────────────────────────────────────
-builder.Services.AddDbContext<SharedDbContext>(options =>
-    options.UseSqlServer(sharedConnection));
-
-// ────────────────────────────────────────────────────────────────────────────────
-// 📦 5. Weitere Anwendungsspezifische Services
-// ────────────────────────────────────────────────────────────────────────────────
+// 🔧 Eigene Services
 builder.Services.AddScoped<YearOverviewService>();
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 📦 6. CORS-Policy konfigurieren
-// ────────────────────────────────────────────────────────────────────────────────
+// 🔧 CORS – bei Bedarf um weitere Umgebungen erweitern
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -73,25 +58,18 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 🔧 7. Middleware-Pipeline
-// ────────────────────────────────────────────────────────────────────────────────
-app.UseHttpsRedirection();
+app.UseHttpsRedirection(); // funktioniert nur, wenn HTTPS im Container konfiguriert
 app.UseRouting();
 app.UseCors();
 app.UseAuthorization();
 
-// 📌 Controller-Routen mappen
 app.MapControllers();
 
-// ────────────────────────────────────────────────────────────────────────────────
-// 📅 8. Hangfire Cron-Job für wiederkehrende Ausgaben in Hangfire anlegen
-// ────────────────────────────────────────────────────────────────────────────────
+// 📅 Cron-Job für wiederkehrende Ausgaben
 using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-    // Führt CopyRecurringSharedExpenses jeden Monat am 1. um 00:05 MEZ aus
     recurringJobManager.AddOrUpdate(
         "monthly-copy-shared-expenses",
         Job.FromExpression<WebAssembly.Server.Controllers.ExpensesController>(c => c.CopyRecurringSharedExpenses()),
@@ -100,5 +78,4 @@ using (var scope = app.Services.CreateScope())
     );
 }
 
-// 🚀 9. Anwendung starten
 app.Run();

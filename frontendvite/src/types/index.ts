@@ -1,21 +1,25 @@
 import type { LucideIcon } from 'lucide-react'
 import { ClarificationReaction } from '@/types/monthly-overview.ts'
+import { type Participant } from '@/components/modals/distribution-modal'
 export enum ExpenseType {
     Personal = 'personal',
     Shared = 'shared',
     Child = 'child',
 }
+
 export interface Expense {
     id: string
     groupId: string
     name: string
     amount: number
     date: string
+    icon: LucideIcon
     category: string
     createdByUserId: string
     type: ExpenseType // ✅ NEU
     isRecurring: boolean
     isBalanced: boolean
+    distribution?: Participant[] // ✅ optional hinzugefügt
 }
 
 export interface BudgetSummary {
@@ -44,4 +48,5 @@ export interface IconOption {
     name: string
     defaultLabel?: string
 }
+
 export type { ClarificationReaction }

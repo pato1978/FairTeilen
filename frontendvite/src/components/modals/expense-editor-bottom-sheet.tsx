@@ -1,43 +1,16 @@
 'use client'
 import { iconMap } from '@/lib/icon-map'
 import { useEffect, useRef, useState } from 'react'
-import { Baby, Check, Euro, HelpCircle, Repeat, ShoppingCart, User, Users } from 'lucide-react'
+import { Baby, Check, Euro, Repeat, ShoppingCart, User, Users } from 'lucide-react'
 import { IconSelector } from './icon-selector'
 import { DistributionModal, type Participant } from './distribution-modal'
 import { SplitOption } from '@/components/modals/split-option.tsx'
+import { Expense, ExpenseType } from '@/types/index'
+import type { LucideIcon } from 'lucide-react'
 
-export interface Expense {
-    id?: string | null
-    name: string
-    amount: string
-    date: string
-    category: string
-    icon: any
-    isPersonal: boolean
-    isChild: boolean
-    isRecurring: boolean
-    isBalanced?: boolean
-    distribution?: Participant[]
-}
-
-export interface ExpenseEditorBottomSheetProps {
-    isOpen: boolean
-    onClose: () => void
-    expense: Expense
-    onSave: (expense: Expense) => void
-    availableIcons?: Array<{ icon: any; name: string; defaultLabel: string }>
-    selectedIcon: any // ✅ NEU
-    onIconChange: (icon: any) => void // ✅ NEU
-}
-
-function formatDate(dateInput?: string | null): string {
-    const d = dateInput ? new Date(dateInput) : new Date()
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset()) // ⬅️ wichtig!
-    return d.toISOString().slice(0, 10)
-}
-
-function getDefaultDistribution(isChild: boolean): Participant[] {
-    return isChild
+// Optionales Hilfstool für die Verteilung
+function getDefaultDistribution(type: ExpenseType): Participant[] {
+    return type === ExpenseType.Child
         ? [
               { id: 'user1', name: 'Partner 1', percentage: 33.3, locked: false, amount: 0 },
               { id: 'user2', name: 'Partner 2', percentage: 33.3, locked: false, amount: 0 },
@@ -49,17 +22,32 @@ function getDefaultDistribution(isChild: boolean): Participant[] {
           ]
 }
 
+function formatDate(dateInput?: string | null): string {
+    const d = dateInput ? new Date(dateInput) : new Date()
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset()) // Zeitzonen-Korrektur
+    return d.toISOString().slice(0, 10)
+}
+
 const defaultExpense: Expense = {
-    id: null,
+    id: '',
     name: '',
-    amount: '',
+    amount: 0,
     date: formatDate(),
     category: '',
     icon: ShoppingCart,
-    isPersonal: true,
-    isChild: false,
     isRecurring: false,
     isBalanced: false,
+    type: ExpenseType.Personal,
+    groupId: '',
+    createdByUserId: '',
+}
+
+export interface ExpenseEditorBottomSheetProps {
+    isOpen: boolean
+    onClose: () => void
+    expense: Expense | null
+    onSave: (expense: Expense) => Promise<void>
+    availableIcons?: Array<{ icon: LucideIcon; name: string; defaultLabel: string }>
 }
 
 export function ExpenseEditorBottomSheet({
@@ -70,7 +58,7 @@ export function ExpenseEditorBottomSheet({
     availableIcons = [],
 }: ExpenseEditorBottomSheetProps) {
     const [showIconSelector, setShowIconSelector] = useState(false)
-    const [selectedIcon, setSelectedIcon] = useState(expense?.icon || ShoppingCart)
+    const [selectedIcon, setSelectedIcon] = useState<LucideIcon>(expense?.icon || ShoppingCart)
     const [editingExpense, setEditingExpense] = useState<Expense>(() => ({
         ...defaultExpense,
         ...expense,
@@ -81,10 +69,13 @@ export function ExpenseEditorBottomSheet({
     const [showDistributionModal, setShowDistributionModal] = useState(false)
     const [distribution, setDistribution] = useState<Participant[]>([])
     const sideSheetRef = useRef<HTMLDivElement>(null)
-
     const [animation, setAnimation] = useState<'entering' | 'entered' | 'exiting' | 'exited'>(
         isOpen ? 'entering' : 'exited'
     )
+
+    // --------------------
+    // LifeCycle & Effekte
+    // --------------------
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -98,11 +89,9 @@ export function ExpenseEditorBottomSheet({
                 handleClose()
             }
         }
-
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside)
         }
-
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
         }
@@ -110,13 +99,11 @@ export function ExpenseEditorBottomSheet({
 
     useEffect(() => {
         let timeout: NodeJS.Timeout
-
         if (isOpen && animation === 'entering') {
             timeout = setTimeout(() => setAnimation('entered'), 10)
         } else if (!isOpen && animation === 'exiting') {
             timeout = setTimeout(() => setAnimation('exited'), 300)
         }
-
         return () => clearTimeout(timeout)
     }, [isOpen, animation])
 
@@ -128,29 +115,24 @@ export function ExpenseEditorBottomSheet({
         }
     }, [isOpen])
 
+    // Expense (neu oder bestehend) setzen und Distribution vorbereiten
     useEffect(() => {
         if (expense && isOpen) {
-            // 🧱 Ausgangspunkt: neue oder bestehende Ausgabe zusammenbauen
             const updatedExpense: Expense = {
                 ...defaultExpense,
                 ...expense,
                 date: formatDate(expense.date),
                 isBalanced: expense.isBalanced ?? false,
             }
-
             setEditingExpense(updatedExpense)
 
-            // 🛒 Symbol bestimmen:
-            // 1. bereits gesetztes Icon (z. B. von handleAdd)
-            // 2. Icon anhand Kategorie
-            // 3. Fallback: ShoppingCart
+            // Symbol bestimmen (bereits gesetzt oder über Kategorie)
             const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
-            setSelectedIcon(chosenIcon)
+            setSelectedIcon(chosenIcon as LucideIcon)
 
-            // 🏷️ Bezeichnung automatisch setzen, wenn leer
+            // Name automatisch setzen, wenn leer
             const iconEntry = availableIcons.find(i => i.icon === chosenIcon)
             const defaultLabel = iconEntry?.defaultLabel || 'Lebensmittel'
-
             if (!expense.name || expense.name.trim() === '') {
                 setEditingExpense(prev => ({
                     ...prev,
@@ -158,31 +140,43 @@ export function ExpenseEditorBottomSheet({
                 }))
             }
 
-            // 👪 Verteilung laden oder erzeugen (nur bei gemeinsamen oder Kind-Ausgaben)
-            if (!updatedExpense.isPersonal) {
-                if (updatedExpense.distribution) {
-                    const updatedDistribution = updatedExpense.distribution.map(p => ({
+            // Distribution: Nur wenn Typ Shared oder Child
+            if (expense.type !== ExpenseType.Personal) {
+                if (expense.distribution) {
+                    const updatedDistribution = expense.distribution.map(p => ({
                         ...p,
                         locked: p.locked || false,
                         amount:
                             p.amount ||
-                            (p.percentage / 100) * Number.parseFloat(updatedExpense.amount || '0'),
+                            (p.percentage / 100) *
+                                (typeof updatedExpense.amount === 'number'
+                                    ? updatedExpense.amount
+                                    : parseFloat((updatedExpense.amount as any) || '0')),
                     }))
                     setDistribution(updatedDistribution)
                 } else {
-                    setDistribution(getDefaultDistribution(updatedExpense.isChild))
+                    setDistribution(getDefaultDistribution(expense.type))
                 }
+            } else {
+                setDistribution([]) // Bei Personal immer leeren!
             }
         }
-    }, [expense, isOpen])
+    }, [expense, isOpen, availableIcons])
 
     useEffect(() => {
-        if (!editingExpense.isPersonal && distribution.length === 0) {
-            setDistribution(getDefaultDistribution(editingExpense.isChild))
+        if (editingExpense.type !== ExpenseType.Personal && distribution.length === 0) {
+            setDistribution(getDefaultDistribution(editingExpense.type))
         }
-    }, [editingExpense.isPersonal, editingExpense.isChild])
+        if (editingExpense.type === ExpenseType.Personal) {
+            setDistribution([])
+        }
+    }, [editingExpense.type])
 
     if (animation === 'exited' && !isOpen) return null
+
+    // --------------------
+    // UI & Save-Handler
+    // --------------------
 
     const selectedIconComponent = availableIcons.find(icon => icon.icon === selectedIcon) || {
         icon: ShoppingCart,
@@ -190,18 +184,21 @@ export function ExpenseEditorBottomSheet({
         defaultLabel: 'Lebensmittel',
     }
 
+    // Betrag-Feld: immer als string an Input
+    const amountString =
+        typeof editingExpense.amount === 'number'
+            ? editingExpense.amount.toString()
+            : editingExpense.amount || ''
+
     const handleSave = () => {
         const selectedIconEntry = availableIcons.find(i => i.icon === selectedIcon)
-
         const expenseToSave: Expense = {
             ...editingExpense,
-            category: selectedIconEntry?.name || 'Lebensmittel', // speichert z. B. "Essen"
+            icon: selectedIcon,
+            category: selectedIconEntry?.name || 'Lebensmittel',
+            amount: Number(editingExpense.amount), // amount als number speichern
+            distribution: editingExpense.type !== ExpenseType.Personal ? distribution : undefined,
         }
-
-        if (!editingExpense.isPersonal) {
-            expenseToSave.distribution = distribution
-        }
-
         onSave(expenseToSave)
     }
 
@@ -212,17 +209,14 @@ export function ExpenseEditorBottomSheet({
         }, 300)
     }
 
-    const handleToggleRecurring = () => {
-        setEditingExpense({
-            ...editingExpense,
-            isRecurring: !editingExpense.isRecurring,
-        })
-    }
-
-    const handleSelectIcon = (iconOption: any) => {
+    const handleSelectIcon = (iconOption: {
+        icon: LucideIcon
+        name: string
+        defaultLabel: string
+    }) => {
         const previousIcon = availableIcons.find(i => i.icon === selectedIcon)
         setSelectedIcon(iconOption.icon)
-
+        // Name automatisch setzen, wenn Standardname
         if (
             !editingExpense.name ||
             (previousIcon && editingExpense.name === previousIcon.defaultLabel)
@@ -232,7 +226,6 @@ export function ExpenseEditorBottomSheet({
                 name: iconOption.defaultLabel,
             })
         }
-
         setShowIconSelector(false)
     }
 
@@ -241,11 +234,16 @@ export function ExpenseEditorBottomSheet({
         setShowDistributionModal(false)
     }
 
-    // return (...) folgt hier
+    // --------------------
+    // UI-Render
+    // --------------------
+
+    // Icon als React-Komponente
+    const Icon = selectedIconComponent.icon as LucideIcon
 
     return (
         <>
-            {/* Modal Overlay */}
+            {/* Overlay */}
             <div
                 className={`fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
                     animation === 'entering' || animation === 'entered'
@@ -264,38 +262,31 @@ export function ExpenseEditorBottomSheet({
                     style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
                     onClick={e => e.stopPropagation()}
                 >
-                    {/* Neuer stilisierter Header – ohne Lichteffekt */}
+                    {/* Header */}
                     <div className="relative px-4 py-4 text-left rounded-t-xl w-full backdrop-blur-sm shadow-inner border-b border-gray-100">
-                        {/* Hintergrund weiß */}
                         <div className="absolute inset-0 bg-white -z-10" />
-
-                        {/* Optionaler unterer Farbverlauf */}
                         <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60"></div>
-
-                        {/* Titel + Schließen */}
                         <div className="flex justify-between items-center">
                             <h3 className="text-2xl font-bold text-gray-700">
                                 {editingExpense.id ? 'Ausgabe bearbeiten' : 'Neue Ausgabe'}
                             </h3>
                         </div>
                     </div>
-
                     {/* Inhalt */}
                     <div className="p-4 space-y-4 flex-grow">
-                        {/* Art der Ausgabe */}
+                        {/* Ausgaben-Typ Auswahl */}
                         <div>
                             <div className="flex space-x-2">
                                 <button
                                     className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        editingExpense.isPersonal && !editingExpense.isChild
+                                        editingExpense.type === ExpenseType.Personal
                                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200'
                                     }`}
                                     onClick={() =>
                                         setEditingExpense({
                                             ...editingExpense,
-                                            isPersonal: true,
-                                            isChild: false,
+                                            type: ExpenseType.Personal,
                                         })
                                     }
                                 >
@@ -303,15 +294,14 @@ export function ExpenseEditorBottomSheet({
                                 </button>
                                 <button
                                     className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        !editingExpense.isPersonal && !editingExpense.isChild
+                                        editingExpense.type === ExpenseType.Shared
                                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200'
                                     }`}
                                     onClick={() =>
                                         setEditingExpense({
                                             ...editingExpense,
-                                            isPersonal: false,
-                                            isChild: false,
+                                            type: ExpenseType.Shared,
                                         })
                                     }
                                 >
@@ -319,15 +309,14 @@ export function ExpenseEditorBottomSheet({
                                 </button>
                                 <button
                                     className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        editingExpense.isChild
+                                        editingExpense.type === ExpenseType.Child
                                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200'
                                     }`}
                                     onClick={() =>
                                         setEditingExpense({
                                             ...editingExpense,
-                                            isPersonal: false,
-                                            isChild: true,
+                                            type: ExpenseType.Child,
                                         })
                                     }
                                 >
@@ -336,15 +325,19 @@ export function ExpenseEditorBottomSheet({
                             </div>
                         </div>
 
-                        <SplitOption
-                            editingExpense={editingExpense}
-                            onClick={e => {
-                                e.stopPropagation()
-                                setShowDistributionModal(true)
-                            }}
-                        />
+                        {/* Split Option/Verteilung nur für Shared & Child */}
+                        {(editingExpense.type === ExpenseType.Shared ||
+                            editingExpense.type === ExpenseType.Child) && (
+                            <SplitOption
+                                editingExpense={editingExpense}
+                                onClick={e => {
+                                    e.stopPropagation()
+                                    setShowDistributionModal(true)
+                                }}
+                            />
+                        )}
 
-                        {/* Symbol + Häufigkeit + Ausgeglichen */}
+                        {/* Symbol, Häufigkeit, Ausgeglichen */}
                         <div className="grid grid-cols-3 gap-4">
                             {/* Symbol */}
                             <div>
@@ -359,12 +352,11 @@ export function ExpenseEditorBottomSheet({
                                     className="w-full h-[64px] flex items-center justify-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
                                 >
                                     <div className="bg-white p-2 rounded-lg shadow-sm">
-                                        <selectedIconComponent.icon className="h-5 w-5 text-blue-600" />
+                                        <Icon className="h-5 w-5 text-blue-600" />
                                     </div>
                                 </button>
                             </div>
-
-                            {/* Häufigkeit (als Icon-Toggle) */}
+                            {/* Häufigkeit */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Häufigkeit
@@ -391,8 +383,7 @@ export function ExpenseEditorBottomSheet({
                                     />
                                 </button>
                             </div>
-
-                            {/* Ausgeglichen (als Icon-Toggle) */}
+                            {/* Ausgeglichen */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Ausgeglichen
@@ -420,7 +411,6 @@ export function ExpenseEditorBottomSheet({
                                 </button>
                             </div>
                         </div>
-
                         {/* Name */}
                         <div>
                             <label
@@ -440,7 +430,6 @@ export function ExpenseEditorBottomSheet({
                                 placeholder="z.B. Supermarkt"
                             />
                         </div>
-
                         {/* Betrag + Datum */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -460,18 +449,17 @@ export function ExpenseEditorBottomSheet({
                                         step="0.01"
                                         inputMode="decimal"
                                         className="w-full p-3 pl-10 text-base border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                                        value={editingExpense.amount}
+                                        value={amountString}
                                         onChange={e =>
                                             setEditingExpense({
                                                 ...editingExpense,
-                                                amount: e.target.value,
+                                                amount: Number(e.target.value),
                                             })
                                         }
                                         placeholder="0.00"
                                     />
                                 </div>
                             </div>
-
                             <div>
                                 <label
                                     htmlFor="expense-date"
@@ -483,7 +471,7 @@ export function ExpenseEditorBottomSheet({
                                     id="expense-date"
                                     type="date"
                                     className="w-full p-3 text-base border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                                    value={editingExpense.date}
+                                    value={editingExpense.date || ''}
                                     onChange={e =>
                                         setEditingExpense({
                                             ...editingExpense,
@@ -494,7 +482,6 @@ export function ExpenseEditorBottomSheet({
                             </div>
                         </div>
                     </div>
-
                     {/* Footer */}
                     <div className="px-4 pt-4 pb-4 bg-white rounded-b-xl border-t border-gray-100 flex space-x-3">
                         <button
@@ -526,14 +513,17 @@ export function ExpenseEditorBottomSheet({
             )}
 
             {/* Distribution Modal */}
-            <DistributionModal
-                isOpen={showDistributionModal}
-                onClose={() => setShowDistributionModal(false)}
-                participants={distribution}
-                onSave={handleSaveDistribution}
-                isChildExpense={editingExpense.isChild}
-                expenseAmount={editingExpense.amount || '0'}
-            />
+            {(editingExpense.type === ExpenseType.Shared ||
+                editingExpense.type === ExpenseType.Child) && (
+                <DistributionModal
+                    isOpen={showDistributionModal}
+                    onClose={() => setShowDistributionModal(false)}
+                    participants={distribution}
+                    onSave={handleSaveDistribution}
+                    isChildExpense={editingExpense.type === ExpenseType.Child}
+                    expenseAmount={amountString}
+                />
+            )}
         </>
     )
 }

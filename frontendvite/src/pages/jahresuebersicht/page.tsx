@@ -1,25 +1,21 @@
 'use client'
 
-import type React from 'react'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 
 import { EnhancedMonthCard } from './enhanced-month-card'
-import { StatusModal } from './status-modal'
-import { useNavigate } from 'react-router-dom'
+
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { useFetchYearOverview } from '@/services/useYearOverviewHook.ts'
-import type { MonthlyOverview, ClarificationReaction } from '@/types/monthly-overview'
+import type { MonthlyOverview } from '@/types/monthly-overview'
 
 export default function JahresUebersicht() {
-    const navigate = useNavigate()
     const currentYear = new Date().getFullYear()
     const fetchYearOverview = useFetchYearOverview() // ✅ Hook-Aufruf direkt im Component Body
     const [selectedYear, setSelectedYear] = useState(currentYear)
     const [monthsData, setMonthsData] = useState<Record<number, MonthlyOverview>>({})
-    const [selectedMonth, setSelectedMonth] = useState<MonthlyOverview | null>(null)
-    const [isModalOpen, setIsModalOpen] = useState(false)
+
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
     useEffect(() => {
@@ -41,19 +37,6 @@ export default function JahresUebersicht() {
 
     const handleYearChange = (year: number) => {
         setSelectedYear(year)
-    }
-
-    const handleStatusClick = (month: MonthlyOverview, e: React.MouseEvent) => {
-        e.stopPropagation()
-        if (month.status !== 'future') {
-            setSelectedMonth(month)
-            setIsModalOpen(true)
-        }
-    }
-
-    const closeModal = () => {
-        setIsModalOpen(false)
-        setSelectedMonth(null)
     }
 
     const toggleSortOrder = () => {
@@ -97,18 +80,10 @@ export default function JahresUebersicht() {
 
                 <div className="space-y-4 mb-20">
                     {sortedMonths.map(month => (
-                        <EnhancedMonthCard
-                            key={month.id}
-                            month={month}
-                            onStatusClick={e => handleStatusClick(month, e)}
-                        />
+                        <EnhancedMonthCard key={month.id} month={month} />
                     ))}
                 </div>
             </div>
-
-            {selectedMonth && (
-                <StatusModal isOpen={isModalOpen} onClose={closeModal} month={selectedMonth} />
-            )}
         </PageLayout>
     )
 }

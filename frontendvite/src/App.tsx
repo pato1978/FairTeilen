@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { useEffect } from 'react'
 import RootLayout from '@/pages/layout'
 import SharedPage from '@/pages/shared/page.tsx'

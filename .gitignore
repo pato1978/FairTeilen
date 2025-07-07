@@ -19,6 +19,6 @@ riderModule.iml
                    .env
                    *.env
                    .env.*
-                   
+                   .env.deploy
                    **/appsettings.json
                    **/appsettings.*.json

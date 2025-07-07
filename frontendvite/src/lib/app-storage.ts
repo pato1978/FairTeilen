@@ -24,8 +24,11 @@ export async function saveSetting(key: string, value: string): Promise<void> {
 export async function loadSetting(key: string): Promise<string | null> {
     if (isNativeApp()) {
         const db = await getDb()
-        const result = await db.get('SELECT value FROM AppSettings WHERE key = ?', [key])
-        return result?.value ?? null
+        const res = await db.query('SELECT value FROM AppSettings WHERE key = ?', [key])
+        if (res.values && res.values.length > 0) {
+            return res.values[0][0] as string
+        }
+        return null
     } else {
         return localStorage.getItem(key)
     }

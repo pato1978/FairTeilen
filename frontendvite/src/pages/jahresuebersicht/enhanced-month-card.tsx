@@ -7,26 +7,24 @@ import { useNavigate } from 'react-router-dom'
 import { useMonth } from '@/context/month-context.tsx'
 import { getStatusInfo } from '@/pages/jahresuebersicht/status-info'
 import {
-    ArrowUpRight,
-    Users,
-    Baby,
-    ArrowRight,
-    UserX,
-    UserCheck,
-    CheckCircle,
-    Clock,
     AlertTriangle,
+    ArrowRight,
+    ArrowUpRight,
+    Baby,
     Calendar,
+    CheckCircle,
     ChevronDown,
     ChevronUp,
     Eye,
-    MousePointer,
+    UserCheck,
+    Users,
+    UserX,
 } from 'lucide-react'
 import { users } from '@/data/users'
 
 interface EnhancedMonthCardProps {
     month: MonthlyOverview
-    onClick?: () => void
+    onClick?: (e?: React.MouseEvent) => void // <- Akzeptiert MouseEvent (optionaler Parameter)
     onStatusClick?: (e: React.MouseEvent) => void
 }
 
@@ -35,7 +33,11 @@ function ClickableCard({
     onClick,
     className = '',
     disabled = false,
-}: React.PropsWithChildren<{ onClick?: () => void; className?: string; disabled?: boolean }>) {
+}: React.PropsWithChildren<{
+    onClick?: (e?: React.MouseEvent) => void
+    className?: string
+    disabled?: boolean
+}>) {
     return (
         <div
             className={`${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${className}`}
@@ -109,8 +111,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const { setCurrentDate } = useMonth()
     const navigate = useNavigate()
 
-    const redirectTo = (scope: string, month: number) => {
-        setCurrentDate(new Date(selectedYear, month, 1))
+    // monthId muss als number übergeben werden (meistens ist das bereits der Fall, ggf. casten)
+    const redirectTo = (scope: string, monthId: number) => {
+        setCurrentDate(new Date(selectedYear, monthId, 1))
         navigate(scope)
     }
 
@@ -118,17 +121,19 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const statusInfo = getStatusInfo(month.status)
     if (!userId) return null
 
-    const allUserIds = Object.keys(month.totalByUser)
+    // Immer mit Fallback (leeres Objekt) arbeiten!
+    const allUserIds = Object.keys(month.totalByUser ?? {})
     const partnerIds = allUserIds.filter(id => id !== userId)
     const me = users[userId]
-    const isPending = month.status === 'pending'
+
     const isCompleted = month.status === 'completed'
     const isFuture = month.status === 'future'
     const needsClarification = month.status === 'needs-clarification'
     const notTakenIntoAccount = month.status === 'notTakenIntoAccount'
 
-    const hasOpenReactions = Object.values(reactions).some(val => val === true)
+    const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
 
+    // Wenn undefined, mit Fallback
     const showSettlementBlock =
         !['future', 'completed', 'notTakenIntoAccount'].includes(month.status) && !hasOpenReactions
 
@@ -138,7 +143,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const handleHeaderClick = (e: React.MouseEvent) => {
         e.stopPropagation()
         setIsExpanded(prev => !prev)
-        onClick?.()
+        if (onClick) onClick(e)
     }
 
     return (
@@ -184,7 +189,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                             <div className="flex items-center text-gray-600">
                                 <Calendar className="h-5 w-5 mr-2 text-gray-600" />
                                 <span className="text-sm">
-                                    Dieser Monat ist hat keine Ausgaben und wird daher nicht
+                                    Dieser Monat hat keine Ausgaben und wird daher nicht
                                     berücksichtigt.
                                 </span>
                             </div>
@@ -213,18 +218,18 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         <span className="text-base text-blue-900">Gemeinsam</span>
                                     </div>
                                     <div className="text-base font-bold text-blue-900 mb-2">
-                                        €{month.shared.toFixed(2)}
+                                        €{month.shared?.toFixed(2) ?? '0.00'}
                                     </div>
                                     {showExpenseDetails && (
                                         <div className="text-sm text-blue-700 space-y-1 mb-3">
                                             <div>
                                                 {me.name}: €
-                                                {month.sharedByUser[userId]?.toFixed(2) ?? '0.00'}
+                                                {month.sharedByUser?.[userId]?.toFixed(2) ?? '0.00'}
                                             </div>
                                             {partnerIds.map(id => (
                                                 <div key={id}>
                                                     {users[id].name}: €
-                                                    {month.sharedByUser[id]?.toFixed(2) ?? '0.00'}
+                                                    {month.sharedByUser?.[id]?.toFixed(2) ?? '0.00'}
                                                 </div>
                                             ))}
                                         </div>
@@ -247,18 +252,18 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         <span className="text-base text-purple-900">Kind</span>
                                     </div>
                                     <div className="text-base font-bold text-purple-900 mb-2">
-                                        €{month.child.toFixed(2)}
+                                        €{month.child?.toFixed(2) ?? '0.00'}
                                     </div>
                                     {showExpenseDetails && (
                                         <div className="text-sm text-purple-700 space-y-1 mb-3">
                                             <div>
                                                 {me.name}: €
-                                                {month.childByUser[userId]?.toFixed(2) ?? '0.00'}
+                                                {month.childByUser?.[userId]?.toFixed(2) ?? '0.00'}
                                             </div>
                                             {partnerIds.map(id => (
                                                 <div key={id}>
                                                     {users[id].name}: €
-                                                    {month.childByUser[id]?.toFixed(2) ?? '0.00'}
+                                                    {month.childByUser?.[id]?.toFixed(2) ?? '0.00'}
                                                 </div>
                                             ))}
                                         </div>
@@ -280,18 +285,18 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         <span className="text-base text-gray-700">Gesamt</span>
                                     </div>
                                     <div className="text-base font-bold text-gray-900 mb-2">
-                                        €{month.total.toFixed(2)}
+                                        €{month.total?.toFixed(2) ?? '0.00'}
                                     </div>
                                     {showExpenseDetails && (
                                         <div className="text-sm text-gray-600 space-y-1">
                                             <div>
                                                 {me.name}: €
-                                                {month.totalByUser[userId]?.toFixed(2) ?? '0.00'}
+                                                {month.totalByUser?.[userId]?.toFixed(2) ?? '0.00'}
                                             </div>
                                             {partnerIds.map(id => (
                                                 <div key={id}>
                                                     {users[id].name}: €
-                                                    {month.totalByUser[id]?.toFixed(2) ?? '0.00'}
+                                                    {month.totalByUser?.[id]?.toFixed(2) ?? '0.00'}
                                                 </div>
                                             ))}
                                         </div>
@@ -307,7 +312,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 Bestätigungen
                             </h4>
                             <div className="space-y-3">
-                                {Object.keys(month.totalByUser).map(id => {
+                                {Object.keys(month.totalByUser ?? {}).map(id => {
                                     const isMe = id === userId
                                     const name = isMe
                                         ? 'Du'
@@ -379,46 +384,48 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
 
                             <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4 mb-4">
                                 <div className="space-y-3">
-                                    {Object.entries(month.balanceByUser).map(([id, balance]) => {
-                                        if (Math.abs(balance) < 0.01) return null
-                                        const name = users[id]?.name ?? `Partner (${id})`
-                                        const isPayment = balance < 0
-                                        const amount = Math.abs(balance)
+                                    {Object.entries(month.balanceByUser ?? {}).map(
+                                        ([id, balance]) => {
+                                            if (Math.abs(balance) < 0.01) return null
+                                            const name = users[id]?.name ?? `Partner (${id})`
+                                            const isPayment = balance < 0
+                                            const amount = Math.abs(balance)
 
-                                        return (
-                                            <div
-                                                key={id}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <div className="flex items-center space-x-3">
-                                                    <div
-                                                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                                                            isPayment
-                                                                ? 'bg-amber-100 text-amber-600'
-                                                                : 'bg-green-100 text-green-600'
-                                                        }`}
-                                                    >
-                                                        {isPayment ? (
-                                                            <ArrowUpRight className="h-4 w-4 rotate-45" />
-                                                        ) : (
-                                                            <ArrowUpRight className="h-4 w-4 -rotate-45" />
-                                                        )}
+                                            return (
+                                                <div
+                                                    key={id}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <div className="flex items-center space-x-3">
+                                                        <div
+                                                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                                                isPayment
+                                                                    ? 'bg-amber-100 text-amber-600'
+                                                                    : 'bg-green-100 text-green-600'
+                                                            }`}
+                                                        >
+                                                            {isPayment ? (
+                                                                <ArrowUpRight className="h-4 w-4 rotate-45" />
+                                                            ) : (
+                                                                <ArrowUpRight className="h-4 w-4 -rotate-45" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-900">
+                                                                {name}
+                                                            </div>
+                                                            <div className="text-sm text-gray-600 font-medium">
+                                                                {isPayment ? 'gibt' : 'erhält'}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="font-medium text-gray-900">
-                                                            {name}
-                                                        </div>
-                                                        <div className="text-sm text-gray-600 font-medium">
-                                                            {isPayment ? 'gibt' : 'erhält'}
-                                                        </div>
+                                                    <div className="font-bold text-base text-gray-900">
+                                                        €{amount.toFixed(2)}
                                                     </div>
                                                 </div>
-                                                <div className="font-bold text-base text-gray-900">
-                                                    €{amount.toFixed(2)}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                                            )
+                                        }
+                                    )}
                                 </div>
                             </div>
 
@@ -426,7 +433,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 <ActionButton
                                     onClick={e => {
                                         e.stopPropagation()
-                                        redirectTo('/settlement', month.monthId)
+                                        //redirectTo('/settlement', month.monthId)
                                     }}
                                     variant="primary"
                                     size="sm"

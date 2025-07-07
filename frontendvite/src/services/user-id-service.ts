@@ -1,4 +1,4 @@
-import { saveSetting, loadSetting } from '@/lib/app-storage'
+import { loadSetting, saveSetting } from '@/lib/app-storage'
 
 const USER_ID_KEY = 'userId'
 

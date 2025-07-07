@@ -1,4 +1,4 @@
-import { User, Users, User as UserIcon, Crown } from 'lucide-react'
+import { Crown, User, Users } from 'lucide-react'
 
 export interface AppUser {
     id: string // <-- jetzt string (GUID-kompatibel!)

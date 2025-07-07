@@ -1,9 +1,9 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { users } from '@/data/users.ts' // Testdaten (z. B. für Namen, Farben etc.)
 import { loadUserId, saveUserId } from '@/services/user-id-service.ts' // NEU: Service für Speicherlogik
 
 // KONSTANTE: Key wird intern im Service verwendet
-const USER_STORAGE_KEY = 'user_id'
+//const USER_STORAGE_KEY = 'user_id'
 
 // Typdefinition für den Kontext
 type UserContextType = {
@@ -12,7 +12,10 @@ type UserContextType = {
     isReady: boolean
     user: AppUser | null
 }
-
+type AppUser = {
+    id: string
+    name: string
+}
 type Props = {
     children: ReactNode
 }

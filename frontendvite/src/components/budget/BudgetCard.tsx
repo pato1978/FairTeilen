@@ -1,7 +1,8 @@
-import { LucideIcon, Info } from 'lucide-react'
+import { Info, LucideIcon } from 'lucide-react'
 import { CircularProgress } from '@/components/dashboard/circular-progress'
 import { calculatePercentageUsed, calculateTotalExpenses } from '@/lib/budget-utils.ts'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
 export const PeriodBadge = ({ period }: { period: string }) => (
     <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full mt-1">
         {period}

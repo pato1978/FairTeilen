@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowUpDown, ChevronDown } from 'lucide-react'
 import type { Expense } from '@/types'
 import { ExpenseItem } from '@/components/dashboard/expense-item'

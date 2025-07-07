@@ -1,10 +1,10 @@
 // src/services/expenses.ts
 
-import { ExpenseType } from '@/types'
 import type { Expense } from '@/types'
+import { ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
 import { getExpenseService } from './ExpenseFactory'
-import type { IExpenseService, ExpenseScope } from './IExpenseService'
+import type { ExpenseScope, IExpenseService } from './IExpenseService'
 
 /**
  * 🔁 Lädt Ausgaben für einen bestimmten Bereich (Scope) und Monat.

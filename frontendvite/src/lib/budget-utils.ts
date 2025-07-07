@@ -1,4 +1,4 @@
-import { extractAmountValue } from "@/lib/utils"
+import { extractAmountValue } from '@/lib/utils'
 
 /**
  * Berechnet die Gesamtsumme aller Ausgaben.

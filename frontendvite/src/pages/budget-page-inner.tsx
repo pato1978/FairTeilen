@@ -5,9 +5,12 @@ import { useSaveExpense } from '@/services/useSaveExpenseHook.ts'
 import { deleteExpense as deleteExpenseApi } from '@/services/expenses.ts'
 import { iconMap } from '@/lib/icon-map'
 import { availableIcons } from '@/lib/icon-options'
-import { calculateTotalExpenses, calculatePercentageUsed } from '@/lib/budget-utils'
+import { calculatePercentageUsed, calculateTotalExpenses } from '@/lib/budget-utils'
 import { toDateInputValue } from '@/lib/utils'
 
+import { saveBudget } from '@/services/budget'
+import { useUser } from '@/context/user-context'
+import { useMonth } from '@/context/month-context'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { BudgetSummaryCard } from '@/components/dashboard/budget-summary-card'
@@ -15,11 +18,10 @@ import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bot
 import BudgetEditorModal from '@/components/modals/budget-editor-modal'
 import { VerbesserteLitenansicht } from '@/components/dashboard/verbesserte-listenansicht'
 
-import { useMonth } from '@/context/month-context'
 import { useBudget } from '@/context/budget-context'
 
-import { ExpenseType } from '@/types/index'
 import type { Expense } from '@/types/index'
+import { ExpenseType } from '@/types/index'
 
 // 🧱 Nur noch `type` statt `scopeFlags`
 type Props = {
@@ -29,8 +31,7 @@ type Props = {
 }
 
 export function BudgetPageInner({ title, budgetTitle, type }: Props) {
-    const { currentDate } = useMonth()
-    const { budget, setBudget, expenses, setExpenses, isLoading, refreshExpenses } = useBudget()
+    const { budget, setBudget, expenses, isLoading, refreshExpenses } = useBudget()
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -39,6 +40,9 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     const [selectedCategory, setSelectedCategory] = useState('gesamt')
 
     const saveExpense = useSaveExpense()
+
+    const { userId } = useUser()
+    const { currentDate } = useMonth()
 
     // ➕ Neue Ausgabe
     const handleAdd = () => {
@@ -49,12 +53,11 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
             date: new Date().toISOString().split('T')[0],
             category: '',
             icon: ShoppingCart,
-            type: type, // ✅ Nur `type` verwenden
+            type: type, // 'personal' | 'shared' | 'child'
             isRecurring: false,
             isBalanced: false,
-            isPersonal: type === 'personal',
-            isChild: type === 'child',
-            isShared: type === 'shared',
+            groupId: '', // ← muss ergänzt werden
+            createdByUserId: userId ?? '', // ← muss ergänzt werden
         })
         setSelectedIcon(ShoppingCart)
         setIsModalOpen(true)
@@ -70,19 +73,9 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     // 💾 Speichern
     const handleSave = async (exp: Expense) => {
         console.log('💾 Speichern mit Typ:', exp.type)
-        const saved = await saveExpense(exp, selectedIcon)
+        await saveExpense(exp, selectedIcon)
 
-        // 🔁 Lokal aktualisieren statt refresh
-        setExpenses(prev => {
-            const exists = prev.find(e => e.id === saved.id)
-            if (exists) {
-                // ✅ bestehende Ausgabe ersetzen
-                return prev.map(e => (e.id === saved.id ? saved : e))
-            } else {
-                // ➕ neue Ausgabe hinzufügen
-                return [...prev, saved]
-            }
-        })
+        refreshExpenses() // Holt die echten Daten aus der Quelle
 
         setIsModalOpen(false)
         setEditingExpense(null)
@@ -92,7 +85,7 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     // ✅ Löscht lokal aus der Liste, kein unnötiger API-Aufruf
     const handleDelete = async (id: string) => {
         await deleteExpenseApi(id, type)
-        setExpenses(prev => prev.filter(e => e.id !== id))
+        refreshExpenses() // Holt die echten Daten aus der Quelle
     }
 
     // 🔎 Filterlogik
@@ -164,8 +157,10 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
                 isOpen={isBudgetModalOpen}
                 onClose={() => setIsBudgetModalOpen(false)}
                 currentBudget={budget}
-                onSave={b => {
-                    setBudget(b)
+                onSave={async b => {
+                    if (!userId) return // Sicherheitscheck
+                    await saveBudget(type, currentDate, b, userId) // 💾 dauerhaft speichern
+                    setBudget(b) // 🧠 lokal aktualisieren
                     setIsBudgetModalOpen(false)
                 }}
                 title={`${budgetTitle} bearbeiten`}

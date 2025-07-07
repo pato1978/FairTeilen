@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, AlertTriangle, Lock, Info } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Clock, Info, Lock } from 'lucide-react'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 
 export interface StatusInfo {

@@ -7,7 +7,6 @@ import { convertDateToDisplay } from '@/lib/utils'
 import { useClarificationReactions } from '@/context/clarificationContext'
 import { useUser } from '@/context/user-context' // 🆕 Zugriff auf den eingeloggten User
 import { users } from '@/data/users'
-import { userColorMap } from '@/lib/colorMap'
 import { v4 as uuidv4 } from 'uuid'
 import type { ClarificationReaction, Expense } from '@/types'
 import { ExpenseType } from '@/types'
@@ -42,7 +41,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     // ⛔ Sicherheitsprüfung: solange der Benutzer noch nicht geladen ist, nichts rendern
     if (!isReady || !currentUserId) return null
 
-    // 💬 Zugriff auf Reaktionen (z. B. Klärungsbedarf) und Aktualisierung
+    // 💬 Zugriff auf Reaktionen (z. B. Klärungsbedarf) und Aktualisierung
     const { getAllReactions, refresh } = useClarificationReactions()
     const reactions = getAllReactions()
 
@@ -51,23 +50,33 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     const isOwnItem = createdByUserId === currentUserId
 
     // 👥 Zeige Initialen bei gemeinsamen oder Kinder-Ausgaben
-    const showInitials = ExpenseType.Shared || ExpenseType.Child //scopeFlags?.isShared || scopeFlags?.isChild
+    const showInitials = item.type === ExpenseType.Shared || item.type === ExpenseType.Child
 
-    // 🎨 Farbzuordnung für den Avatar
-    const rawColor = users[createdByUserId]?.color ?? 'gray-400'
-    const { text: textClass, border: borderClass } =
-        userColorMap[rawColor] ?? userColorMap['gray-400']
+    // 🎨 Dynamische Farbzuordnung für den Ersteller-Avatar (Initialen rechts)
+    const getUserColorClasses = (userColor: string) => {
+        // 'blue-500' → ['blue', '500']
+        const [colorName] = userColor.split('-')
 
-    // 👉 Swipe-Funktionalität (nur bei eigenen Ausgaben aktiv)
+        return {
+            bg: `bg-${colorName}-50`, // sehr hell für Hintergrund
+            border: `border-${colorName}-300`, // mittel für Ring
+            text: `text-${colorName}-700`, // dunkel für Initialen
+        }
+    }
+
+    const rawColor = users[createdByUserId]?.color ?? 'gray-500'
+    const { bg: bgClass, border: borderClass, text: textClass } = getUserColorClasses(rawColor)
+
+    // 👉 Swipe-Funktionalität (nur bei eigenen Ausgaben und balanced items aktiv)
     const { ref, touchProps, style, state } = useSwipe(
         -80,
         80,
-        isOwnItem
+        isOwnItem || item.isBalanced
             ? {
                   onSwipeLeft: () => onDelete(item.id),
                   onSwipeRight: () => onEdit(item),
               }
-            : {}
+            : {} // Kein Swipe bei fremden Ausgaben
     )
 
     // 🔁 Reaktionsstatus setzen oder entfernen
@@ -101,17 +110,17 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
 
     return (
         <div className="relative overflow-visible">
-            {/* 🔄 Swipe-Aktionen sichtbar nur bei eigenen Ausgaben */}
-            {isOwnItem && (
+            {/* 🔄 Swipe-Aktionen - nur bei eigenen Ausgaben und balanced items */}
+            {(isOwnItem || item.isBalanced) && (
                 <>
                     <div
-                        className="absolute inset-y-0 right-0 bg-red-500 flex items-center justify-center text-white"
+                        className="absolute inset-y-0 right-0 bg-rose-400 flex items-center justify-center text-white"
                         style={{ width: '80px', opacity: state.leftOpacity }}
                     >
                         <Trash2 className="h-5 w-5" />
                     </div>
                     <div
-                        className="absolute inset-y-0 left-0 bg-blue-600 flex items-center justify-center text-white"
+                        className="absolute inset-y-0 left-0 bg-emerald-500 flex items-center justify-center text-white"
                         style={{ width: '80px', opacity: state.rightOpacity }}
                     >
                         <Edit className="h-5 w-5" />
@@ -122,27 +131,23 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
             <div
                 ref={ref}
                 className={`
-          h-[72px] flex items-center p-4 rounded-xl border shadow-sm bg-white transition-colors relative
-          ${state.isTouched ? 'bg-blue-50' : ''}
+          h-[72px] min-h-[72px] max-h-[72px] flex items-center p-4 rounded-xl border shadow-sm bg-white transition-colors relative
+          ${state.isTouched ? 'bg-slate-50' : ''}
           ${state.isDragging ? '' : 'transition-transform duration-300'}
         `}
                 style={style}
-                {...touchProps}
+                {...(isOwnItem || item.isBalanced ? touchProps : {})}
             >
-                {/* 🧍 Avatar oder Ausgleichs-Icon */}
+                {/* 🧍 Kategorie-Icon oder Ausgleichs-Icon - jetzt links und prominent */}
                 <div className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center mr-3">
                     {item.isBalanced ? (
-                        <div className="bg-green-100 text-green-600 w-full h-full rounded-full flex items-center justify-center">
+                        <div className="bg-emerald-50 text-emerald-600 w-full h-full rounded-full flex items-center justify-center">
                             <Scale className="w-4 h-4" />
                         </div>
-                    ) : showInitials ? (
-                        <div
-                            className={`bg-white text-base font-semibold border-2 flex items-center justify-center w-full h-full rounded-full ${textClass} ${borderClass}`}
-                        >
-                            {users[createdByUserId]?.initials ?? '?'}
-                        </div>
                     ) : (
-                        <Icon className="w-5 h-5 text-blue-600" />
+                        <div className="bg-slate-50 text-slate-600 p-2 rounded-lg">
+                            <Icon className="w-5 h-5" />
+                        </div>
                     )}
                 </div>
 
@@ -150,15 +155,24 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-1">
                         <div className="flex items-center gap-2 min-w-0">
-                            <h3 className="font-semibold text-base text-gray-900 truncate">
+                            <h3 className="font-semibold text-base text-gray-900 truncate overflow-hidden whitespace-nowrap">
                                 {item.name}
                             </h3>
-                            <div className="bg-blue-50 text-blue-600 p-1 rounded-full">
-                                <Icon className="w-4 h-4" />
-                            </div>
                         </div>
-                        <div className="font-semibold text-base text-gray-900 flex-shrink-0 ml-2">
-                            {formatEuro(item.amount)}
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <div className="font-semibold text-base text-gray-900">
+                                {formatEuro(item.amount)}
+                            </div>
+                            {/* 👤 Initialen rechts - nur bei gemeinsamen/Kinder-Ausgaben */}
+                            {showInitials && (
+                                <div className="flex flex-col items-center justify-center w-7">
+                                    <div
+                                        className={`w-7 h-7 text-xs font-semibold border flex items-center justify-center rounded-full ${textClass} ${borderClass} ${bgClass}`}
+                                    >
+                                        {users[createdByUserId]?.initials ?? '?'}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -166,7 +180,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                         <div className="flex items-center gap-3">
                             <span>{convertDateToDisplay(item.date)}</span>
                             {item.isRecurring && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium">
                                     <Repeat className="w-3 h-3" />
                                     Wiederkehrend
                                 </span>
@@ -175,19 +189,19 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
 
                         {/* ✅ Reaktionssymbol (Bestätigung / Klärungsbedarf) */}
                         {showInitials && (
-                            <div className="relative group">
+                            <div className="flex flex-col items-center justify-center w-7">
                                 {isOwnItem ? (
-                                    <CheckCircle className="w-5 h-5 text-green-300" />
+                                    <CheckCircle className="w-5 h-5 text-emerald-400" />
                                 ) : (
                                     <button
                                         onClick={e => toggleConfirmationStatus(e, item)}
-                                        className="hover:bg-gray-100 rounded-full p-1"
+                                        className="hover:bg-gray-50 rounded-full p-1 transition-colors"
                                         aria-label={hasRejected ? 'Beanstandet' : 'Bestätigt'}
                                     >
                                         {hasRejected ? (
                                             <AlertTriangle className="w-5 h-5 text-amber-500" />
                                         ) : (
-                                            <CheckCircle className="w-5 h-5 text-green-500" />
+                                            <CheckCircle className="w-5 h-5 text-emerald-500" />
                                         )}
                                     </button>
                                 )}

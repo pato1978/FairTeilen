@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, PieChart, CalendarDays, User, Plus } from 'lucide-react'
+import { CalendarDays, Home, PieChart, Plus, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FooterProps {

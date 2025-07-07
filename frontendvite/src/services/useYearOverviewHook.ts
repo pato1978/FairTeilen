@@ -1,6 +1,5 @@
 import { useUser } from '@/context/user-context.tsx'
-import type { MonthlyOverview } from '@/types/monthly-overview.ts'
-import type { YearOverview } from '@/types/year-overview'
+
 import { useCallback } from 'react'
 import { GROUP_ID } from '@/config/group-config'
 

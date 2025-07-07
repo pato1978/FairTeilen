@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Settings, LogOut, Users, Crown, Star, User as UserIcon } from 'lucide-react'
+import { Check, Crown, LogOut, Settings, Star, User as UserIcon, Users } from 'lucide-react'
 import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { useNavigate } from 'react-router-dom'

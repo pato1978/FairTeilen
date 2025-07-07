@@ -1,32 +1,34 @@
 // src/context/budget-context.tsx
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { ExpenseType } from '@/types'
+
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import type { Expense } from '@/types'
+import { ExpenseType } from '@/types'
 import { useMultiBudget } from './multi-budget-context'
 
-// 🔢 Struktur für den Context
+// 🔢 Struktur des Context-Werts für einen einzelnen Budget-Slice
 type BudgetContextType = {
     budget: number
     setBudget: (b: number) => void
     expenses: Expense[]
     setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>
     isLoading: boolean
-    refreshExpenses: () => void
+    refreshExpenses: () => Promise<void>
 }
 
-// 🧱 Context erstellen
+// 🧱 BudgetContext: Kapselt alle States/Methoden für einen einzelnen Budget-Bereich (z. B. personal, shared)
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined)
 
-// 📦 Provider für einen bestimmten Ausgabentyp (personal / shared / child)
+// 📦 Provider für einen bestimmten Ausgaben-Typ (personal/shared/child)
 export function BudgetProvider({ children, type }: { children: ReactNode; type: ExpenseType }) {
-    const { personal, shared, child } = useMultiBudget()
+    // Alle Bereiche und die neue Reload-Methode aus dem MultiBudgetContext holen
+    const { personal, shared, child, reloadBudgetState } = useMultiBudget()
 
-    // 🧠 Lokaler State für Budget-Daten
+    // Lokaler State für das aktuelle Slice (wird aus dem globalen Context gespiegelt)
     const [budget, setBudget] = useState(0)
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
-    // 🔁 Aktualisiere Daten bei Änderung des globalen MultiBudget-Contexts
+    // Bei Änderungen im MultiBudgetContext (z. B. nach Refresh, Monatswechsel, Userwechsel) lokalen State updaten
     useEffect(() => {
         const currentScope =
             type === ExpenseType.Personal ? personal : type === ExpenseType.Shared ? shared : child
@@ -34,35 +36,30 @@ export function BudgetProvider({ children, type }: { children: ReactNode; type: 
         setBudget(currentScope.budget)
         setExpenses(currentScope.expenses)
         setIsLoading(currentScope.isLoading)
-    }, [type, personal, shared, child]) // ← wichtig!
+    }, [type, personal, shared, child])
 
-    // 🔄 Manuelles Refresh (z. B. nach Speichern)
-    function refreshExpenses() {
-        const currentScope =
-            type === ExpenseType.Personal ? personal : type === ExpenseType.Shared ? shared : child
-
-        setBudget(currentScope.budget)
-        setExpenses(currentScope.expenses)
-        setIsLoading(currentScope.isLoading)
+    // 🔄 NEU: "Offizielles" Refresh, das wirklich die Datenquelle neu abruft!
+    async function refreshExpenses() {
+        if (reloadBudgetState) {
+            await reloadBudgetState(type) // Lädt Daten im globalen Context neu
+            // Nach dem Reload updated sich dein lokaler State automatisch per useEffect!
+        }
     }
 
-    return (
-        <BudgetContext.Provider
-            value={{
-                budget,
-                setBudget,
-                expenses,
-                setExpenses,
-                isLoading,
-                refreshExpenses,
-            }}
-        >
-            {children}
-        </BudgetContext.Provider>
-    )
+    // Kontextwert für Konsumenten – alle State-Setter sind weiterhin verfügbar
+    const contextValue: BudgetContextType = {
+        budget,
+        setBudget,
+        expenses,
+        setExpenses,
+        isLoading,
+        refreshExpenses,
+    }
+
+    return <BudgetContext.Provider value={contextValue}>{children}</BudgetContext.Provider>
 }
 
-// 🎯 Custom Hook für Zugriff
+// 🎯 Custom Hook für Zugriff auf den BudgetContext
 export function useBudget() {
     const ctx = useContext(BudgetContext)
     if (!ctx) {

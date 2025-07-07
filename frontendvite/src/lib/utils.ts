@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from 'clsx'
+import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 // Formatiert Monat und Jahr auf Deutsch
@@ -30,6 +30,7 @@ export function toDateInputValue(dateValue: string | Date): string {
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     return d.toISOString().slice(0, 10)
 }
+
 // Konvertiert ein Datum von DD.MM.YYYY zu YYYY-MM-DD
 export function convertDateToISO(dateStr: string): string {
     if (dateStr === 'Heute') {

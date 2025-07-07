@@ -6,11 +6,11 @@ This document describes the changes made to migrate the application from Next.js
 
 1. Removed "use client" directives from all files
 2. Replaced Next.js specific imports with React equivalents:
-   - Replaced `useRouter` from "next/navigation" with `useNavigate` from "react-router-dom"
-   - Replaced `usePathname` from "next/navigation" with `useLocation` from "react-router-dom"
-   - Replaced Inter font from "next/font/google" with a standard web font import in CSS
-   - Removed Metadata type from "next"
-   - Replaced `useTheme` from "next-themes" with a custom theme detection using media queries
+    - Replaced `useRouter` from "next/navigation" with `useNavigate` from "react-router-dom"
+    - Replaced `usePathname` from "next/navigation" with `useLocation` from "react-router-dom"
+    - Replaced Inter font from "next/font/google" with a standard web font import in CSS
+    - Removed Metadata type from "next"
+    - Replaced `useTheme` from "next-themes" with a custom theme detection using media queries
 
 3. Updated layout.tsx to be a standard React component
 4. Updated App.tsx to integrate the pages directory with the routing system

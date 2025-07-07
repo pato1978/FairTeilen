@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import type { ClarificationReaction } from '@/types'
 import { ClarificationStatus } from '@/types/monthly-overview' // 🎯 Enum mit 'Accepted' | 'Rejected'
 import { getClarificationReactionsForMonth } from '@/services/clarificationReactions.ts'
@@ -29,19 +29,17 @@ export function useClarificationReactions() {
     }
     return ctx
 }
-
-// 🎁 Provider-Komponente für den App-Umfang
 export function ClarificationReactionsProvider({ children }: { children: ReactNode }) {
-    // 🧠 State für Reaktionen und Versionsnummer (für Refresh-Trigger)
     const [reactions, setReactions] = useState<ClarificationReaction[]>([])
     const [version, setVersion] = useState(0)
 
-    // 📅 Aktuelles Datum vom MonthContext, z. B. "2025-06"
     const { currentDate } = useMonth()
-    const monthId = currentDate.toISOString().slice(0, 7)
+    // 💡 Schutz vor invalidem Date:
+    const monthId =
+        currentDate && !isNaN(currentDate.getTime()) ? currentDate.toISOString().slice(0, 7) : ''
 
-    // 📥 Reaktionen für den aktuellen Monat bei Mount oder Refresh laden
     useEffect(() => {
+        if (!monthId) return
         const load = async () => {
             const all = await getClarificationReactionsForMonth(monthId)
             setReactions(all)
@@ -49,17 +47,13 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
         load()
     }, [monthId, version])
 
-    // ✅ Gibt zurück, ob die Ausgabe **bestätigt** ist (d.h. keine Rejected-Reaktion)
     const getIsConfirmed = (expenseId: string) => {
-        // 🔍 Suche nach einer Ablehnung durch einen beliebigen Nutzer
         const hasClarification = reactions.some(
             r => r.expenseId === expenseId && r.status === ClarificationStatus.Rejected
         )
-        // 🚦 Ausgabe ist bestätigt, wenn **keine** Ablehnung existiert
         return !hasClarification
     }
 
-    // 🔢 Gibt die Anzahl **einzigartiger Ausgaben** zurück, die **abgelehnt wurden**
     const getUnconfirmedCount = () => {
         const uniqueExpenseIds = new Set(
             reactions.filter(r => r.status === ClarificationStatus.Rejected).map(r => r.expenseId)
@@ -67,13 +61,9 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
         return uniqueExpenseIds.size
     }
 
-    // 📋 Gibt alle geladenen Reaktionen zurück (z. B. für eigene Filterung)
     const getAllReactions = () => reactions
-
-    // 🔄 Erhöht eine "Version" → löst useEffect erneut aus und lädt neue Daten
     const refresh = () => setVersion(v => v + 1)
 
-    // 📤 Context-Werte bereitstellen
     return (
         <ClarificationReactionsContext.Provider
             value={{

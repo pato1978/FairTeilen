@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react"
+import { createContext, useContext, useState } from 'react'
 
 type MonthContextType = {
     currentDate: Date
@@ -19,14 +19,14 @@ export function MonthProvider({ children }: { children: React.ReactNode }) {
 
         setCurrentDateState(date)
 
-      /*  // 🚀 Monat wird hier direkt ans Backend geschickt
-        fetch("http://localhost:5289/api/currentmonth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ month: date.toISOString() }),
-        }).catch((error) => {
-            console.error("Fehler beim Senden des Monats an das Backend:", error)
-        })*/
+        /*  // 🚀 Monat wird hier direkt ans Backend geschickt
+          fetch("http://localhost:5289/api/currentmonth", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ month: date.toISOString() }),
+          }).catch((error) => {
+              console.error("Fehler beim Senden des Monats an das Backend:", error)
+          })*/
     }
 
     return (
@@ -38,6 +38,6 @@ export function MonthProvider({ children }: { children: React.ReactNode }) {
 
 export function useMonth() {
     const context = useContext(MonthContext)
-    if (!context) throw new Error("useMonth muss innerhalb von MonthProvider verwendet werden")
+    if (!context) throw new Error('useMonth muss innerhalb von MonthProvider verwendet werden')
     return context
 }

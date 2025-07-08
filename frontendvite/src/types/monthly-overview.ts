@@ -20,7 +20,13 @@ export interface MonthlyOverview {
     monthId: string
     monthKey: string // "2025-07"
     yearKey: string // "2025"
-    status: 'open' | 'completed' | 'future'
+    status:
+        | 'open'
+        | 'completed'
+        | 'future'
+        | 'pending'
+        | 'notTakenIntoAccount'
+        | 'needs-clarification'
     name?: string
 
     total: number
@@ -33,4 +39,8 @@ export interface MonthlyOverview {
     totalByUser?: Record<string, number>
     balanceByUser?: Record<string, number>
     rejectionsByUser?: Record<string, boolean>
+}
+export interface YearOverview {
+    year: number
+    months: MonthlyOverview[]
 }

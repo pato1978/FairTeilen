@@ -40,17 +40,17 @@ async function start() {
 
     // Jetzt die App rendern
     ReactDOM.createRoot(document.getElementById('root')!).render(
-        <React.StrictMode>
-            <MonthProvider>
-                <UserProvider>
-                    <MultiBudgetProvider>
-                        <BrowserRouter>
-                            <App />
-                        </BrowserRouter>
-                    </MultiBudgetProvider>
-                </UserProvider>
-            </MonthProvider>
-        </React.StrictMode>
+        //<React.StrictMode>
+        <MonthProvider>
+            <UserProvider>
+                <MultiBudgetProvider>
+                    <BrowserRouter>
+                        <App />
+                    </BrowserRouter>
+                </MultiBudgetProvider>
+            </UserProvider>
+        </MonthProvider>
+        //</React.StrictMode>
     )
     console.log('Happy developing with React and Vite ✨')
 }

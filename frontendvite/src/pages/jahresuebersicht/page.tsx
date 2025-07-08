@@ -13,7 +13,7 @@ import type { MonthlyOverview } from '@/types/monthly-overview'
 export default function JahresUebersicht() {
     const currentYear = new Date().getFullYear()
     const fetchYearOverview = useFetchYearOverview() // ✅ Hook-Aufruf direkt im Component Body
-    const [selectedYear, setSelectedYear] = useState(currentYear)
+    const [selectedYear] = useState(currentYear)
     const [monthsData, setMonthsData] = useState<Record<number, MonthlyOverview>>({})
 
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
@@ -35,9 +35,9 @@ export default function JahresUebersicht() {
         load()
     }, [fetchYearOverview, selectedYear])
 
-    const handleYearChange = (year: number) => {
-        setSelectedYear(year)
-    }
+    //const handleYearChange = (year: number) => {
+    //  setSelectedYear(year)
+    //}
 
     const toggleSortOrder = () => {
         setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')

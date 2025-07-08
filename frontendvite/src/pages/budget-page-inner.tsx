@@ -7,7 +7,7 @@ import { iconMap } from '@/lib/icon-map'
 import { availableIcons } from '@/lib/icon-options'
 import { calculatePercentageUsed, calculateTotalExpenses } from '@/lib/budget-utils'
 import { toDateInputValue } from '@/lib/utils'
-
+import type { LucideIcon } from 'lucide-react'
 import { saveBudget } from '@/services/budget'
 import { useUser } from '@/context/user-context'
 import { useMonth } from '@/context/month-context'
@@ -35,7 +35,7 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-    const [selectedIcon, setSelectedIcon] = useState<any>(null)
+    const [selectedIcon, setSelectedIcon] = useState<LucideIcon>(ShoppingCart)
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
     const [selectedCategory, setSelectedCategory] = useState('gesamt')
 

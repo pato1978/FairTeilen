@@ -24,8 +24,8 @@ import {
     Wallet,
     Wifi,
 } from 'lucide-react'
-
-export const iconMap: Record<string, any> = {
+import type { LucideIcon } from 'lucide-react'
+export const iconMap: Record<string, LucideIcon> = {
     Urlaub: Sun,
     Miete: Home,
     Strom: Plug,

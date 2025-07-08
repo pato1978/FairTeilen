@@ -112,8 +112,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const navigate = useNavigate()
 
     // monthId muss als number übergeben werden (meistens ist das bereits der Fall, ggf. casten)
-    const redirectTo = (scope: string, monthId: number) => {
-        setCurrentDate(new Date(selectedYear, monthId, 1))
+    const redirectTo = (scope: string, monthId: string) => {
+        const numericMonth = parseInt(monthId, 10) - 1 // Monatsindex: 0 = Januar
+        setCurrentDate(new Date(selectedYear, numericMonth, 1))
         navigate(scope)
     }
 
@@ -140,8 +141,8 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const handleToggleConfirmation = (id: string) =>
         setReactions(prev => ({ ...prev, [id]: prev[id] === false ? null : false }))
 
-    const handleHeaderClick = (e: React.MouseEvent) => {
-        e.stopPropagation()
+    const handleHeaderClick = (e?: React.MouseEvent) => {
+        e?.stopPropagation()
         setIsExpanded(prev => !prev)
         if (onClick) onClick(e)
     }

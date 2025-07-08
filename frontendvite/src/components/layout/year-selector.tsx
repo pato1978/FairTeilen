@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+//import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface YearSelectorProps {
@@ -9,10 +9,10 @@ interface YearSelectorProps {
 }
 
 export function YearSelector({ selectedYear, onChange }: YearSelectorProps) {
-    const [availableYears] = useState(() => {
-        const currentYear = new Date().getFullYear()
-        return [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
-    })
+    // const [availableYears] = useState(() => {
+    //   const currentYear = new Date().getFullYear()
+    // return [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+    // })
 
     // Functions to navigate between years
     const goToPreviousYear = () => {

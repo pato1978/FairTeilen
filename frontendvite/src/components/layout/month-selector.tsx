@@ -5,11 +5,14 @@ import { formatMonthYear } from '@/lib/utils'
 import { useMonth } from '@/context/month-context'
 
 export interface MonthSelectorProps {
-    initialDate?: Date
+    currentDate?: Date
+    setCurrentDate?: (date: Date) => void
 }
 
-export function MonthSelector(): React.JSX.Element {
-    const { currentDate, setCurrentDate } = useMonth()
+export function MonthSelector({ currentDate: propCurrentDate, setCurrentDate: propSetCurrentDate }: MonthSelectorProps): React.JSX.Element {
+    const monthContext = useMonth()
+    const currentDate = propCurrentDate || monthContext.currentDate
+    const setCurrentDate = propSetCurrentDate || monthContext.setCurrentDate
 
     const navigateMonth = (offset: number) => {
         const newDate = new Date(currentDate)

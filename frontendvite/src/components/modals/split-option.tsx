@@ -1,11 +1,16 @@
 import { ChevronDown, Percent, Star } from 'lucide-react'
-import { Expense } from '@/components/modals/expense-editor-bottom-sheet.tsx'
+import type { Expense } from '@/types/index'
+import { ExpenseType } from '@/types/index'
+import React from 'react'
 
-export function SplitOption(props: { editingExpense: Expense; onClick: (e) => void }) {
+export function SplitOption(props: {
+    editingExpense: Expense
+    onClick: (e: React.MouseEvent) => void
+}) {
     return (
         <>
-            {/* Verteilung */}
-            {!props.editingExpense.isPersonal && (
+            {/* Verteilung nur anzeigen, wenn NICHT 'personal' */}
+            {props.editingExpense.type !== ExpenseType.Personal && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Verteilung

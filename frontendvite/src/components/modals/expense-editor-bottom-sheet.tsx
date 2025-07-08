@@ -48,6 +48,8 @@ export interface ExpenseEditorBottomSheetProps {
     expense: Expense | null
     onSave: (expense: Expense) => Promise<void>
     availableIcons?: Array<{ icon: LucideIcon; name: string; defaultLabel: string }>
+    selectedIcon?: LucideIcon
+    onIconChange?: React.Dispatch<React.SetStateAction<any>>
 }
 
 export function ExpenseEditorBottomSheet({
@@ -56,9 +58,21 @@ export function ExpenseEditorBottomSheet({
     expense,
     onSave,
     availableIcons = [],
+    selectedIcon: propSelectedIcon,
+    onIconChange,
 }: ExpenseEditorBottomSheetProps) {
     const [showIconSelector, setShowIconSelector] = useState(false)
-    const [selectedIcon, setSelectedIcon] = useState<LucideIcon>(expense?.icon || ShoppingCart)
+    const [localSelectedIcon, setLocalSelectedIcon] = useState<LucideIcon>(expense?.icon || ShoppingCart)
+
+    // Use prop if provided, otherwise use local state
+    const selectedIcon = propSelectedIcon || localSelectedIcon
+    const setSelectedIcon = (icon: LucideIcon) => {
+        if (onIconChange) {
+            onIconChange(icon);
+        } else {
+            setLocalSelectedIcon(icon);
+        }
+    }
     const [editingExpense, setEditingExpense] = useState<Expense>(() => ({
         ...defaultExpense,
         ...expense,
@@ -128,10 +142,14 @@ export function ExpenseEditorBottomSheet({
 
             // Symbol bestimmen (bereits gesetzt oder über Kategorie)
             const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
-            setSelectedIcon(chosenIcon as LucideIcon)
+
+            // Nur setzen wenn kein prop-selectedIcon
+            if (!propSelectedIcon) {
+                setSelectedIcon(chosenIcon as LucideIcon)
+            }
 
             // Name automatisch setzen, wenn leer
-            const iconEntry = availableIcons.find(i => i.icon === chosenIcon)
+            const iconEntry = availableIcons.find(i => i.icon === (propSelectedIcon || chosenIcon))
             const defaultLabel = iconEntry?.defaultLabel || 'Lebensmittel'
             if (!expense.name || expense.name.trim() === '') {
                 setEditingExpense(prev => ({

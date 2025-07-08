@@ -4,13 +4,13 @@ import { getExpenseService } from '@/services/useDataService'
 import { useUser } from '@/context/user-context'
 import { useBudget } from '@/context/budget-context'
 import { GROUP_ID } from '@/config/group-config'
-
+import type { LucideIcon } from 'lucide-react'
 export function useSaveExpense() {
     const { userId } = useUser()
     const { expenses, setExpenses } = useBudget()
 
     return useCallback(
-        async (expense: Expense, icon: React.ReactNode): Promise<Expense | null> => {
+        async (expense: Expense, icon: LucideIcon): Promise<Expense | null> => {
             if (!userId) {
                 console.error('⚠️ Kein Nutzer angemeldet – Speichern wird abgebrochen.')
                 return null

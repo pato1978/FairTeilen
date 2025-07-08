@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Baby, ChevronDown, User, Users } from 'lucide-react'
+import { Baby, ChevronDown, ShoppingCart, User, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'
 import { PageHeader } from '@/components/layout/page-header.tsx'
@@ -10,43 +10,48 @@ import { BudgetCard } from '@/components/budget/BudgetCardNew.tsx'
 import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
 import { useMultiBudget } from '@/context/multi-budget-context'
 import { useUser } from '@/context/user-context.tsx'
+import { Expense, ExpenseType } from '@/types/index'
 
 export default function HomePage() {
     const [currentDate, setCurrentDate] = useState(new Date())
     const [isModalOpen, setIsModalOpen] = useState(false)
-    const [editingExpense, setEditingExpense] = useState(null)
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
     const [showMessages, setShowMessages] = useState(false)
 
     const navigate = useNavigate()
     const { userId, setUserId, isReady } = useUser()
+    if (!userId) return null
     const currentUser = users[userId]
     const { personal, shared, child } = useMultiBudget()
 
     const handleAddButtonClick = () => {
         setEditingExpense({
-            id: null,
+            id: '',
+            groupId: '',
             name: '',
-            amount: '',
+            amount: 0,
             date: new Date().toISOString().split('T')[0],
             category: '',
-            icon: null,
-            isPersonal: true,
-            isChild: false,
+            icon: ShoppingCart,
+            createdByUserId: userId || '',
+            type: ExpenseType.Personal,
             isRecurring: false,
+            isBalanced: false,
         })
         setIsModalOpen(true)
     }
 
-    const handleSaveExpense = expense => {
+    const handleSaveExpense = (expense: Expense): Promise<void> => {
         setIsModalOpen(false)
 
-        if (expense.isPersonal) {
+        if (expense.type === ExpenseType.Personal) {
             navigate('/personal')
-        } else if (expense.isChild) {
+        } else if (expense.type === ExpenseType.Child) {
             navigate('/child')
         } else {
             navigate('/shared')
         }
+        return Promise.resolve()
     }
 
     return (

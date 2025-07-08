@@ -108,10 +108,10 @@ export default function ExpenseEditorModal({
         })
     }
 
-    const handleSelectIcon = iconOption => {
+    const handleSelectIcon = (iconOption: { icon: any; defaultLabel: string }) => {
         setSelectedIcon(iconOption.icon)
 
-        setEditingExpense(prev => {
+        setEditingExpense((prev: typeof editingExpense) => {
             const wasDefaultName =
                 availableIcons.find(i => i.icon === selectedIcon)?.defaultLabel === prev.name
             const shouldUpdateName = !prev.name || wasDefaultName

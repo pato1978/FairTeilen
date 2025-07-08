@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle, Clock, Info, Lock } from 'lucide-react'
+
 import type { MonthlyOverview } from '@/types/monthly-overview'
 
 export interface StatusInfo {
@@ -9,35 +10,20 @@ export interface StatusInfo {
     borderColor: string
 }
 
-const commonUnavailable = {
-    icon: <Lock className="h-5 w-5 text-gray-400" />,
-    text: 'Nicht verfügbar',
-    statusBgColor: 'bg-gray-50',
-    textColor: 'text-gray-400',
-    borderColor: 'border-gray-200',
-}
-
 export const statusInfoMap: Record<MonthlyOverview['status'], StatusInfo> = {
+    open: {
+        icon: <Clock className="h-5 w-5 text-blue-500" />,
+        text: 'Offen',
+        statusBgColor: 'bg-blue-50',
+        textColor: 'text-blue-600',
+        borderColor: 'border-blue-200',
+    },
     completed: {
         icon: <CheckCircle className="h-5 w-5 text-green-500" />,
         text: 'Abgeschlossen',
         statusBgColor: 'bg-green-50',
         textColor: 'text-green-600',
-        borderColor: 'border-gray-200',
-    },
-    pending: {
-        icon: <Clock className="h-5 w-5 text-amber-500" />,
-        text: 'Offen',
-        statusBgColor: 'bg-amber-50',
-        textColor: 'text-amber-600',
-        borderColor: 'border-amber-200',
-    },
-    'needs-clarification': {
-        icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
-        text: 'Klärungsbedarf',
-        statusBgColor: 'bg-amber-50',
-        textColor: 'text-amber-600',
-        borderColor: 'border-amber-200',
+        borderColor: 'border-green-200',
     },
     future: {
         icon: <Lock className="h-5 w-5 text-gray-400" />,
@@ -46,12 +32,26 @@ export const statusInfoMap: Record<MonthlyOverview['status'], StatusInfo> = {
         textColor: 'text-gray-400',
         borderColor: 'border-gray-200',
     },
+    pending: {
+        icon: <Clock className="h-5 w-5 text-amber-500" />,
+        text: 'Ausstehend',
+        statusBgColor: 'bg-amber-50',
+        textColor: 'text-amber-600',
+        borderColor: 'border-amber-200',
+    },
     notTakenIntoAccount: {
         icon: <Lock className="h-5 w-5 text-gray-400" />,
         text: 'Nicht berücksichtigt',
         statusBgColor: 'bg-gray-50',
         textColor: 'text-gray-400',
         borderColor: 'border-gray-200',
+    },
+    'needs-clarification': {
+        icon: <AlertTriangle className="h-5 w-5 text-red-500" />,
+        text: 'Klärungsbedarf',
+        statusBgColor: 'bg-red-50',
+        textColor: 'text-red-600',
+        borderColor: 'border-red-200',
     },
 }
 

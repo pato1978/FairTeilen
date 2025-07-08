@@ -8,11 +8,15 @@ import { useState } from 'react'
 interface PageHeaderProps {
     title: string
     showMonthSelector?: boolean
+    initialDate?: Date
+    onMonthChange?: React.Dispatch<React.SetStateAction<Date>>
 }
 
-export function PageHeader({ title, showMonthSelector = true }: PageHeaderProps) {
-    const { currentDate } = useMonth()
-    const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
+export function PageHeader({ title, showMonthSelector = true, initialDate, onMonthChange }: PageHeaderProps) {
+    const monthContext = useMonth()
+    const currentDateValue = initialDate || monthContext.currentDate
+    const setCurrentDateValue = onMonthChange || monthContext.setCurrentDate
+    const [selectedYear, setSelectedYear] = useState(currentDateValue.getFullYear())
 
     const handleYearChange = (newYear: number) => {
         setSelectedYear(newYear)
@@ -34,7 +38,7 @@ export function PageHeader({ title, showMonthSelector = true }: PageHeaderProps)
 
                 {showMonthSelector ? (
                     <div className="z-10 relative">
-                        <MonthSelector />
+                        <MonthSelector currentDate={currentDateValue} setCurrentDate={setCurrentDateValue} />
                     </div>
                 ) : (
                     <div className="inline-flex items-center justify-between bg-blue-50 rounded-lg p-2 min-w-fit">

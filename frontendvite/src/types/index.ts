@@ -42,7 +42,13 @@ export interface FinancialData {
         user2: UserAllocation
     }
 }
-
+export type Budget = {
+    scope: string
+    month: string
+    amount: number
+    userId: string
+    groupId?: string
+}
 export interface IconOption {
     icon: LucideIcon
     name: string

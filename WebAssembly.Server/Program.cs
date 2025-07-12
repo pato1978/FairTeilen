@@ -58,11 +58,24 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseHttpsRedirection(); // funktioniert nur, wenn HTTPS im Container konfiguriert
+//app.UseHttpsRedirection(); // funktioniert nur, wenn HTTPS im Container konfiguriert
 app.UseRouting();
 app.UseCors();
 app.UseAuthorization();
-
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("❌ UNHANDLED EXCEPTION:");
+        Console.WriteLine(ex.Message);
+        Console.WriteLine(ex.StackTrace);
+        throw;
+    }
+});
 app.MapControllers();
 
 // 📅 Cron-Job für wiederkehrende Ausgaben
@@ -77,5 +90,8 @@ using (var scope = app.Services.CreateScope())
         TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time")
     );
 }
+
+
+
 
 app.Run();

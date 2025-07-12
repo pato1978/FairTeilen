@@ -10,10 +10,12 @@ namespace WebAssembly.Server.Controllers;
 public class BudgetController : ControllerBase
 {
     private readonly SharedDbContext _sharedDb;
+    private readonly ILogger<BudgetController> _logger;
 
-    public BudgetController(SharedDbContext sharedDb)
+    public BudgetController(SharedDbContext sharedDb, ILogger<BudgetController> logger)
     {
         _sharedDb = sharedDb;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -36,12 +38,14 @@ public class BudgetController : ControllerBase
             var entry = await EnsureBudgetEntry(db, scope, month, userId);
             return Ok(entry.Amount);
         }
-        catch (FormatException)
+        catch (FormatException fe)
         {
+            _logger.LogError(fe, "❌ Ungültiges Datumsformat für Monat: {Month}", month);
             return BadRequest("Ungültiges Monatsformat. Erwartet: yyyy-MM");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "❌ Fehler beim Abrufen des Budgets für {Scope} {Month} {UserId}", scope, month, userId);
             return StatusCode(500, $"Interner Fehler: {ex.Message}");
         }
     }
@@ -78,6 +82,7 @@ public class BudgetController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "❌ Fehler beim Speichern des Budgets für {Scope} {Month} {UserId}", input.Scope, input.Month, input.UserId);
             return StatusCode(500, $"Fehler beim Speichern des Budgets: {ex.Message}");
         }
     }

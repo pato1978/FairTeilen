@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">shareTogether - fairTeilen</string>
+    <string name="title_activity_main">shareTogether - fairTeilen</string>
+    <string name="package_name">com.shareTogether.app</string>
+    <string name="custom_url_scheme">com.shareTogether.app</string>
+</resources>

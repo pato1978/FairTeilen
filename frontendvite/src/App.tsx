@@ -1,5 +1,4 @@
 import { Route, Routes } from 'react-router-dom'
-import { useEffect } from 'react'
 import RootLayout from '@/pages/layout'
 import SharedPage from '@/pages/shared/page.tsx'
 import ChildPage from '@/pages/child/page'
@@ -13,9 +12,8 @@ import HomePage from '@/pages/home/page'
 
 import { MultiBudgetProvider } from '@/context/multi-budget-context'
 import { ClarificationReactionsProvider } from '@/context/clarificationContext'
-import { UserProvider, useUser } from '@/context/user-context' // ✅ NEU
-import { Page as UserSelectPage, UserEntryGate } from '@/pages/user-select/page' // ✅ Deine neue Seite
-import { getExpenseService } from './services/useDataService'
+import { UserProvider, useUser } from '@/context/user-context'
+import { Page as UserSelectPage, UserEntryGate } from '@/pages/user-select/page'
 
 function AppRouter() {
     const { userId, isReady } = useUser()
@@ -86,7 +84,6 @@ function AppRouter() {
                             </RootLayout>
                         }
                     />
-
                     <Route
                         path="/trends"
                         element={
@@ -118,15 +115,6 @@ function AppRouter() {
 }
 
 export default function App() {
-    useEffect(() => {
-        getExpenseService()
-            .then(service => {
-                // 💡 Hier KEIN initDb mehr nötig, weil bereits in main.tsx ausgeführt
-                console.log('ℹ️ getExpenseService() erfolgreich geladen:', service)
-            })
-            .catch(err => console.error('❌ Fehler beim Laden des ExpenseService:', err))
-    }, [])
-
     return (
         <UserProvider>
             <AppRouter />

@@ -4,17 +4,15 @@ import svgr from 'vite-plugin-svgr' // ✅ NEU HINZUFÜGEN
 import path from 'path'
 
 export default defineConfig({
-    plugins: [
-        react(),
-        svgr(), // ✅ Plugin aktivieren
-    ],
+    base: './', // ← 🔧 DAS IST DER FEHLENDE SCHLÜSSEL
+    plugins: [react(), svgr()],
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
         },
     },
     optimizeDeps: {
-        exclude: ['@capacitor-community/sqlite/dist/loader'], // 🔧 wichtig für Web-Loader
+        exclude: ['@capacitor-community/sqlite/dist/loader'],
     },
     server: {
         port: 5173,

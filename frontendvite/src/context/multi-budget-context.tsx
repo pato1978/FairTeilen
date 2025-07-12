@@ -39,10 +39,12 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
         [ExpenseType.Shared]: { budget: 0, expenses: [], isLoading: true },
         [ExpenseType.Child]: { budget: 0, expenses: [], isLoading: true },
     })
+
     function getMonthKey(date: Date | undefined): string | undefined {
         if (!date || isNaN(date.getTime())) return undefined
         return date.toISOString().slice(0, 7)
     }
+
     // 🏁 Lädt ALLE Budgettypen neu (z. B. bei Monatswechsel oder Userwechsel)
     useEffect(() => {
         if (!userId) return
@@ -58,6 +60,8 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
                     const budgetService = await getBudgetService(type)
                     const budget = await budgetService.getBudget(type, monthKey, userId, groupId)
                     const expenses = await fetchExpenses(userId, type, currentDate!)
+                    console.log(`[✔️ getBudget] type=${type}, budget=`, budget)
+
                     setStates(prev => ({
                         ...prev,
                         [type]: { budget, expenses, isLoading: false },
@@ -86,6 +90,7 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
             const budgetService = await getBudgetService(type)
             const budget = await budgetService.getBudget(type, monthKey, userId, groupId)
             const expenses = await fetchExpenses(userId, type, currentDate!)
+            console.log(`[✔️ getBudget] type=${type}, budget=`, budget)
             setStates(prev => ({
                 ...prev,
                 [type]: { budget, expenses, isLoading: false },

@@ -1,36 +1,52 @@
-// src/main.tsx
-
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-
-import App from './App'
-import './index.css'
-
-import { MonthProvider } from '@/context/month-context'
-import { UserProvider } from '@/context/user-context'
-import { MultiBudgetProvider } from '@/context/multi-budget-context'
-
-import { getExpenseService } from '@/services/useDataService'
+import './index.css' // ✅ Tailwind-CSS aktivieren
+import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
+import { getExpenseService } from '@/services/ExpenseFactory'
 import { getBudgetService } from '@/services/budgetFactory'
+import { Capacitor } from '@capacitor/core'
+import { CapacitorSQLite } from '@capacitor-community/sqlite'
+import { UserProvider } from './context/user-context'
+import { MultiBudgetProvider } from './context/multi-budget-context'
+import { BrowserRouter } from 'react-router-dom'
+import App from './App'
+import { MonthProvider } from './context/month-context'
+import { createRoot } from 'react-dom/client'
 
-// Wir initialisieren lokale DBs vor dem Rendern
 async function start() {
     try {
-        // === Expense-Service ===
-        const expenseService = await getExpenseService() // kein await hier
-        if (expenseService && typeof expenseService.initDb === 'function') {
-            await expenseService.initDb()
-        } else {
-            console.warn('Kein ExpenseService.initDb verfügbar – skipping initDb')
+        // ✅ WICHTIG: Erst auf native SQLite-Schicht warten (nur bei nativer Plattform)
+        if (Capacitor.isNativePlatform?.()) {
+            console.log('📱 warte auf native SQLite-Schicht …')
+            await waitForSQLiteReady()
+            console.log('✅ native SQLite-Schicht bereit')
+
+            // 🧪 TEST: Existiert das Plugin überhaupt?
+            if (!CapacitorSQLite) {
+                console.error('❌ CapacitorSQLite ist undefined – Plugin nicht geladen')
+            } else {
+                console.log('🔍 Test: Rufe echo() des Plugins auf …')
+                try {
+                    const result = await CapacitorSQLite.echo({ value: 'ping' })
+                    console.log('✅ echo() erfolgreich:', result)
+                } catch (err) {
+                    console.error('❌ echo() fehlgeschlagen', err)
+                }
+            }
         }
 
-        // === Budget-Service ===
+        // === Expense-Service initialisieren ===
+        const expenseService = await getExpenseService()
+        if (expenseService?.initDb instanceof Function) {
+            await expenseService.initDb()
+        } else {
+            console.warn('Kein ExpenseService.initDb verfügbar – skippe initDb')
+        }
+
+        // === Budget-Service initialisieren ===
         const budgetService = await getBudgetService()
-        if (budgetService && typeof (budgetService as any).initDb === 'function') {
+        if ((budgetService as any)?.initDb instanceof Function) {
             await (budgetService as any).initDb()
         } else {
-            console.warn('Kein BudgetService.initDb verfügbar – skipping initDb')
+            console.warn('Kein BudgetService.initDb verfügbar – skippe initDb')
         }
 
         console.log('✅ Lokale SQL-Dienste initialisiert')
@@ -39,8 +55,9 @@ async function start() {
     }
 
     // Jetzt die App rendern
-    ReactDOM.createRoot(document.getElementById('root')!).render(
-        //<React.StrictMode>
+    const container = document.getElementById('root')!
+    const root = createRoot(container)
+    root.render(
         <MonthProvider>
             <UserProvider>
                 <MultiBudgetProvider>
@@ -50,9 +67,9 @@ async function start() {
                 </MultiBudgetProvider>
             </UserProvider>
         </MonthProvider>
-        //</React.StrictMode>
     )
-    console.log('Happy developing with React and Vite ✨')
+
+    console.log('Happy developing with React und Vite ✨')
 }
 
 start()

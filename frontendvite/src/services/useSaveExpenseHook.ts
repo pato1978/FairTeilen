@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Expense, ExpenseType } from '@/types'
-import { getExpenseService } from '@/services/useDataService'
+import { getExpenseService } from '@/services/ExpenseFactory'
 import { useUser } from '@/context/user-context'
 import { useBudget } from '@/context/budget-context'
 import { GROUP_ID } from '@/config/group-config'

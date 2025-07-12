@@ -1,75 +1,45 @@
 // src/services/expenses.ts
-
 import type { Expense } from '@/types'
 import { ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
 import { getExpenseService } from './ExpenseFactory'
-import type { ExpenseScope, IExpenseService } from './IExpenseService'
+import type { ExpenseScope } from './IExpenseService'
 
-/**
- * 🔁 Lädt Ausgaben für einen bestimmten Bereich (Scope) und Monat.
- * Entscheidet intern automatisch, ob lokal oder zentral gespeichert wird.
- */
+/** 🔁 Lädt Ausgaben für Scope und Monat */
 export async function fetchExpenses(
     userId: string | null,
     scope: ExpenseScope,
     date: Date
 ): Promise<Expense[]> {
-    console.log('[fetchExpenses] Aufruf gestartet', { userId, scope, date })
-
-    if (!userId) {
-        console.warn(`[fetchExpenses] ⚠️ Kein Nutzer – ${scope} wird nicht geladen.`)
-        return []
-    }
+    if (!userId) return []
 
     const monthKey = date.toISOString().slice(0, 7)
     const groupId = scope === 'personal' ? undefined : GROUP_ID
 
-    console.log('[fetchExpenses] Params', { monthKey, groupId })
-
-    const service = (await getExpenseService(scope)) as IExpenseService
-    const result = await service.getExpenses(userId, scope, monthKey, groupId)
-
-    console.log('[fetchExpenses] Ergebnis von service.getExpenses:', result)
-    return result
+    const service = await getExpenseService(scope)
+    return service.getExpenses(userId, scope, monthKey, groupId)
 }
 
-/**
- * 🗑️ Löscht eine einzelne Ausgabe – lokal oder zentral.
- * Intern wird automatisch die richtige groupId gesetzt.
- */
+/** 🗑️ Löscht eine Ausgabe je nach ExpenseType */
 export async function deleteExpense(id: string, type: ExpenseType): Promise<void> {
-    const scope: ExpenseScope =
-        type === ExpenseType.Personal
-            ? 'personal'
-            : type === ExpenseType.Shared
-              ? 'shared'
-              : type === ExpenseType.Child
-                ? 'child'
-                : 'personal'
-
+    const scope = mapTypeToScope(type)
     const groupId = scope === 'personal' ? undefined : GROUP_ID
-
-    const service = (await getExpenseService(scope)) as IExpenseService
+    const service = await getExpenseService(scope)
     await service.deleteExpense(id, groupId)
 }
 
-/**
- * ✏️ Aktualisiert eine einzelne Ausgabe – lokal oder zentral.
- * Intern wird automatisch die richtige groupId gesetzt.
- */
+/** ✏️ Aktualisiert eine Ausgabe */
 export async function updateExpense(expense: Expense): Promise<void> {
-    const scope: ExpenseScope =
-        expense.type === ExpenseType.Personal
-            ? 'personal'
-            : expense.type === ExpenseType.Shared
-              ? 'shared'
-              : expense.type === ExpenseType.Child
-                ? 'child'
-                : 'personal'
-
+    const scope = mapTypeToScope(expense.type)
     const groupId = scope === 'personal' ? undefined : GROUP_ID
-
-    const service = (await getExpenseService(scope)) as IExpenseService
+    const service = await getExpenseService(scope)
     await service.updateExpense(expense, groupId)
+}
+
+/** Hilfsfunktion zur Zuordnung von ExpenseType zu unserem Scope */
+function mapTypeToScope(type: ExpenseType): ExpenseScope {
+    if (type === ExpenseType.Personal) return 'personal'
+    if (type === ExpenseType.Shared) return 'shared'
+    if (type === ExpenseType.Child) return 'child'
+    return 'personal'
 }

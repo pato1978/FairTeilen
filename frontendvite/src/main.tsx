@@ -1,4 +1,4 @@
-import './index.css' // ✅ Tailwind-CSS aktivieren
+import './index.css'
 import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
 import { getExpenseService } from '@/services/ExpenseFactory'
 import { getBudgetService } from '@/services/budgetFactory'
@@ -15,44 +15,51 @@ async function start() {
     try {
         // ✅ WICHTIG: Erst auf native SQLite-Schicht warten (nur bei nativer Plattform)
         if (Capacitor.isNativePlatform?.()) {
-            await (CapacitorSQLite as any).setVerbose?.(false)
+            // Verbesserte setVerbose Behandlung
+
             console.log('📱 warte auf native SQLite-Schicht …')
             await waitForSQLiteReady()
             console.log('✅ native SQLite-Schicht bereit')
 
-            // 🧪 TEST: Existiert das Plugin überhaupt?
-            if (!CapacitorSQLite) {
-                //console.error('❌ CapacitorSQLite ist undefined – Plugin nicht geladen')
-            } else {
-                // console.log('🔍 Test: Rufe echo() des Plugins auf …')
-                try {
-                    await CapacitorSQLite.echo({ value: 'ping' })
-                    //  console.log('✅ echo() erfolgreich:', result)
-                } catch (err) {
-                    console.error('❌ echo() fehlgeschlagen', err)
-                }
+            try {
+                await CapacitorSQLite.echo({ value: 'ping' })
+                console.log('✅ SQLite echo erfolgreich')
+            } catch (err) {
+                console.error('❌ echo() fehlgeschlagen', err)
             }
         }
 
         // === Expense-Service initialisieren ===
-        const expenseService = await getExpenseService()
-        if (expenseService?.initDb instanceof Function) {
-            await expenseService.initDb()
-        } else {
-            console.warn('Kein ExpenseService.initDb verfügbar – skippe initDb')
+        try {
+            const expenseService = await getExpenseService()
+            if (expenseService?.initDb instanceof Function) {
+                await expenseService.initDb()
+                console.log('✅ ExpenseService initialisiert')
+            } else {
+                console.warn('Kein ExpenseService.initDb verfügbar – skippe initDb')
+            }
+        } catch (expenseError) {
+            console.error('❌ Fehler bei ExpenseService Initialisierung:', expenseError)
         }
 
         // === Budget-Service initialisieren ===
-        const budgetService = await getBudgetService()
-        if ((budgetService as any)?.initDb instanceof Function) {
-            await (budgetService as any).initDb()
-        } else {
-            console.warn('Kein BudgetService.initDb verfügbar – skippe initDb')
+        try {
+            const budgetService = await getBudgetService()
+            if ((budgetService as any)?.initDb instanceof Function) {
+                await (budgetService as any).initDb()
+                console.log('✅ BudgetService initialisiert')
+            } else {
+                console.warn('Kein BudgetService.initDb verfügbar – skippe initDb')
+            }
+        } catch (budgetError) {
+            console.error('❌ Fehler bei BudgetService Initialisierung:', budgetError)
         }
 
         console.log('✅ Lokale SQL-Dienste initialisiert')
     } catch (err) {
-        console.error('❌ Fehler bei initDb():', err)
+        console.error('❌ Kritischer Fehler bei initDb():', err)
+        // App trotzdem starten, aber mit Warnung
+        console.warn('⚠️ App startet trotz Datenbankfehler')
     }
 
     // Jetzt die App rendern

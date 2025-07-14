@@ -7,45 +7,69 @@ import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
 
 export class CapacitorSqliteBudgetService implements IBudgetService {
     private db: SQLiteDBConnection | null = null
-    private initialized = false
+    private initPromise?: Promise<void>
 
+    /**
+     * Initialisiert die lokale SQLite-Datenbank einmalig.
+     * Promise-Caching verhindert parallele createConnection-Aufrufe.
+     */
     async initDb(): Promise<void> {
-        if (this.initialized) return
-        this.initialized = true
+        if (this.initPromise) {
+            return this.initPromise
+        }
 
-        console.log('[budget] waitForSQLiteReady …')
-        await waitForSQLiteReady() // Echo-Check
-        await new Promise(r => setTimeout(r, 150)) // 150 ms Puffer
-        console.log('[budget] native ready')
+        this.initPromise = (async () => {
+            console.log('[budget] waitForSQLiteReady …')
+            await waitForSQLiteReady()
+            await new Promise(r => setTimeout(r, 150))
+            console.log('[budget] native ready')
 
-        const { result: exists } = await sqliteConnection.isConnection(DB_NAME, false)
+            // Prüfen, ob Connection schon existiert
+            const { result: exists } = await sqliteConnection.isConnection(DB_NAME, false)
+            if (exists) {
+                this.db = await sqliteConnection.retrieveConnection(DB_NAME, false)
+                console.log('[budget] vorhandene Connection wiederverwendet')
+            } else {
+                this.db = await sqliteConnection.createConnection(
+                    DB_NAME,
+                    false, // encrypted?
+                    'no-encryption', // encryption mode
+                    1, // version
+                    false // readonly?
+                )
+                console.log('[budget] neue Connection erstellt')
+            }
 
-        this.db = exists
-            ? await sqliteConnection.retrieveConnection(DB_NAME, false)
-            : await sqliteConnection.createConnection(DB_NAME, false, 'no-encryption', 1, false)
+            // Connection öffnen
+            await this.db.open()
 
-        await this.db.open()
+            // Tabelle anlegen, falls nicht vorhanden
+            await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS Budgets (
+          id       TEXT PRIMARY KEY,
+          scope    TEXT,
+          monthKey TEXT,
+          amount   REAL,
+          userId   TEXT,
+          groupId  TEXT
+        );
+      `)
+            console.log('[budget] Tabelle "Budgets" bereit')
+        })()
 
-        await this.db.execute(`
-      CREATE TABLE IF NOT EXISTS Budgets (
-        id       TEXT PRIMARY KEY,
-        scope    TEXT,
-        monthKey TEXT,
-        amount   REAL,
-        userId   TEXT,
-        groupId  TEXT
-      );
-    `)
-        console.log('[budget] Tabelle Budgets bereit')
+        return this.initPromise
     }
 
+    /** Gibt das Budget für den gegebenen Scope/Monat/Nutzer zurück */
     async getBudget(
         scope: string,
         monthKey: string,
         userId: string,
         groupId?: string
     ): Promise<number> {
-        if (!this.db) throw new Error('Database not initialized')
+        if (!this.db) {
+            throw new Error('Database not initialized')
+        }
         const gid = groupId ?? ''
         const { values } = await this.db.query(
             `SELECT amount FROM Budgets
@@ -55,6 +79,7 @@ export class CapacitorSqliteBudgetService implements IBudgetService {
         return values?.[0]?.amount ?? 0
     }
 
+    /** Speichert oder ersetzt das Budget für Scope/Monat/Nutzer */
     async saveBudget(
         scope: string,
         monthKey: string,
@@ -62,7 +87,9 @@ export class CapacitorSqliteBudgetService implements IBudgetService {
         userId: string,
         groupId?: string
     ): Promise<void> {
-        if (!this.db) throw new Error('Database not initialized')
+        if (!this.db) {
+            throw new Error('Database not initialized')
+        }
         const gid = groupId ?? ''
         const id = `${scope}_${monthKey}_${userId}_${gid}`
         await this.db.run(

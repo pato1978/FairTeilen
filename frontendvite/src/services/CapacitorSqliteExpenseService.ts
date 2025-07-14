@@ -1,155 +1,143 @@
+// src/services/CapacitorSqliteExpenseService.ts
 import { SQLiteDBConnection } from '@capacitor-community/sqlite'
-import { sqliteConnection } from './sqliteConnection' // zentrales Singleton
-import type { Expense } from '@/types'
-import type { IExpenseService } from './IExpenseService'
+import { sqliteConnection } from './sqliteConnection'
 import { DB_NAME } from './dbName'
 import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
+import type { IExpenseService } from './IExpenseService'
+import type { Expense } from '@/types'
 
-/**
- * SQLite-basierter Expense-Service für lokale Speicherung
- * Implementiert IExpenseService
- */
 export class CapacitorSqliteExpenseService implements IExpenseService {
     private db: SQLiteDBConnection | null = null
-    private initialized = false
-
-    constructor() {
-        console.log('📀 CapacitorSqliteExpenseService NEW')
-    }
+    private initPromise?: Promise<void>
 
     /**
-     * Initialisiert die SQLite-DB und legt die "Expenses"-Tabelle an
+     * Initialisiert die lokale SQLite-Datenbank einmalig.
+     * Führt bei Bedarf Migration durch (z. B. Hinzufügen der Spalte "userId").
      */
     async initDb(): Promise<void> {
-        if (this.initialized) {
-            console.log('📀 initDb(): bereits initialisiert – überspringe')
-            return
-        }
-        this.initialized = true
-        console.log('📀 CapacitorSqliteExpenseService initDb()')
-        await waitForSQLiteReady()
+        if (this.initPromise) return this.initPromise
 
-        const { result: exists } = await sqliteConnection.isConnection(DB_NAME, false)
-        this.db = exists
-            ? await sqliteConnection.retrieveConnection(DB_NAME, false)
-            : await sqliteConnection.createConnection(DB_NAME, false, 'no-encryption', 1, false)
+        this.initPromise = (async () => {
+            console.log('[expense] waitForSQLiteReady …')
+            await waitForSQLiteReady()
+            await new Promise(r => setTimeout(r, 150))
+            console.log('[expense] native ready')
 
-        await this.db.open()
+            const { result: exists } = await sqliteConnection.isConnection(DB_NAME, false)
+            this.db = exists
+                ? await sqliteConnection.retrieveConnection(DB_NAME, false)
+                : await sqliteConnection.createConnection(DB_NAME, false, 'no-encryption', 1, false)
 
-        const createTable = `
-            CREATE TABLE IF NOT EXISTS Expenses (
-                                                    id TEXT PRIMARY KEY,
-                                                    groupId TEXT,
-                                                    name TEXT,
-                                                    amount REAL,
-                                                    date TEXT,
-                                                    category TEXT,
-                                                    createdByUserId TEXT,
-                                                    type TEXT,
-                                                    isRecurring INTEGER,
-                                                    isBalanced INTEGER
-            );
-        `
-        await this.db.execute(createTable)
-        console.log('📀 SQLite-DB geöffnet und Tabelle angelegt')
+            await this.db.open()
+
+            // 🧱 Tabelle "Expenses" mit aktuellem Schema anlegen (falls noch nicht vorhanden)
+            await this.db.execute(`
+                CREATE TABLE IF NOT EXISTS Expenses (
+                                                        id          TEXT PRIMARY KEY,
+                                                        userId      TEXT,            -- NEU: statt createdByUserId
+                                                        groupId     TEXT,
+                                                        name        TEXT,
+                                                        amount      REAL,
+                                                        date        TEXT,
+                                                        icon        TEXT,
+                                                        category    TEXT,
+                                                        type        TEXT,
+                                                        isRecurring INTEGER,
+                                                        isBalanced  INTEGER,
+                                                        distribution TEXT
+                );
+            `)
+
+            // 🛠️ Migration: Falls Spalte "userId" noch nicht existierte, nachträglich ergänzen
+            try {
+                await this.db.execute('ALTER TABLE Expenses ADD COLUMN userId TEXT')
+            } catch (e) {
+                console.log(
+                    '[expense] Spalte "userId" evtl. schon vorhanden:',
+                    (e as Error).message
+                )
+            }
+
+            console.log('[expense] Tabelle "Expenses" bereit')
+        })()
+
+        return this.initPromise
     }
 
-    /**
-     * Liest Ausgaben eines Monats aus der DB.
-     * Signatur: getExpenses(userId, type, monthKey)
-     */
-    async getExpenses(userId: string, type: string, monthKey: string): Promise<Expense[]> {
+    /** Lädt alle Ausgaben für den gegebenen Monat/Nutzer/Scope (Scope ignoriert, da ExpenseType verwendet wird) */
+    async getExpenses(userId: string, groupId: string, monthKey: string): Promise<Expense[]> {
         if (!this.db) throw new Error('Database not initialized')
 
-        console.log('[SQLiteService.getExpenses] Eingabe:', { userId, type, monthKey })
-
+        // 🔍 Scope wird ignoriert – nur type wird verwendet
         const { values } = await this.db.query(
             `SELECT * FROM Expenses
-       WHERE createdByUserId = ?
-         AND type = ?
-         AND substr(date, 1, 7) = ?`,
-            [userId, type, monthKey]
+             WHERE userId = ? AND groupId = ? AND substr(date,1,7) = ?`,
+            [userId, groupId, monthKey]
         )
 
-        const result = (values as Expense[]) ?? []
-        console.log('[SQLiteService.getExpenses] Ergebnis:', result)
-        return result
+        return (values ?? []).map(row => ({
+            ...row,
+            createdByUserId: row.userId, // 🧠 Mapping von DB zu App-Modell
+            isBalanced: !!row.isBalanced,
+            isRecurring: !!row.isRecurring,
+            distribution: row.distribution ? JSON.parse(row.distribution) : undefined,
+            icon: { name: row.icon } as any, // ⚠️ Typischerweise wird Icon durch extra Mapping ersetzt
+        })) as Expense[]
     }
 
-    /**
-     * Holt alle Ausgaben optional gefiltert nach Monat
-     */
-    async getAllExpenses(filter?: { monthKey?: string }): Promise<Expense[]> {
-        if (!this.db) throw new Error('Database not initialized')
-
-        const query = filter?.monthKey
-            ? 'SELECT * FROM Expenses WHERE substr(date, 1, 7) = ?'
-            : 'SELECT * FROM Expenses'
-        const params = filter?.monthKey ? [filter.monthKey] : []
-
-        const { values } = await this.db.query(query, params)
-        console.log('[🧩 SqliteService.getAllExpenses] Ergebnis:', values)
-        return (values as Expense[]) ?? []
-    }
-
-    /**
-     * Fügt eine neue Ausgabe hinzu
-     */
-    async addExpense(expense: Expense, groupId?: string): Promise<void> {
+    /** Speichert oder aktualisiert eine Ausgabe */
+    async saveExpense(expense: Expense): Promise<void> {
         if (!this.db) throw new Error('Database not initialized')
 
         await this.db.run(
-            `INSERT INTO Expenses (
-                id, groupId, name, amount, date, category,
-                createdByUserId, type, isRecurring, isBalanced
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT OR REPLACE INTO Expenses
+       (id, userId, groupId, name, amount, date, icon, category, type, isRecurring, isBalanced, distribution)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 expense.id,
-                groupId ?? expense.groupId ?? null,
+                expense.createdByUserId, // 🧠 Mapping von App-Modell zu DB
+                expense.groupId ?? '',
                 expense.name,
                 expense.amount,
                 expense.date,
-                expense.category,
-                expense.createdByUserId,
+                expense.icon?.name ?? '',
+                expense.category ?? '',
                 expense.type,
                 expense.isRecurring ? 1 : 0,
                 expense.isBalanced ? 1 : 0,
+                expense.distribution ? JSON.stringify(expense.distribution) : null,
             ]
         )
     }
 
-    /**
-     * Aktualisiert eine bestehende Ausgabe
-     */
-    async updateExpense(expense: Expense, groupId?: string): Promise<void> {
-        if (!this.db) throw new Error('Database not initialized')
-
-        await this.db.run(
-            `UPDATE Expenses SET
-                                 groupId = ?, name = ?, amount = ?, date = ?, category = ?,
-                                 createdByUserId = ?, type = ?, isRecurring = ?, isBalanced = ?
-             WHERE id = ?`,
-            [
-                groupId ?? expense.groupId ?? null,
-                expense.name,
-                expense.amount,
-                expense.date,
-                expense.category,
-                expense.createdByUserId,
-                expense.type,
-                expense.isRecurring ? 1 : 0,
-                expense.isBalanced ? 1 : 0,
-                expense.id,
-            ]
-        )
-    }
-
-    /**
-     * Löscht eine Ausgabe
-     */
+    /** Löscht eine Ausgabe nach ID */
     async deleteExpense(id: string): Promise<void> {
         if (!this.db) throw new Error('Database not initialized')
-        await this.db.run('DELETE FROM Expenses WHERE id = ?', [id])
+        await this.db.run(`DELETE FROM Expenses WHERE id = ?`, [id])
+    }
+
+    /** Gibt ALLE Ausgaben zurück – ohne Filter */
+    async getAllExpenses(): Promise<Expense[]> {
+        if (!this.db) throw new Error('Database not initialized')
+        const { values } = await this.db.query(`SELECT * FROM Expenses`)
+        return (values ?? []).map(row => ({
+            ...row,
+            createdByUserId: row.userId, // Mapping wie oben
+            isBalanced: !!row.isBalanced,
+            isRecurring: !!row.isRecurring,
+            distribution: row.distribution ? JSON.parse(row.distribution) : undefined,
+            icon: { name: row.icon } as any,
+        })) as Expense[]
+    }
+
+    /** Fügt eine neue Ausgabe hinzu */
+    async addExpense(expense: Expense): Promise<void> {
+        return this.saveExpense(expense)
+    }
+
+    /** Aktualisiert eine bestehende Ausgabe */
+    async updateExpense(expense: Expense): Promise<void> {
+        return this.saveExpense(expense)
     }
 }
 

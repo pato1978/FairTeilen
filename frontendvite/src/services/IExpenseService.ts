@@ -3,6 +3,7 @@
 import type { Expense } from '@/types'
 
 export type ExpenseScope = 'personal' | 'shared' | 'child'
+/** Das fachliche Modell einer Ausgabe */
 
 export interface IExpenseService {
     /** Initialisiert die lokale DB (SQLite/sql.js) */

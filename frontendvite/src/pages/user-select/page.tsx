@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useUser } from '@/context/user-context.tsx'
 import { users } from '@/data/users.ts'
 import { useNavigate } from 'react-router-dom'
+import { loadHasSeenWelcome, saveHasSeenWelcome, resetHasSeenWelcome } from '@/lib/welcome-storage'
 
 /**
- * Komponente zur Auswahl des Nutzers beim ersten Start
+ * (Optional deaktiviert) Komponente zur Auswahl des Nutzers beim ersten Start
  */
 export function Page() {
     const { setUserId, isReady } = useUser()
@@ -18,27 +19,24 @@ export function Page() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-[393px] w-full mx-auto">
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                    <h1 className="text-2xl font-bold text-gray-800 text-center mb-6">
-                        Wer bist du?
-                    </h1>
-                    <div className="flex flex-col gap-4">
-                        {Object.entries(users).map(([id, user]) => (
-                            <button
-                                key={id}
-                                onClick={() => {
-                                    setUserId(id)
-                                    localStorage.removeItem('hasSeenWelcome') // Zurücksetzen, falls vorher mal gesetzt
-                                }}
-                                className={`bg-${user.color} text-white font-semibold py-4 px-6 rounded-lg shadow-md flex items-center gap-4 hover:opacity-90 active:scale-95 transition-all duration-200`}
-                            >
-                                <user.icon className="w-6 h-6" />
-                                <span>{user.name}</span>
-                            </button>
-                        ))}
-                    </div>
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-400 p-4">
+            <div className="text-center space-y-4">
+                <p className="text-sm opacity-70">Debug-Seite: Benutzer manuell auswählen</p>
+                <div className="flex flex-col gap-3">
+                    {Object.entries(users).map(([id, user]) => (
+                        <button
+                            key={id}
+                            onClick={async () => {
+                                console.log('👆 Button clicked')
+                                await setUserId(id) // ← wenn das funktioniert, MUSS saveUserId() geloggt werden
+                                console.log('✅ setUserId fertig')
+                                resetHasSeenWelcome()
+                            }}
+                            className={`bg-${user.color} text-white font-semibold py-2 px-4 rounded-lg`}
+                        >
+                            {user.name}
+                        </button>
+                    ))}
                 </div>
             </div>
         </div>
@@ -50,6 +48,7 @@ export function Page() {
  */
 export function WelcomePage() {
     const { userId } = useUser()
+    const navigate = useNavigate()
 
     if (!userId) {
         return (
@@ -61,18 +60,20 @@ export function WelcomePage() {
 
     const user = users[userId]
 
-    console.log('[WelcomePage] userId:', userId, '→ user:', users[userId])
-
-    const navigate = useNavigate()
-
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            localStorage.setItem('hasSeenWelcome', 'true')
-            navigate('/')
-        }, 2000)
+        console.log('👋 WelcomePage useEffect gestartet')
 
+        const run = async () => {
+            console.log('💾 Speichere Welcome-Status …')
+            await saveHasSeenWelcome(true)
+
+            console.log('➡️ Navigiere zur App (replace: true) …')
+            navigate('/', { replace: true }) // ✅ WICHTIG: verhindert Zurückspringen
+        }
+
+        const timeout = setTimeout(run, 2000)
         return () => clearTimeout(timeout)
-    }, [])
+    }, [navigate])
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -93,22 +94,18 @@ export function WelcomePage() {
 
 /**
  * EntryGate - Entscheidet, ob UserSelect, Welcome oder App angezeigt wird
- * → Diese Komponente kommt in `AppRouter.tsx` zum Einsatz!
+ * → Wird in `AppRouter.tsx` eingebunden
  */
 export function UserEntryGate({ children }: { children: React.ReactNode }) {
     const { userId, isReady } = useUser()
     const [hasSeenWelcome, setHasSeenWelcome] = useState<boolean | null>(null)
 
-    // Einmal beim Mount prüfen, ob das Willkommensfenster schon gesehen wurde
     useEffect(() => {
-        const seen = localStorage.getItem('hasSeenWelcome') === 'true'
-        setHasSeenWelcome(seen)
+        loadHasSeenWelcome().then(seen => setHasSeenWelcome(seen))
     }, [])
 
-    // Warten, bis alles bereit ist
     if (!isReady || hasSeenWelcome === null) return null
 
-    // Ungültige ID → zurück zur Auswahl
     if (userId && !users[userId]) {
         localStorage.clear()
         return <Page />

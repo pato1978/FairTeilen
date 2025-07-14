@@ -1,67 +1,65 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
-import { users } from '@/data/users.ts' // Testdaten (z. B. für Namen, Farben etc.)
-import { loadUserId, saveUserId } from '@/services/user-id-service.ts' // NEU: Service für Speicherlogik
+import { users } from '@/data/users.ts' // Testdaten für Namen, Farben etc.
+import { loadUserId, saveUserId } from '@/services/user-id-service.ts' // Plattformspezifische Speicherlogik
 
-// KONSTANTE: Key wird intern im Service verwendet
-//const USER_STORAGE_KEY = 'user_id'
-
-// Typdefinition für den Kontext
+// Kontext-Typdefinition
 type UserContextType = {
     userId: string | null
-    setUserId: (id: string) => void
+    setUserId: (id: string) => Promise<void> // neu: async
     isReady: boolean
     user: AppUser | null
 }
+
 type AppUser = {
     id: string
     name: string
 }
+
 type Props = {
     children: ReactNode
 }
 
-// Kontext erstellen
+// Kontext erzeugen
 const UserContext = createContext<UserContextType | undefined>(undefined)
-
-/*
-// ALT: Direkter Zugriff auf localStorage → wird ersetzt durch loadUserId()
-const getUserIdFromStorage = (): string | null => {
-  return localStorage.getItem(USER_STORAGE_KEY)
-}
-*/
 
 export function UserProvider({ children }: Props): JSX.Element {
     const [userId, setUserId] = useState<string | null>(null)
     const [isReady, setIsReady] = useState(false)
 
-    // Wenn userId bekannt ist → passenden Benutzer aus Testdaten heraussuchen
+    // Benutzerobjekt aus Testdaten extrahieren
     const user = userId ? (users[userId] ?? null) : null
 
-    // NEU: Beim ersten Laden → ID aus Service holen (SQLite oder localStorage, je nach Umgebung)
+    // Beim App-Start gespeicherte Benutzer-ID laden
     useEffect(() => {
         const init = async () => {
-            const id = await loadUserId() // Nur laden, nicht erzeugen!
-            setUserId(id) // kann null sein – ist okay
-            setIsReady(true)
+            const id = await loadUserId() // lokal oder Preferences
+            setUserId(id)
+            setIsReady(true) // jetzt kann die App gerendert werden
         }
-
         init()
     }, [])
 
-    // NEU: Benutzer-ID setzen und im Service speichern (z. B. bei Benutzerwechsel oder Reset)
-    const setUserIdWithStorage = (id: string): void => {
-        saveUserId(id) // dauerhaft speichern
+    // Benutzer-ID setzen UND dauerhaft speichern
+    const setUserIdWithStorage = async (id: string): Promise<void> => {
+        await saveUserId(id) // z. B. via Preferences oder localStorage
         setUserId(id) // im React-Zustand aktualisieren
     }
 
     return (
-        <UserContext.Provider value={{ userId, setUserId: setUserIdWithStorage, isReady, user }}>
+        <UserContext.Provider
+            value={{
+                userId,
+                setUserId: setUserIdWithStorage,
+                isReady,
+                user,
+            }}
+        >
             {children}
         </UserContext.Provider>
     )
 }
 
-// Hook für Zugriff auf den Benutzerkontext
+// Custom Hook für Zugriff auf den Kontext
 export function useUser(): UserContextType {
     const context = useContext(UserContext)
     if (!context) {

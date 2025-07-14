@@ -15,18 +15,19 @@ async function start() {
     try {
         // ✅ WICHTIG: Erst auf native SQLite-Schicht warten (nur bei nativer Plattform)
         if (Capacitor.isNativePlatform?.()) {
+            await (CapacitorSQLite as any).setVerbose?.(false)
             console.log('📱 warte auf native SQLite-Schicht …')
             await waitForSQLiteReady()
             console.log('✅ native SQLite-Schicht bereit')
 
             // 🧪 TEST: Existiert das Plugin überhaupt?
             if (!CapacitorSQLite) {
-                console.error('❌ CapacitorSQLite ist undefined – Plugin nicht geladen')
+                //console.error('❌ CapacitorSQLite ist undefined – Plugin nicht geladen')
             } else {
-                console.log('🔍 Test: Rufe echo() des Plugins auf …')
+                // console.log('🔍 Test: Rufe echo() des Plugins auf …')
                 try {
-                    const result = await CapacitorSQLite.echo({ value: 'ping' })
-                    console.log('✅ echo() erfolgreich:', result)
+                    await CapacitorSQLite.echo({ value: 'ping' })
+                    //  console.log('✅ echo() erfolgreich:', result)
                 } catch (err) {
                     console.error('❌ echo() fehlgeschlagen', err)
                 }

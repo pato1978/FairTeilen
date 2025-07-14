@@ -141,6 +141,7 @@ export class SqlJsExpenseService implements IExpenseService {
         monthKey: string,
         _groupId?: string
     ): Promise<Expense[]> {
+        console.log('[🧩 SqlJsService] getExpenses aufgerufen – sollte hier nie landen auf Gerät!')
         if (!this.db) throw new Error('Database not initialized')
 
         const type =

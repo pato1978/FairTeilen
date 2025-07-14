@@ -12,7 +12,7 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
 
     /**
      * Initialisiert die lokale SQLite-Datenbank einmalig.
-     * Führt bei Bedarf Migration durch (z. B. Hinzufügen der Spalte "userId").
+     * Führt bei Bedarf Migration durch (z. B. Hinzufügen der Spalte "userId").
      */
     async initDb(): Promise<void> {
         if (this.initPromise) return this.initPromise
@@ -64,16 +64,39 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
         return this.initPromise
     }
 
-    /** Lädt alle Ausgaben für den gegebenen Monat/Nutzer/Scope (Scope ignoriert, da ExpenseType verwendet wird) */
-    async getExpenses(userId: string, groupId: string, monthKey: string): Promise<Expense[]> {
+    /** Lädt alle Ausgaben für den gegebenen Monat/Nutzer/Scope */
+    async getExpenses(userId: string, scope: string, monthKey: string): Promise<Expense[]> {
         if (!this.db) throw new Error('Database not initialized')
 
-        // 🔍 Scope wird ignoriert – nur type wird verwendet
-        const { values } = await this.db.query(
-            `SELECT * FROM Expenses
-             WHERE userId = ? AND groupId = ? AND substr(date,1,7) = ?`,
-            [userId, groupId, monthKey]
-        )
+        // 🔍 DEBUG: Log input parameters
+        console.log('[getExpenses] DEBUG - Input params:', {
+            userId,
+            scope,
+            scopeLength: scope?.length,
+            scopeType: typeof scope,
+            monthKey,
+        })
+
+        let query: string
+        let params: any[]
+
+        // Nutze den 'type' in der Datenbank für die Filterung
+        query = `SELECT * FROM Expenses 
+                 WHERE userId = ? 
+                 AND type = ?
+                 AND substr(date,1,7) = ?`
+        params = [userId, scope, monthKey]
+        console.log('[getExpenses] DEBUG - Using TYPE-based query with scope:', scope)
+
+        console.log('[getExpenses] DEBUG - Query:', query)
+        console.log('[getExpenses] DEBUG - Params:', params)
+
+        const { values } = await this.db.query(query, params)
+
+        console.log('[getExpenses] DEBUG - Raw results:', values?.length ?? 0, 'items')
+        if (values && values.length > 0) {
+            console.log('[getExpenses] DEBUG - First row:', values[0])
+        }
 
         return (values ?? []).map(row => ({
             ...row,
@@ -88,6 +111,17 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
     /** Speichert oder aktualisiert eine Ausgabe */
     async saveExpense(expense: Expense): Promise<void> {
         if (!this.db) throw new Error('Database not initialized')
+
+        // 🔍 DEBUG: Log what we're saving
+        console.log('[saveExpense] DEBUG - Saving expense:', {
+            id: expense.id,
+            userId: expense.createdByUserId,
+            groupId: expense.groupId,
+            groupIdLength: expense.groupId?.length,
+            type: expense.type,
+            date: expense.date,
+            amount: expense.amount,
+        })
 
         await this.db.run(
             `INSERT OR REPLACE INTO Expenses
@@ -108,6 +142,8 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
                 expense.distribution ? JSON.stringify(expense.distribution) : null,
             ]
         )
+
+        console.log('[saveExpense] DEBUG - Save completed')
     }
 
     /** Löscht eine Ausgabe nach ID */
@@ -120,6 +156,20 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
     async getAllExpenses(): Promise<Expense[]> {
         if (!this.db) throw new Error('Database not initialized')
         const { values } = await this.db.query(`SELECT * FROM Expenses`)
+
+        // 🔍 DEBUG: Log all expenses
+        console.log('[getAllExpenses] DEBUG - Total expenses in DB:', values?.length ?? 0)
+        if (values && values.length > 0) {
+            console.log('[getAllExpenses] DEBUG - Sample expense:', {
+                id: values[0].id,
+                userId: values[0].userId,
+                groupId: values[0].groupId,
+                groupIdLength: values[0].groupId?.length,
+                type: values[0].type,
+                date: values[0].date,
+            })
+        }
+
         return (values ?? []).map(row => ({
             ...row,
             createdByUserId: row.userId, // Mapping wie oben

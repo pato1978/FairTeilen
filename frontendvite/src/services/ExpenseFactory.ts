@@ -20,22 +20,26 @@ export function getExpenseService(scope: ExpenseScope = 'personal'): Promise<IEx
     }
 
     cache[scope] = (async () => {
-        if (scope !== 'personal') {
-            // shared oder child → zentraler Backend-Service
-            return new BackendExpenseService()
+        if (scope === 'personal') {
+            const service = Capacitor.isNativePlatform?.()
+                ? capacitorSqliteExpenseService
+                : sqlJsExpenseService
+
+            console.log(
+                '📀 Lokaler ExpenseService gewählt für "personal":',
+                Capacitor.isNativePlatform?.() ? 'native (SQLite)' : 'web (SQL.js)'
+            )
+
+            if (typeof (service as any).initDb === 'function') {
+                await (service as any).initDb()
+            }
+
+            return service
         }
 
-        // personal → native oder web
-        const service = Capacitor.isNativePlatform?.()
-            ? capacitorSqliteExpenseService
-            : sqlJsExpenseService
-
-        // wenn vorhanden, initDb einmalig aufrufen
-        if (typeof (service as any).initDb === 'function') {
-            await (service as any).initDb()
-        }
-
-        return service
+        // shared oder child → zentraler Backend-Service
+        console.log('🌐 BackendExpenseService gewählt für:', scope)
+        return new BackendExpenseService()
     })()
 
     return cache[scope]!

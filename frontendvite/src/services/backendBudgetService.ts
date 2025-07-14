@@ -4,12 +4,20 @@ import type { IBudgetService } from './IBudgetService'
 import type { Budget } from '@/types'
 
 // 🌍 Plattformabhängige Basis-URL
+// Hinweis: Der Controller läuft auf Route("api/budget") → daher: + /api
 const API_BASE_URL = Capacitor.isNativePlatform?.()
-    ? import.meta.env.VITE_API_URL_NATIVE // z. B. http://192.168.0.42:8080
-    : '/api'
-
+    ? `${import.meta.env.VITE_API_URL_NATIVE}/api` // z. B. http://192.168.0.42:8080/api
+    : '/api' // ⚠️ wichtig: Vite-Proxy → /api wird zu https://api.veglia.de/api
+console.log('🛠️ API_BASE_URL =', API_BASE_URL)
 export const backendBudgetService: IBudgetService = {
-    /** 🔄 Budget für bestimmten Monat laden (Rückgabe: amount als number) */
+    /**
+     * 🔄 Budget für einen bestimmten Monat laden
+     * @param scope z. B. 'personal', 'shared', 'child'
+     * @param monthKey im Format 'yyyy-MM'
+     * @param userId eindeutige Benutzer-ID
+     * @param groupId optional – aktuell (noch) nicht im Controller verwendet
+     * @returns number – Betrag für das Budget
+     */
     async getBudget(
         scope: string,
         monthKey: string,
@@ -17,10 +25,10 @@ export const backendBudgetService: IBudgetService = {
         groupId?: string
     ): Promise<number> {
         const params = new URLSearchParams({
-            month: monthKey,
             scope,
+            month: monthKey,
             userId,
-            ...(groupId ? { groupId } : {}),
+            ...(groupId ? { groupId } : {}), // optional
         })
 
         const res = await fetch(`${API_BASE_URL}/budget?${params.toString()}`)
@@ -31,11 +39,18 @@ export const backendBudgetService: IBudgetService = {
             throw new Error(`Fehler beim Laden des Budgets: ${errorText}`)
         }
 
-        const budget: Budget | null = await res.json()
-        return budget?.amount ?? 0 // 🔁 Rückgabe: Nur der Betrag oder 0
+        const amount: number = await res.json() // Controller gibt direkt `entry.Amount` zurück
+        return amount ?? 0
     },
 
-    /** 💾 Budget speichern oder aktualisieren */
+    /**
+     * 💾 Budget speichern oder aktualisieren
+     * @param scope z. B. 'personal', 'shared', 'child'
+     * @param monthKey im Format 'yyyy-MM'
+     * @param amount zu speichernder Betrag
+     * @param userId eindeutige Benutzer-ID
+     * @param groupId optional – wird mitgeschickt, aber im Backend aktuell nicht ausgewertet
+     */
     async saveBudget(
         scope: string,
         monthKey: string,
@@ -52,7 +67,7 @@ export const backendBudgetService: IBudgetService = {
         }
 
         const res = await fetch(`${API_BASE_URL}/budget`, {
-            method: 'POST',
+            method: 'PUT', // ⚠️ dein Controller nimmt aktuell [HttpPut], daher entweder ändern oder hier `method: 'PUT'`
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })

@@ -4,9 +4,13 @@ import { sqliteConnection } from './sqliteConnection'
 import { DB_NAME } from './dbName'
 import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
 import type { IExpenseService } from './IExpenseService'
-import type { Expense } from '@/types'
+import type { Expense, ExpenseType } from '@/types'
+import { BaseExpenseService } from './BaseExpenseService'
 
-export class CapacitorSqliteExpenseService implements IExpenseService {
+export class CapacitorSqliteExpenseService
+    extends BaseExpenseService
+    implements IExpenseService
+{
     private db: SQLiteDBConnection | null = null
     private initPromise?: Promise<void>
 
@@ -188,6 +192,10 @@ export class CapacitorSqliteExpenseService implements IExpenseService {
     /** Aktualisiert eine bestehende Ausgabe */
     async updateExpense(expense: Expense): Promise<void> {
         return this.saveExpense(expense)
+    }
+
+    protected getDefaultType(): ExpenseType {
+        return 'personal'
     }
 }
 

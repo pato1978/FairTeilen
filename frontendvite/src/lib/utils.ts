@@ -30,6 +30,31 @@ export function toDateInputValue(dateValue: string | Date): string {
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     return d.toISOString().slice(0, 10)
 }
+/**
+ * Prüft, ob ein Monat in der Vergangenheit, Gegenwart oder Zukunft liegt.
+ * @param monthKey String im Format "YYYY-MM"
+ * @returns 'past' | 'current' | 'future'
+ */
+export function getMonthStatus(monthKey: string): 'past' | 'current' | 'future' {
+    // 1. Monatsschlüssel parsen
+    const [yearStr, monthStr] = monthKey.split('-')
+    const year = parseInt(yearStr, 10)
+    const month = parseInt(monthStr, 10) // 1–12
+
+    // 2. Heutiges Jahr/Monat ermitteln (lokal, Europe/Berlin)
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() + 1 // JS-Monate sind 0–11
+
+    // 3. Vergleichen
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        return 'past'
+    } else if (year === currentYear && month === currentMonth) {
+        return 'current'
+    } else {
+        return 'future'
+    }
+}
 
 // Konvertiert ein Datum von DD.MM.YYYY zu YYYY-MM-DD
 export function convertDateToISO(dateStr: string): string {

@@ -4,7 +4,7 @@ import { sqliteConnection } from './sqliteConnection'
 import { DB_NAME } from './dbName'
 import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
 import type { IExpenseService } from './IExpenseService'
-import type { Expense, ExpenseType } from '@/types'
+import  { Expense, ExpenseType } from '@/types'
 import { BaseExpenseService } from './BaseExpenseService'
 
 export class CapacitorSqliteExpenseService
@@ -195,7 +195,7 @@ export class CapacitorSqliteExpenseService
     }
 
     protected getDefaultType(): ExpenseType {
-        return 'personal'
+        return ExpenseType.Personal
     }
 }
 

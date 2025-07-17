@@ -70,13 +70,35 @@ public class YearOverviewService
             // 🔸 Bestimme Status des Monats (pending, future etc.)
             DateTime referenceMonth = new DateTime(year, month, 1);
             DateTime today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            string status = hasClarificationNeed
-                ? "needs-clarification"
-                : referenceMonth > today
-                    ? "future"
-                    : (referenceMonth < today && monthlyExpensesAll.Count == 0)
-                        ? "notTakenIntoAccount"
-                        : "pending";
+
+            string status;
+
+            if (hasClarificationNeed)
+            {
+                status = "needs-clarification";
+            }
+            else if (referenceMonth > today)
+            {
+                status = "future";
+            }
+            else if (referenceMonth < today)
+            {
+                // Vergangene Monate
+                if (monthlyExpensesAll.Count == 0)
+                {
+                    status = "notTakenIntoAccount";
+                }
+                else
+                {
+                    status = "past"; // ✅ neuer Status für vergangene Monate mit Einträgen
+                }
+            }
+            else
+            {
+                // referenceMonth == today
+                status = "pending";
+            }
+
 
             // 🔸 Gesamtausgaben (shared + child) je Nutzer zusammenfassen
             var totalByUser = new Dictionary<string, decimal>();

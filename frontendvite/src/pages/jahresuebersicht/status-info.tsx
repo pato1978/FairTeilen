@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Clock, Info, Lock } from 'lucide-react'
+import { AlertTriangle, BellDot, CheckCircle, Clock, Info, Lock } from 'lucide-react'
 
 import type { MonthlyOverview } from '@/types/monthly-overview'
 
@@ -11,6 +11,13 @@ export interface StatusInfo {
 }
 
 export const statusInfoMap: Record<MonthlyOverview['status'], StatusInfo> = {
+    past: {
+        icon: <BellDot className="h-5 w-5 text-blue-500" />,
+        text: 'Warte auf Abschluss',
+        statusBgColor: 'bg-blue-50',
+        textColor: 'text-blue-600',
+        borderColor: 'border-blue-200',
+    },
     open: {
         icon: <Clock className="h-5 w-5 text-blue-500" />,
         text: 'Offen',
@@ -34,7 +41,7 @@ export const statusInfoMap: Record<MonthlyOverview['status'], StatusInfo> = {
     },
     pending: {
         icon: <Clock className="h-5 w-5 text-amber-500" />,
-        text: 'Ausstehend',
+        text: 'Laufend',
         statusBgColor: 'bg-amber-50',
         textColor: 'text-amber-600',
         borderColor: 'border-amber-200',

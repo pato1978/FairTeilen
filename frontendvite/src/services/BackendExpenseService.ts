@@ -1,6 +1,6 @@
 // src/services/BackendExpenseService.ts
 import { Capacitor, CapacitorHttp, HttpResponse } from '@capacitor/core'
-import type { Expense, ExpenseType } from '@/types'
+import { Expense, ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
 import type { ExpenseScope, IExpenseService } from './IExpenseService'
 import { BaseExpenseService } from './BaseExpenseService'
@@ -18,10 +18,7 @@ const API_BASE_URL = Capacitor.isNativePlatform?.()
     : '/api'
 console.log('🛠️ API_BASE_URL =', API_BASE_URL)
 
-export class BackendExpenseService
-    extends BaseExpenseService
-    implements IExpenseService
-{
+export class BackendExpenseService extends BaseExpenseService implements IExpenseService {
     async initDb(): Promise<void> {}
 
     /** 🔁 Alle Ausgaben (optional nach Monat gefiltert) */
@@ -143,6 +140,6 @@ export class BackendExpenseService
     }
 
     protected getDefaultType(): ExpenseType {
-        return 'shared'
+        return ExpenseType.Shared
     }
 }

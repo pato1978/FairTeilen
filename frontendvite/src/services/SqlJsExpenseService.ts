@@ -1,8 +1,8 @@
 // src/services/expenses/SqlJsExpenseService.ts
 
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js'
-import type { Expense, ExpenseType } from '@/types'
-import { ExpenseType } from '@/types'
+import { Expense, ExpenseType } from '@/types'
+//import { ExpenseType } from '@/types'
 import type { ExpenseScope, IExpenseService } from './IExpenseService'
 import { BaseExpenseService } from './BaseExpenseService'
 
@@ -185,7 +185,7 @@ export class SqlJsExpenseService
     }
 
     protected getDefaultType(): ExpenseType {
-        return 'personal'
+        return ExpenseType.Personal
     }
 }
 export const sqlJsExpenseService = new SqlJsExpenseService()

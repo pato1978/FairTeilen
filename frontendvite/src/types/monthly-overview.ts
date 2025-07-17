@@ -27,6 +27,8 @@ export interface MonthlyOverview {
         | 'pending'
         | 'notTakenIntoAccount'
         | 'needs-clarification'
+        | 'past'
+
     name?: string
 
     total: number

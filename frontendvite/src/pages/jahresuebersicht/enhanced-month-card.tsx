@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'
@@ -131,12 +132,11 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const isFuture = month.status === 'future'
     const needsClarification = month.status === 'needs-clarification'
     const notTakenIntoAccount = month.status === 'notTakenIntoAccount'
-
+    const isPast = month.status === 'past'
     const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
 
     // Wenn undefined, mit Fallback
-    const showSettlementBlock =
-        !['future', 'completed', 'notTakenIntoAccount'].includes(month.status) && !hasOpenReactions
+    const showSettlementBlock = month.status === 'past' && !hasOpenReactions
 
     const handleToggleConfirmation = (id: string) =>
         setReactions(prev => ({ ...prev, [id]: prev[id] === false ? null : false }))
@@ -307,7 +307,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                         </div>
                     )}
 
-                    {!isFuture && !isCompleted && !notTakenIntoAccount && (
+                    {isPast && !isCompleted && !notTakenIntoAccount && (
                         <div className="bg-white rounded-lg p-4 shadow-sm">
                             <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                 Bestätigungen

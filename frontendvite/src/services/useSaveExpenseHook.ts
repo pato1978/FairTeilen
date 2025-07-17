@@ -5,6 +5,7 @@ import { useUser } from '@/context/user-context'
 import { useBudget } from '@/context/budget-context'
 import { GROUP_ID } from '@/config/group-config'
 import type { LucideIcon } from 'lucide-react'
+
 export function useSaveExpense() {
     const { userId } = useUser()
     const { expenses, setExpenses } = useBudget()
@@ -16,6 +17,7 @@ export function useSaveExpense() {
                 return null
             }
 
+            // Datum normalisieren (nur yyyy-MM-dd)
             const normalizedDate = expense.date.split('T')[0]
 
             const finalExpense: Expense = {
@@ -36,36 +38,25 @@ export function useSaveExpense() {
                 finalExpense.type === ExpenseType.Shared ||
                 finalExpense.type === ExpenseType.Child
             ) {
-                // 🌐 Zentrale Speicherung über API
-                const response = await fetch('/api/expenses', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalExpense),
-                })
+                // Variante B: Hook-Workaround, addExpense liefert void
+                const service = await getExpenseService(finalExpense.type)
+                console.log('🧩 [useSaveExpense] POST API:', finalExpense)
 
-                if (!response.ok) {
-                    console.error(
-                        '❌ Fehler beim Speichern über API:',
-                        response.status,
-                        await response.text()
-                    )
-                    return null
-                }
+                // Speichern auf dem Backend
+                await service.addExpense(finalExpense)
 
-                const saved: Expense = await response.json()
-                console.log('✅ Erfolgreich über API gespeichert:', saved)
-
-                // Lokal zur Liste hinzufügen oder ersetzen
+                // State mit finalExpense aktualisieren
                 setExpenses(prev =>
-                    prev.some(e => e.id === saved.id)
-                        ? prev.map(e => (e.id === saved.id ? saved : e))
-                        : [...prev, saved]
+                    prev.some(e => e.id === finalExpense.id)
+                        ? prev.map(e => (e.id === finalExpense.id ? finalExpense : e))
+                        : [...prev, finalExpense]
                 )
+                console.log('✅ [useSaveExpense] Erfolgreich gespeichert:', finalExpense)
 
-                return saved
+                return finalExpense
             } else {
-                // 💾 Lokale Speicherung
-                const service = await getExpenseService()
+                // Lokale Speicherung (SQLite / SQL.js)
+                const service = await getExpenseService(finalExpense.type)
 
                 if (!expense.id) {
                     await service.addExpense(finalExpense)

@@ -5,42 +5,34 @@ import { sqlJsExpenseService } from './SqlJsExpenseService'
 import { BackendExpenseService } from './BackendExpenseService'
 import type { ExpenseScope, IExpenseService } from './IExpenseService'
 
-const cache: Partial<Record<ExpenseScope, Promise<IExpenseService>>> = {}
+/**
+ * Einmalig: lokale DB initialisieren
+ */
+;(async () => {
+    if (Capacitor.isNativePlatform?.()) {
+        await capacitorSqliteExpenseService.initDb?.()
+    } else {
+        await sqlJsExpenseService.initDb?.()
+    }
+})()
 
 /**
- * Liefert für den gegebenen scope das jeweils korrekte IExpenseService-Objekt.
- * – personal: native → SQLite, web → SQL.js
- * – shared/child: → Backend
- *
- * Cacht jede Instanz einmalig.
+ * Instanzen anlegen
  */
-export function getExpenseService(scope: ExpenseScope = 'personal'): Promise<IExpenseService> {
-    if (cache[scope]) {
-        return cache[scope]!
-    }
+const backendService = new BackendExpenseService()
+const localService = Capacitor.isNativePlatform?.()
+    ? capacitorSqliteExpenseService
+    : sqlJsExpenseService
 
-    cache[scope] = (async () => {
-        if (scope === 'personal') {
-            const service = Capacitor.isNativePlatform?.()
-                ? capacitorSqliteExpenseService
-                : sqlJsExpenseService
+const services: Record<ExpenseScope, IExpenseService> = {
+    personal: localService,
+    shared: backendService,
+    child: backendService,
+}
 
-            console.log(
-                '📀 Lokaler ExpenseService gewählt für "personal":',
-                Capacitor.isNativePlatform?.() ? 'native (SQLite)' : 'web (SQL.js)'
-            )
-
-            if (typeof (service as any).initDb === 'function') {
-                await (service as any).initDb()
-            }
-
-            return service
-        }
-
-        // shared oder child → zentraler Backend-Service
-        console.log('🌐 BackendExpenseService gewählt für:', scope)
-        return new BackendExpenseService()
-    })()
-
-    return cache[scope]!
+/**
+ * Liefert synchron das passende Service-Objekt für den angegebenen Scope.
+ */
+export function getExpenseService(scope: ExpenseScope = 'personal'): IExpenseService {
+    return services[scope]
 }

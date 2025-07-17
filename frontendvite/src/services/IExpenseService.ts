@@ -1,9 +1,15 @@
 // src/services/IExpenseService.ts
 
 import type { Expense } from '@/types'
+import type { LucideIcon } from 'lucide-react'
 
 export type ExpenseScope = 'personal' | 'shared' | 'child'
 /** Das fachliche Modell einer Ausgabe */
+
+export interface ValidationResult {
+    isValid: boolean
+    errors: string[]
+}
 
 export interface IExpenseService {
     /** Initialisiert die lokale DB (SQLite/sql.js) */
@@ -28,4 +34,12 @@ export interface IExpenseService {
         monthKey: string,
         groupId?: string
     ): Promise<Expense[]>
+
+    prepareExpense(
+        partial: Partial<Expense>,
+        userId: string,
+        icon: LucideIcon
+    ): Expense
+
+    validateExpense(expense: Expense): ValidationResult
 }

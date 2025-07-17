@@ -1,11 +1,15 @@
 // src/services/expenses/SqlJsExpenseService.ts
 
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js'
-import type { Expense } from '@/types'
+import type { Expense, ExpenseType } from '@/types'
 import { ExpenseType } from '@/types'
 import type { ExpenseScope, IExpenseService } from './IExpenseService'
+import { BaseExpenseService } from './BaseExpenseService'
 
-export class SqlJsExpenseService implements IExpenseService {
+export class SqlJsExpenseService
+    extends BaseExpenseService
+    implements IExpenseService
+{
     private db: Database | null = null
 
     /** 🔹 Datenbank initialisieren */
@@ -178,6 +182,10 @@ export class SqlJsExpenseService implements IExpenseService {
     exportDb(): Uint8Array {
         if (!this.db) throw new Error('Database not initialized')
         return this.db.export()
+    }
+
+    protected getDefaultType(): ExpenseType {
+        return 'personal'
     }
 }
 export const sqlJsExpenseService = new SqlJsExpenseService()

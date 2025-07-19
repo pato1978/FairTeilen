@@ -104,6 +104,7 @@ function ActionButton({
 export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showExpenseDetails, setShowExpenseDetails] = useState(false)
+    const [userConfirmations, setUserConfirmations] = useState(month.confirmations || {})
     const [reactions, setReactions] = useState<Record<string, boolean | null>>(
         month.rejectionsByUser ?? {}
     )
@@ -138,9 +139,13 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     // Wenn undefined, mit Fallback
     const showSettlementBlock = month.status === 'past' && !hasOpenReactions
 
-    const handleToggleConfirmation = (id: string) =>
-        setReactions(prev => ({ ...prev, [id]: prev[id] === false ? null : false }))
-
+    const handleConfirm = e => {
+        e.stopPropagation()
+        setUserConfirmations(prev => ({
+            ...prev,
+            [userId]: !prev[userId],
+        }))
+    }
     const handleHeaderClick = (e?: React.MouseEvent) => {
         e?.stopPropagation()
         setIsExpanded(prev => !prev)
@@ -339,31 +344,23 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                         <span>Hat noch Redebedarf</span>
                                                     </div>
                                                 ) : isMe ? (
-                                                    <ActionButton
-                                                        onClick={e => {
-                                                            e.stopPropagation()
-                                                            if (!iHaveRedebedarf)
-                                                                handleToggleConfirmation(id)
-                                                        }}
-                                                        variant={
-                                                            iHaveRedebedarf
-                                                                ? 'disabled'
-                                                                : hasConfirmed
-                                                                  ? 'confirmed'
-                                                                  : 'unconfirmed'
-                                                        }
-                                                        size="md"
-                                                        disabled={iHaveRedebedarf}
+                                                    <button
+                                                        onClick={handleConfirm}
+                                                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                                                            hasConfirmed
+                                                                ? 'bg-green-500 text-white hover:bg-green-600'
+                                                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        }`}
                                                     >
-                                                        <UserCheck className="h-5 w-5 mr-2 text-green-600" />
-                                                        <span>
-                                                            {iHaveRedebedarf
-                                                                ? 'Bestätigen'
-                                                                : hasConfirmed
-                                                                  ? 'Zurücknehmen'
-                                                                  : 'Bestätigen'}
-                                                        </span>
-                                                    </ActionButton>
+                                                        {hasConfirmed ? (
+                                                            <>
+                                                                <UserCheck className="h-4 w-4 inline mr-1" />
+                                                                Bestätigt
+                                                            </>
+                                                        ) : (
+                                                            'Bestätigen'
+                                                        )}
+                                                    </button>
                                                 ) : (
                                                     <div className="flex items-center text-green-600 font-medium h-8">
                                                         <UserCheck className="h-5 w-5 mr-2 text-green-600" />
@@ -430,19 +427,16 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end">
-                                <ActionButton
-                                    onClick={e => {
-                                        e.stopPropagation()
-                                        //redirectTo('/settlement', month.monthId)
-                                    }}
-                                    variant="primary"
-                                    size="sm"
-                                >
-                                    <ArrowRight className="h-4 w-4 mr-1" />
-                                    Monat abschliessen
-                                </ActionButton>
-                            </div>
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation()
+                                    //onNavigate(`/settle/${month.monthId}`)
+                                }}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center shadow-sm hover:shadow"
+                            >
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Monat abschließen
+                            </button>
                         </div>
                     )}
 

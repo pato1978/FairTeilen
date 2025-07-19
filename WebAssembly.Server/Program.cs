@@ -44,6 +44,8 @@ builder.Services
 
 // 🔧 Eigene Services
 builder.Services.AddScoped<YearOverviewService>();
+builder.Services.AddScoped<SnapshotService>();
+builder.Services.AddTransient<IMailService, MailService>();
 
 // 🔧 CORS – bei Bedarf um weitere Umgebungen erweitern
 builder.Services.AddCors(options =>

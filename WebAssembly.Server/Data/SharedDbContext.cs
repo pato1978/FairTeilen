@@ -11,6 +11,7 @@ namespace WebAssembly.Server.Data
         
         public DbSet<MonthlyOverview> SharedMonthlyOverviews { get; set; }
         public DbSet<ClarificationReaction> ClarificationReactions { get; set; }
+        public DbSet<MonthlyOverviewSnapshot> MonthlyOverviewSnapshots { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

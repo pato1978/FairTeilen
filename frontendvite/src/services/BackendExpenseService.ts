@@ -2,7 +2,7 @@
 import { Capacitor, CapacitorHttp, HttpResponse } from '@capacitor/core'
 import { Expense, ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
-import type { ExpenseScope, IExpenseService } from './IExpenseService'
+import type { ExpenseScope, IExpenseService } from './ExpenseServiceInterface'
 import { BaseExpenseService } from './BaseExpenseService'
 
 /**

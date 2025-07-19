@@ -3,7 +3,7 @@
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js'
 import { Expense, ExpenseType } from '@/types'
 //import { ExpenseType } from '@/types'
-import type { ExpenseScope, IExpenseService } from './IExpenseService'
+import type { ExpenseScope, IExpenseService } from './ExpenseServiceInterface'
 import { BaseExpenseService } from './BaseExpenseService'
 
 export class SqlJsExpenseService

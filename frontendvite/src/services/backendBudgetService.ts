@@ -1,18 +1,19 @@
+// src/services/BackendBudgetService.ts
 import { Capacitor } from '@capacitor/core'
 import { GROUP_ID } from '@/config/group-config'
-import type { IBudgetService } from './IBudgetService'
+import type { IBudgetService } from './BudgetServiceInterface'
 import type { Budget } from '@/types'
 
 // 🌍 Plattformabhängige Basis-URL
 // Hinweis: Der Controller läuft auf Route("api/budget") → daher: + /api
 const API_BASE_URL = Capacitor.isNativePlatform?.()
-    ? `${import.meta.env.VITE_API_URL_NATIVE}/api` // z. B. http://192.168.0.42:8080/api
+    ? `${import.meta.env.VITE_API_URL_NATIVE}/api` // z. B. http://192.168.0.42:8080/api
     : '/api' // ⚠️ wichtig: Vite-Proxy → /api wird zu https://api.veglia.de/api
 console.log('🛠️ API_BASE_URL =', API_BASE_URL)
 export const backendBudgetService: IBudgetService = {
     /**
      * 🔄 Budget für einen bestimmten Monat laden
-     * @param scope z. B. 'personal', 'shared', 'child'
+     * @param scope z. B. 'personal', 'shared', 'child'
      * @param monthKey im Format 'yyyy-MM'
      * @param userId eindeutige Benutzer-ID
      * @param groupId optional – aktuell (noch) nicht im Controller verwendet
@@ -45,7 +46,7 @@ export const backendBudgetService: IBudgetService = {
 
     /**
      * 💾 Budget speichern oder aktualisieren
-     * @param scope z. B. 'personal', 'shared', 'child'
+     * @param scope z. B. 'personal', 'shared', 'child'
      * @param monthKey im Format 'yyyy-MM'
      * @param amount zu speichernder Betrag
      * @param userId eindeutige Benutzer-ID

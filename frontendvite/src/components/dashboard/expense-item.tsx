@@ -14,7 +14,7 @@ import { ClarificationStatus } from '@/types/monthly-overview'
 import {
     deleteClarificationReaction,
     postClarificationReaction,
-} from '@/services/clarificationReactions.ts'
+} from '@/services/ClarificationReactionService'
 
 interface ExpenseItemProps {
     item: Expense

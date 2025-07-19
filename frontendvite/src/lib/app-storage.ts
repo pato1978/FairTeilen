@@ -1,8 +1,8 @@
 // src/lib/app-storage.ts
 import { Capacitor } from '@capacitor/core'
-import { sqliteConnection } from '@/services/sqliteConnection'
+import { sqliteConnection } from '@/services/SqliteConnectionService'
 import { SQLiteDBConnection } from '@capacitor-community/sqlite'
-import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
+import { waitForSQLiteReady } from '@/services/SqliteReadinessService'
 
 const DB_NAME = 'my_finance' // überall identisch verwenden!
 

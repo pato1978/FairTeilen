@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { users } from '@/data/users.ts' // Testdaten für Namen, Farben etc.
-import { loadUserId, saveUserId } from '@/services/user-id-service.ts' // Plattformspezifische Speicherlogik
+import { loadUserId, saveUserId } from '@/services/UserIdService' // Plattformspezifische Speicherlogik
 
 // Kontext-Typdefinition
 type UserContextType = {

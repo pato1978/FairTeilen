@@ -1,7 +1,7 @@
 // src/services/SqlJsBudgetService.ts
 
 import initSqlJs, { Database, SqlJsStatic } from 'sql.js'
-import type { IBudgetService } from './IBudgetService'
+import type { IBudgetService } from './BudgetServiceInterface'
 
 export class SqlJsBudgetService implements IBudgetService {
     private db: Database | null = null

@@ -1,9 +1,9 @@
 // src/services/CapacitorSqliteBudgetService.ts
 import { SQLiteDBConnection } from '@capacitor-community/sqlite'
-import { sqliteConnection } from './sqliteConnection'
-import { DB_NAME } from './dbName'
-import type { IBudgetService } from './IBudgetService'
-import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
+import { sqliteConnection } from './SqliteConnectionService'
+import { DB_NAME } from './DatabaseConfigService'
+import type { IBudgetService } from './BudgetServiceInterface'
+import { waitForSQLiteReady } from '@/services/SqliteReadinessService'
 
 export class CapacitorSqliteBudgetService implements IBudgetService {
     private db: SQLiteDBConnection | null = null

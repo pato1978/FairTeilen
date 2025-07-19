@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { saveSnapshot } from '@/services/snapshot-service.ts'
+import { saveSnapshot } from '@/services/SnapshotService'
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'

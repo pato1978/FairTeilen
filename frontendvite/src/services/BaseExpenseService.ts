@@ -1,7 +1,7 @@
 import type { Expense, ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
 import type { LucideIcon } from 'lucide-react'
-import type { ValidationResult } from './IExpenseService'
+import type { ValidationResult } from './ExpenseServiceInterface'
 
 export abstract class BaseExpenseService {
   protected normalizeDate(date?: string): string {

@@ -1,9 +1,9 @@
 // src/services/CapacitorSqliteExpenseService.ts
 import { SQLiteDBConnection } from '@capacitor-community/sqlite'
-import { sqliteConnection } from './sqliteConnection'
-import { DB_NAME } from './dbName'
-import { waitForSQLiteReady } from '@/services/wait-sqlite-ready'
-import type { IExpenseService } from './IExpenseService'
+import { sqliteConnection } from './SqliteConnectionService'
+import { DB_NAME } from './DatabaseConfigService'
+import { waitForSQLiteReady } from '@/services/SqliteReadinessService'
+import type { IExpenseService } from './ExpenseServiceInterface'
 import  { Expense, ExpenseType } from '@/types'
 import { BaseExpenseService } from './BaseExpenseService'
 

@@ -3,7 +3,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import type { ClarificationReaction } from '@/types'
 import { ClarificationStatus } from '@/types/monthly-overview' // 🎯 Enum mit 'Accepted' | 'Rejected'
-import { getClarificationReactionsForMonth } from '@/services/clarificationReactions.ts'
+import { getClarificationReactionsForMonth } from '@/services/ClarificationReactionService'
 import { useMonth } from '@/context/month-context' // 📅 Liefert den aktuell gewählten Monat aus globalem Context
 
 // 📦 Struktur des Context-Wertes – wird App-weit genutzt

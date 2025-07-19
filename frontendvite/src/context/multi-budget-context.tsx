@@ -1,8 +1,8 @@
 // src/context/multi-budget-context.tsx
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { getExpenseService } from '@/services/ExpenseFactory'
-import { getBudgetService } from '@/services/budgetFactory'
+import { getExpenseService } from '@/services/ExpenseServiceFactory'
+import { getBudgetService } from '@/services/BudgetServiceFactory'
 import { useMonth } from './month-context'
 import { useUser } from './user-context'
 import { GROUP_ID } from '@/config/group-config'

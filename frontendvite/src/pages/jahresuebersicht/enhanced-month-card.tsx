@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-
+import { saveSnapshot } from '@/services/snapshot-service.ts'
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'
@@ -428,9 +428,19 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                             </div>
 
                             <button
-                                onClick={e => {
+                                onClick={async e => {
                                     e.stopPropagation()
-                                    //onNavigate(`/settle/${month.monthId}`)
+                                    try {
+                                        const [yearStr, monthStr] = month.monthKey.split('-')
+                                        const year = parseInt(yearStr, 10)
+                                        const monthNumber = parseInt(monthStr, 10)
+                                        await saveSnapshot(month.groupId, year, monthNumber)
+                                        // Optional: Feedback geben
+                                        console.log('Snapshot erfolgreich gespeichert!')
+                                    } catch (err) {
+                                        console.error('Snapshot fehlgeschlagen:', err)
+                                        // Optional: Error-Toast anzeigen
+                                    }
                                 }}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center shadow-sm hover:shadow"
                             >

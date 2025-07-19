@@ -128,17 +128,35 @@ public class YearOverviewService
                 .ToDictionary(g => g.Key, g => true);
 
             // 🔸 Status bestimmen
+            // 🔸 Status bestimmen
             string status;
+
+// WICHTIG: Klärungsbedarf hat IMMER höchste Priorität!
             if (rejected.Any())
+            {
                 status = "needs-clarification";
+            }
             else if (reference > today)
+            {
                 status = "future";
-            else if (reference < today && expenses.Count == 0)
-                status = "notTakenIntoAccount";
+            }
             else if (reference < today)
-                status = "past";
+            {
+                // Vergangene Monate
+                if (expenses.Count == 0)
+                {
+                    status = "notTakenIntoAccount";
+                }
+                else
+                {
+                    status = "past";
+                }
+            }
             else
+            {
+                // reference == today (aktueller Monat)
                 status = "pending";
+            }
 
             // 🔁 Monatsobjekt zusammenbauen
             return new MonthlyOverview

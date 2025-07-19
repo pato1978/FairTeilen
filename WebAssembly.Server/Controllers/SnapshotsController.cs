@@ -39,9 +39,10 @@ namespace WebAssembly.Server.Controllers
             [FromRoute] int month)
         {
             // User-ID aus Claims holen, sonst 401
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                         ?? throw new UnauthorizedAccessException();
-
+           // var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+             //            ?? throw new UnauthorizedAccessException();
+             // 🧪 Temporär: feste User-ID
+             var userId = "local-dev-user";
             // 1) Jahresübersicht berechnen
             var overview = await _yearOverviewService
                 .GetOverviewForMonthAsync(year, month, userId, groupId);

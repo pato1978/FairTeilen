@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using WebAssembly.Server.Helpers;
 using WebAssembly.Server.Services;
 using WebAssembly.Server.ViewModel;
 
@@ -71,22 +72,15 @@ namespace WebAssembly.Server.Controllers
                 "m.p.siuda@gmail.com"
             };
 
-            var subject = $"📦 Snapshot für {year}-{month:D2} erstellt";
-            var htmlBody = $@"
-                <h2>Snapshot gespeichert</h2>
-                <p>Der Snapshot für die Gruppe <strong>{groupId}</strong>
-                wurde am <strong>{DateTime.Now:dd.MM.yyyy HH:mm}</strong> erfolgreich gespeichert.</p>
-                <p>Er ist nun im System archiviert.</p>
-                <hr>
-                <p style='font-size: 12px; color: gray;'>Share2Gether – Automatische Benachrichtigung</p>
-            ";
+            var mailBody = MailTemplates.BuildSnapshotMail(groupId, year, month, snapshotData);
+
 
             foreach (var recipient in recipients)
             {
                 await _mailService.SendEmailAsync(
                     to: recipient,
-                    subject: subject,
-                    htmlBody: htmlBody
+                    subject: "",
+                    htmlBody: mailBody
                 );
             }
 

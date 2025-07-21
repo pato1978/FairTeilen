@@ -204,7 +204,8 @@ public class YearOverviewService
             ChildByUser = childByUser,
             TotalByUser = totalByUser,
             BalanceByUser = balanceByUser,
-            RejectionsByUser = rejected
+            RejectionsByUser = rejected,
+            Expenses = expenses
         };
     }
 

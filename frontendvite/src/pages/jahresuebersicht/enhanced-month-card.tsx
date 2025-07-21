@@ -22,6 +22,7 @@ import {
     UserX,
 } from 'lucide-react'
 import { users } from '@/data/users'
+import { l } from 'vite/dist/node/types.d-aGj9QkWt'
 
 interface EnhancedMonthCardProps {
     month: MonthlyOverview
@@ -108,7 +109,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [reactions, setReactions] = useState<Record<string, boolean | null>>(
         month.rejectionsByUser ?? {}
     )
-
+    const [localStatus, setLocalStatus] = useState(month.status)
     const selectedYear = new Date().getFullYear()
     const { setCurrentDate } = useMonth()
     const navigate = useNavigate()
@@ -121,7 +122,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     }
 
     const { userId } = useUser()
-    const statusInfo = getStatusInfo(month.status)
+    const statusInfo = getStatusInfo(localStatus)
     if (!userId) return null
 
     // Immer mit Fallback (leeres Objekt) arbeiten!
@@ -129,15 +130,15 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const partnerIds = allUserIds.filter(id => id !== userId)
     const me = users[userId]
 
-    const isCompleted = month.status === 'completed'
-    const isFuture = month.status === 'future'
-    const needsClarification = month.status === 'needs-clarification'
-    const notTakenIntoAccount = month.status === 'notTakenIntoAccount'
-    const isPast = month.status === 'past'
+    const isCompleted = localStatus === 'completed'
+    const isFuture = localStatus === 'future'
+    const needsClarification = localStatus === 'needs-clarification'
+    const notTakenIntoAccount = localStatus === 'notTakenIntoAccount'
+    const isPast = localStatus === 'past'
     const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
 
     // Wenn undefined, mit Fallback
-    const showSettlementBlock = month.status === 'past' && !hasOpenReactions
+    const showSettlementBlock = localStatus === 'past' && !hasOpenReactions
 
     const handleConfirm = e => {
         e.stopPropagation()
@@ -435,6 +436,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         const year = parseInt(yearStr, 10)
                                         const monthNumber = parseInt(monthStr, 10)
                                         await saveSnapshot(month.groupId, year, monthNumber)
+                                        setLocalStatus('completed')
                                         // Optional: Feedback geben
                                         console.log('Snapshot erfolgreich gespeichert!')
                                     } catch (err) {

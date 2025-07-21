@@ -79,7 +79,7 @@ public class YearOverviewService
             // Prüfe Snapshot
             if (allSnapshots.TryGetValue(monthKey, out var snapshot))
             {
-                var snapshotData = System.Text.Json.JsonSerializer.Deserialize<ViewModel.SnapshotData>(snapshot.SnapshotJson);
+                var snapshotData = System.Text.Json.JsonSerializer.Deserialize<SnapshotData>(snapshot.SnapshotJson);
                 overview.Months.Add(new MonthlyOverview
                 {
                     Id = $"{groupId}_{monthKey}",
@@ -253,6 +253,9 @@ public class YearOverviewService
 
         var today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
         
-        return CalculateMonthFromData(year, month, expenses, reactions, today, groupId);
+        
+         var monthly=    CalculateMonthFromData(year, month, expenses, reactions, today, groupId);
+         monthly.Expenses = expenses;
+         return monthly;
     }
 }

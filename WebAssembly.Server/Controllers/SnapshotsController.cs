@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using WebAssembly.Server.Helpers;
+using WebAssembly.Server.Models;
 using WebAssembly.Server.Services;
-using WebAssembly.Server.ViewModel;
 
 namespace WebAssembly.Server.Controllers
 {
@@ -58,8 +58,21 @@ namespace WebAssembly.Server.Controllers
                 SharedByUser = overview.SharedByUser,
                 ChildByUser = overview.ChildByUser,
                 BalanceByUser = overview.BalanceByUser,
-                RejectedByUser = overview.RejectionsByUser?.Keys.ToList() ?? new List<string>()
+                RejectedByUser = overview.RejectionsByUser?.Keys.ToList() ?? new List<string>(),
+                // 3) 🆕 Neue verschachtelte Statistik nach Typ & Kategorie berechnen
+                ExpensesByTypeAndCategory = overview.Expenses!
+                .GroupBy(e => e.Type)
+                .ToDictionary(
+                typeGroup => typeGroup.Key,
+                typeGroup => typeGroup
+                        .GroupBy(e => e.Category ?? "Unbekannt")
+                        .ToDictionary(
+                            catGroup => catGroup.Key,
+                            catGroup => catGroup.Sum(e => e.Amount)
+                        )
+                    )
             };
+            
 
             // 3) Snapshot speichern (Verhindert Duplikate intern)
             var monthKey = $"{year:D4}-{month:D2}";

@@ -1,5 +1,5 @@
 using System.Text;
-using WebAssembly.Server.ViewModel;
+using WebAssembly.Server.Models;
 
 namespace WebAssembly.Server.Helpers;
 

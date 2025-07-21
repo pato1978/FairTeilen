@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Models;
-using WebAssembly.Server.ViewModel;
 
 namespace WebAssembly.Server.Services
 {
@@ -28,7 +27,7 @@ namespace WebAssembly.Server.Services
         /// <param name="groupId">ID der Gruppe</param>
         /// <param name="monthKey">Monatskennzeichen im Format "YYYY-MM"</param>
         /// <returns>Deserialisierte SnapshotData oder null</returns>
-        public async Task<ViewModel.SnapshotData?> LoadSnapshotAsync(string groupId, string monthKey)
+        public async Task<SnapshotData?> LoadSnapshotAsync(string groupId, string monthKey)
         {
             var snapshot = await _db.MonthlyOverviewSnapshots
                 .FirstOrDefaultAsync(s => s.GroupId == groupId && s.Month == monthKey);
@@ -37,7 +36,7 @@ namespace WebAssembly.Server.Services
                 return null;
 
             // JSON zurück in SnapshotData umwandeln
-            return JsonSerializer.Deserialize<ViewModel.SnapshotData>(snapshot.SnapshotJson);
+            return JsonSerializer.Deserialize<SnapshotData>(snapshot.SnapshotJson);
         }
 
         /// <summary>
@@ -47,7 +46,7 @@ namespace WebAssembly.Server.Services
         /// <param name="groupId">ID der Gruppe</param>
         /// <param name="monthKey">Monatskennzeichen im Format "YYYY-MM"</param>
         /// <param name="snapshotData">Berechnete Snapshot-Daten</param>
-        public async Task SaveSnapshotAsync(string groupId, string monthKey, ViewModel.SnapshotData snapshotData)
+        public async Task SaveSnapshotAsync(string groupId, string monthKey, SnapshotData snapshotData)
         {
             // Prüfen, ob für diesen Monat bereits ein Snapshot existiert
             var alreadyExists = await _db.MonthlyOverviewSnapshots

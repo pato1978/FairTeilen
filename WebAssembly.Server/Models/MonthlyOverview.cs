@@ -17,6 +17,8 @@ public class MonthlyOverview
     public decimal Shared { get; set; }
     public decimal Child { get; set; }
     public decimal Balance { get; set; }
+    
+    public List<Expense>? Expenses { get; set; } // NEU
 
     [NotMapped] public Dictionary<string, decimal> SharedByUser { get; set; } = new();
     [NotMapped] public Dictionary<string, decimal> ChildByUser { get; set; } = new();

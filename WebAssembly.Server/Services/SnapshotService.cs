@@ -72,5 +72,17 @@ namespace WebAssembly.Server.Services
             _db.MonthlyOverviewSnapshots.Add(snapshot);
             await _db.SaveChangesAsync();
         }
+        public async Task<bool> DeleteSnapshotAsync(string groupId, string monthKey)
+        {
+            var snapshot = await _db.MonthlyOverviewSnapshots
+                .FirstOrDefaultAsync(s => s.GroupId == groupId && s.Month == monthKey);
+
+            if (snapshot == null)
+                return false;
+
+            _db.MonthlyOverviewSnapshots.Remove(snapshot);
+            await _db.SaveChangesAsync();
+            return true;
+        }
     }
 }

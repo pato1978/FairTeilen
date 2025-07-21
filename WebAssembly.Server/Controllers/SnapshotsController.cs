@@ -26,7 +26,20 @@ namespace WebAssembly.Server.Controllers
             _snapshotService = snapshotService;
             _mailService = mailService;
         }
+        [HttpDelete("{groupId}/{year:int}/{month:int}")]
+        public async Task<IActionResult> DeleteSnapshot(
+            [FromRoute] string groupId,
+            [FromRoute] int year,
+            [FromRoute] int month)
+        {
+            var monthKey = $"{year:D4}-{month:D2}";
+            var success = await _snapshotService.DeleteSnapshotAsync(groupId, monthKey);
 
+            if (!success)
+                return NotFound(); // 404, wenn kein Snapshot vorhanden war
+
+            return NoContent(); // 204, wenn erfolgreich gelöscht
+        }
         /// <summary>
         /// Erzeugt einen monatlichen Snapshot für eine Gruppe und benachrichtigt Beteiligte per E-Mail.
         /// </summary>
@@ -65,7 +78,8 @@ namespace WebAssembly.Server.Controllers
                 .ToDictionary(
                 typeGroup => typeGroup.Key,
                 typeGroup => typeGroup
-                        .GroupBy(e => e.Category ?? "Unbekannt")
+                        .GroupBy(e => e.Category ?? 
+                                      "Unbekannt")
                         .ToDictionary(
                             catGroup => catGroup.Key,
                             catGroup => catGroup.Sum(e => e.Amount)

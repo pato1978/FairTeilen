@@ -1,5 +1,4 @@
 // Vollständige korrigierte EnhancedMonthCard.tsx
-
 'use client'
 
 import React, { useState } from 'react'
@@ -11,7 +10,6 @@ import { useMonth } from '@/context/month-context.tsx'
 import { getStatusInfo } from '@/pages/jahresuebersicht/status-info'
 import {
     AlertTriangle,
-    ArrowRight,
     ArrowUpRight,
     Baby,
     Calendar,
@@ -31,6 +29,9 @@ interface EnhancedMonthCardProps {
     onStatusClick?: (e: React.MouseEvent) => void
 }
 
+/**
+ * Clickable wrapper, um ganze Kartenbereiche klickbar/unclickable zu machen.
+ */
 function ClickableCard({
     children,
     onClick,
@@ -103,17 +104,25 @@ function ActionButton({
     )
 }
 
-// Erweiterte EnhancedMonthCard mit speziellem Completed-Design
-
-// Erweiterte EnhancedMonthCard mit speziellem Completed-Design
-
+// -----------------------------------------------------------
+//  EnhancedMonthCard
+//  - Enthält Toggle-Logik für Bestätigungen (confirm/unconfirm)
+//  - Re-Render erfolgt über lokalen State `confirmations`
+// -----------------------------------------------------------
 export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showExpenseDetails, setShowExpenseDetails] = useState(false)
-    const [reactions, setReactions] = useState<Record<string, boolean | null>>(
-        month.rejectionsByUser ?? {}
-    )
+
+    // Reaktionen (Ablehnungen) kommen initial aus den Month-Daten
+    const [reactions] = useState<Record<string, boolean | null>>(month.rejectionsByUser ?? {})
+
+    // Status als lokaler State, falls sich etwas ändert (z. B. nach Snapshot)
     const [localStatus, setLocalStatus] = useState(month.status)
+
+    // ✅ Lokale Bestätigungen, damit UI direkt reagiert ohne Reload
+    const [confirmations, setConfirmations] = useState<Record<string, boolean>>(
+        month.confirmationsByUser ?? {}
+    )
 
     const { setCurrentDate } = useMonth()
     const navigate = useNavigate()
@@ -133,6 +142,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const isPast = localStatus === 'past'
     const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
 
+    /**
+     * Navigiert zu einem Scope (/shared, /child, …) und setzt vorher den Monat im Context.
+     */
     const redirectTo = async (scope: string) => {
         const [yearStr, monthStr] = month.monthKey.split('-')
         const year = parseInt(yearStr, 10)
@@ -151,10 +163,10 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
         const newDate = new Date(year, monthIndex, 1)
         setCurrentDate(newDate)
 
-        // Kleine Verzögerung um sicherzustellen, dass der Context aktualisiert wurde
+        // Kleines Delay, damit der Context sicher aktualisiert ist
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // Dann navigieren
+        // Dann Route wechseln
         navigate(scope)
     }
 
@@ -162,6 +174,38 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
         e?.stopPropagation()
         setIsExpanded(prev => !prev)
         if (onClick) onClick(e)
+    }
+
+    /**
+     * 🔁 Toggle-Handler für die eigene Bestätigung.
+     * Schickt confirmed=true/false an die API und aktualisiert den lokalen State.
+     */
+    const toggleMyConfirmation = async (e: React.MouseEvent, newConfirmed: boolean) => {
+        e.stopPropagation()
+        try {
+            await fetch('/api/monthlyconfirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    groupId: month.groupId,
+                    monthKey: month.monthKey,
+                    confirmed: newConfirmed,
+                }),
+            })
+
+            // Lokal updaten → sofortiger Re-Render
+            setConfirmations(prev => ({
+                ...prev,
+                [userId]: newConfirmed,
+            }))
+
+            // Optional: wenn der Monat anhand von Bestätigungen seinen Status ändern soll,
+            // kannst du hier lokal den Status setzen. (z. B. wenn alle bestätigt => completed)
+            // setLocalStatus(s => s)
+        } catch (err) {
+            console.error('❌ Bestätigung (Toggle) fehlgeschlagen:', err)
+        }
     }
 
     return (
@@ -186,6 +230,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                         >
                             {month.name}
                         </h3>
+
+                        {/* FIXME: Dieses Datum ist momentan hardcodiert.
+                           Wenn verfügbar: month.completedAt anzeigen. */}
                         {isCompleted && (
                             <div className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
                                 Abgeschlossen am 15.07.2024
@@ -224,7 +271,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                             : 'bg-gray-50'
                     }`}
                 >
-                    {/* 🎯 COMPLETED: Spezielle Ausgaben-Übersicht ohne Edit-Buttons */}
+                    {/* 🎯 COMPLETED: Read-only Ansicht */}
                     {isCompleted && (
                         <>
                             <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-green-100">
@@ -245,8 +292,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                             : 'Details anzeigen'}
                                     </ActionButton>
                                 </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* Shared Ausgaben - Read-only */}
+                                    {/* Shared - Read-only */}
                                     <div className="bg-green-100 border-2 border-green-200 rounded-lg p-4 text-center">
                                         <div className="flex items-center justify-center mb-2">
                                             <Users className="h-5 w-5 mr-2 text-green-700" />
@@ -275,7 +323,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         )}
                                     </div>
 
-                                    {/* Child Ausgaben - Read-only */}
+                                    {/* Child - Read-only */}
                                     <div className="bg-green-100 border-2 border-green-200 rounded-lg p-4 text-center">
                                         <div className="flex items-center justify-center mb-2">
                                             <Baby className="h-5 w-5 mr-2 text-green-700" />
@@ -304,7 +352,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         )}
                                     </div>
 
-                                    {/* Gesamt */}
+                                    {/* Gesamt - Read-only */}
                                     <div className="bg-green-200 border-2 border-green-300 rounded-lg p-4 text-center">
                                         <div className="flex items-center justify-center mb-2">
                                             <span className="text-base text-green-900 font-medium">
@@ -334,7 +382,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             </div>
 
-                            {/* 💰 ERWEITERTE Ausgleichszahlungen für Completed */}
+                            {/* 💰 Finale Ausgleichszahlungen (Completed) */}
                             <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 shadow-sm border border-green-100">
                                 <h4 className="text-lg font-semibold text-green-900 mb-4 flex items-center">
                                     <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
@@ -396,7 +444,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                     </div>
                                 </div>
 
-                                {/* Bestätigungs-Info für Completed */}
+                                {/* Info-Banner */}
                                 <div className="bg-green-100 border-l-4 border-green-500 p-3 rounded">
                                     <div className="flex items-center">
                                         <CheckCircle className="h-5 w-5 mr-2 text-green-600" />
@@ -410,7 +458,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                         </>
                     )}
 
-                    {/* 🔄 STANDARD: Normale Ansicht für andere Status (gekürzt) */}
+                    {/* 🔄 STANDARD: Normale Ansicht für andere Status */}
                     {!isCompleted && (
                         <>
                             {isFuture && (
@@ -445,8 +493,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                 : 'Details anzeigen'}
                                         </ActionButton>
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {/* Standard Shared mit Edit-Button */}
+                                        {/* Shared */}
                                         <div className="bg-blue-50 border-2 border-blue-100 rounded-lg p-4 text-center">
                                             <div className="flex items-center justify-center mb-2">
                                                 <Users className="h-5 w-5 mr-2 text-blue-600" />
@@ -486,7 +535,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                             </ActionButton>
                                         </div>
 
-                                        {/* Standard Child mit Edit-Button */}
+                                        {/* Child */}
                                         <div className="bg-purple-50 border-2 border-purple-100 rounded-lg p-4 text-center">
                                             <div className="flex items-center justify-center mb-2">
                                                 <Baby className="h-5 w-5 mr-2 text-purple-600" />
@@ -526,7 +575,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                             </ActionButton>
                                         </div>
 
-                                        {/* Gesamt - Standard */}
+                                        {/* Gesamt */}
                                         <div className="bg-gray-100 border-2 border-gray-200 rounded-lg p-4 text-center">
                                             <div className="flex items-center justify-center mb-2">
                                                 <span className="text-base text-gray-700">
@@ -557,12 +606,13 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             )}
 
-                            {/* Standard Bestätigungen für Past-Status */}
+                            {/* 🔐 Bestätigungslogik (Toggle) */}
                             {isPast && !isCompleted && !notTakenIntoAccount && (
                                 <div className="bg-white rounded-lg p-4 shadow-sm">
                                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                         Bestätigungen
                                     </h4>
+
                                     <div className="space-y-3">
                                         {Object.keys(month.totalByUser ?? {}).map(id => {
                                             const isMe = id === userId
@@ -570,13 +620,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                 ? 'Du'
                                                 : (users[id]?.name ?? `Partner (${id})`)
                                             const hasRejected = reactions[id] === true
-                                            const hasConfirmed = false // TODO: Aus echten Daten laden
-
-                                            const handleConfirm = (e: React.MouseEvent) => {
-                                                e.stopPropagation()
-                                                // TODO: Bestätigungslogik implementieren
-                                                console.log('Bestätigung für', name)
-                                            }
+                                            const hasConfirmed = confirmations?.[id] === true
+                                            const hasOwnRejection =
+                                                isMe && reactions[userId] === true
 
                                             return (
                                                 <div
@@ -589,33 +635,54 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                     <div className="flex justify-end">
                                                         {hasRejected ? (
                                                             <div className="flex items-center text-amber-600 font-medium h-8">
-                                                                <div className="w-5 h-5 mr-2 flex items-center justify-center shrink-0">
-                                                                    <UserX className="w-full h-full text-amber-600" />
-                                                                </div>
-                                                                <span>Hat noch Redebedarf</span>
+                                                                <UserX className="w-5 h-5 mr-2 text-amber-600" />
+                                                                <span>
+                                                                    {isMe
+                                                                        ? 'Du hast noch Redebedarf'
+                                                                        : 'Hat noch Redebedarf'}
+                                                                </span>
                                                             </div>
                                                         ) : isMe ? (
-                                                            <button
-                                                                onClick={handleConfirm}
-                                                                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                                                                    hasConfirmed
-                                                                        ? 'bg-green-500 text-white hover:bg-green-600'
-                                                                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                                }`}
-                                                            >
-                                                                {hasConfirmed ? (
-                                                                    <>
-                                                                        <UserCheck className="h-4 w-4 inline mr-1" />
-                                                                        Bestätigt
-                                                                    </>
-                                                                ) : (
-                                                                    'Bestätigen'
-                                                                )}
-                                                            </button>
-                                                        ) : (
+                                                            hasOwnRejection ? (
+                                                                <div className="flex items-center text-amber-600 font-medium h-8">
+                                                                    <UserX className="w-5 h-5 mr-2 text-amber-600" />
+                                                                    <span>
+                                                                        Du hast noch Redebedarf
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                // 🔁 Toggle-Button für mich selbst
+                                                                <button
+                                                                    onClick={e =>
+                                                                        toggleMyConfirmation(
+                                                                            e,
+                                                                            !hasConfirmed
+                                                                        )
+                                                                    }
+                                                                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                                                                        hasConfirmed
+                                                                            ? 'bg-green-500 text-white hover:bg-green-600'
+                                                                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                                    }`}
+                                                                >
+                                                                    {hasConfirmed ? (
+                                                                        <>
+                                                                            <UserCheck className="h-4 w-4 inline mr-1" />
+                                                                            Zurücknehmen
+                                                                        </>
+                                                                    ) : (
+                                                                        'Bestätigen'
+                                                                    )}
+                                                                </button>
+                                                            )
+                                                        ) : hasConfirmed ? (
                                                             <div className="flex items-center text-green-600 font-medium h-8">
                                                                 <UserCheck className="h-5 w-5 mr-2 text-green-600" />
                                                                 <span>Bestätigt</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center text-gray-500 font-medium h-8">
+                                                                <span>Noch offen</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -626,7 +693,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             )}
 
-                            {/* Standard Settlement Block mit "Monat abschließen" */}
+                            {/* Ausgleichszahlungen + Monat abschließen */}
                             {isPast && !hasOpenReactions && !isCompleted && (
                                 <div className="bg-white rounded-lg p-4 shadow-sm mt-4">
                                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
@@ -691,6 +758,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                     month.monthKey.split('-')
                                                 const year = parseInt(yearStr, 10)
                                                 const monthNumber = parseInt(monthStr, 10)
+
                                                 await saveSnapshot(month.groupId, year, monthNumber)
                                                 setLocalStatus('completed')
                                                 console.log('✅ Snapshot erfolgreich gespeichert!')
@@ -706,7 +774,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             )}
 
-                            {/* Weitere Standard-Meldungen */}
+                            {/* Hinweis bei Klärungsbedarf */}
                             {needsClarification && (
                                 <div className="bg-orange-100 border-l-4 border-orange-500 p-4 rounded">
                                     <div className="flex items-center">

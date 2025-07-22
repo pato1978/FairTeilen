@@ -6,11 +6,15 @@ using WebAssembly.Server.Models;
 
 namespace WebAssembly.Server.Services;
 
+/// <summary>
+/// Liefert eine aggregierte Übersicht über ein Kalenderjahr,
+/// einschließlich Monatsdaten, Reaktionen, Ausgaben und Bestätigungen.
+/// </summary>
 public class YearOverviewService
 {
     private readonly SharedDbContext _sharedDb;
     private readonly SnapshotService _snapshotService;
-    
+
     public YearOverviewService(SharedDbContext sharedDb, SnapshotService snapshotService)
     {
         _sharedDb = sharedDb;
@@ -18,7 +22,8 @@ public class YearOverviewService
     }
 
     /// <summary>
-    /// OPTIMIERT: Lädt alle Daten für das Jahr in einem Durchgang
+    /// OPTIMIERT: Lädt alle Monatsdaten eines Jahres (inkl. Reaktionen, Snapshots, Bestätigungen)
+    /// in einem einzigen Durchgang aus der Datenbank und aggregiert sie zu einer Jahresübersicht.
     /// </summary>
     public async Task<YearOverview> GetOverviewForYearAsync(int year, string userId, string groupId)
     {
@@ -31,55 +36,62 @@ public class YearOverviewService
             Months = new List<MonthlyOverview>()
         };
 
-        // 1. Alle Snapshots für das Jahr in EINEM Query laden
         var yearStart = new DateTime(year, 1, 1);
         var yearEnd = new DateTime(year + 1, 1, 1);
-        
+
+        // 1. Snapshots laden (optimiert nach MonatKey gruppiert)
         var allSnapshots = await _sharedDb.MonthlyOverviewSnapshots
-            .Where(s => s.GroupId == groupId && 
-                       s.Month.StartsWith(year.ToString()))
+            .Where(s => s.GroupId == groupId && s.Month.StartsWith(year.ToString()))
             .ToDictionaryAsync(s => s.Month);
-            
         Console.WriteLine($"[PERF] Snapshots geladen: {sw.ElapsedMilliseconds}ms");
 
-        // 2. Alle Ausgaben für das ganze Jahr in EINEM Query laden
+        // 2. Alle Ausgaben des Jahres laden
         var allExpenses = await _sharedDb.SharedExpenses
-            .Where(e => e.Date >= yearStart && 
-                       e.Date < yearEnd && 
-                       !e.isBalanced && 
-                       e.CreatedByUserId != null)
+            .Where(e => e.Date >= yearStart && e.Date < yearEnd && !e.isBalanced && e.CreatedByUserId != null)
             .ToListAsync();
-            
         Console.WriteLine($"[PERF] {allExpenses.Count} Ausgaben geladen: {sw.ElapsedMilliseconds}ms");
 
-        // 3. Alle Reaktionen für diese Ausgaben in EINEM Query laden
+        // 3. Alle Reaktionen zu diesen Ausgaben laden
         var expenseIds = allExpenses.Select(e => e.Id).ToList();
         var allReactions = await _sharedDb.ClarificationReactions
             .Where(r => expenseIds.Contains(r.ExpenseId))
             .ToListAsync();
-            
         Console.WriteLine($"[PERF] {allReactions.Count} Reaktionen geladen: {sw.ElapsedMilliseconds}ms");
 
-        // 4. Gruppiere Daten nach Monat im Speicher
+        // 4. Alle Bestätigungen für dieses Jahr laden
+        var allConfirmations = await _sharedDb.MonthlyConfirmations
+            .Where(c => c.GroupId == groupId && c.MonthKey.StartsWith(year.ToString()))
+            .ToListAsync();
+
+        var confirmationsByMonth = allConfirmations
+            .GroupBy(c => c.MonthKey)
+            .ToDictionary(
+                g => g.Key,
+                g => g.ToDictionary(c => c.UserId, c => c.Confirmed)
+            );
+        Console.WriteLine($"[PERF] {allConfirmations.Count} Bestätigungen geladen: {sw.ElapsedMilliseconds}ms");
+
+        // 5. Gruppiere Ausgaben und Reaktionen im Arbeitsspeicher
         var expensesByMonth = allExpenses
             .GroupBy(e => e.Date.Month)
             .ToDictionary(g => g.Key, g => g.ToList());
-            
+
         var reactionsByExpenseId = allReactions
             .GroupBy(r => r.ExpenseId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
 
-        // 5. Erstelle Monatsübersichten mit vorgeladenen Daten
+        // 6. Monatsübersichten generieren
         for (int month = 1; month <= 12; month++)
         {
             var monthKey = $"{year:D4}-{month:D2}";
-            
-            // Prüfe Snapshot
+
+            // 6.1. Snapshot verwenden, falls vorhanden
             if (allSnapshots.TryGetValue(monthKey, out var snapshot))
             {
                 var snapshotData = System.Text.Json.JsonSerializer.Deserialize<SnapshotData>(snapshot.SnapshotJson);
+
                 overview.Months.Add(new MonthlyOverview
                 {
                     Id = $"{groupId}_{monthKey}",
@@ -95,21 +107,23 @@ public class YearOverviewService
                     SharedByUser = snapshotData.SharedByUser,
                     ChildByUser = snapshotData.ChildByUser,
                     BalanceByUser = snapshotData.BalanceByUser,
-                    RejectionsByUser = snapshotData.RejectedByUser?.ToDictionary(id => id, id => true) ?? new Dictionary<string, bool>()
+                    RejectionsByUser = snapshotData.RejectedByUser?.ToDictionary(id => id, _ => true) ?? new(),
+                    ConfirmationsByUser = confirmationsByMonth.GetValueOrDefault(monthKey) ?? new()
                 });
+
                 continue;
             }
 
-            // Berechne Monat aus vorgeladenen Daten
-            var monthExpenses = expensesByMonth.GetValueOrDefault(month) ?? new List<Expense>();
+            // 6.2. Daten berechnen, wenn kein Snapshot vorliegt
+            var monthExpenses = expensesByMonth.GetValueOrDefault(month) ?? new();
             var monthReactions = monthExpenses
                 .SelectMany(e => reactionsByExpenseId.GetValueOrDefault(e.Id) ?? new List<ClarificationReaction>())
                 .ToList();
 
-            var monthly = CalculateMonthFromData(
-                year, month, monthExpenses, monthReactions, today, groupId
-            );
-            
+            var monthly = CalculateMonthFromData(year, month, monthExpenses, monthReactions, today, groupId);
+            monthly.Expenses = monthExpenses;
+            monthly.ConfirmationsByUser = confirmationsByMonth.GetValueOrDefault(monthKey) ?? new();
+
             overview.Months.Add(monthly);
         }
 
@@ -118,12 +132,12 @@ public class YearOverviewService
     }
 
     /// <summary>
-    /// Berechnet eine Monatsübersicht aus vorgeladenen Daten
+    /// Berechnet eine Monatsübersicht aus bereits vorgeladenen Ausgaben und Reaktionen.
     /// </summary>
     private MonthlyOverview CalculateMonthFromData(
-        int year, 
-        int month, 
-        List<Expense> expenses, 
+        int year,
+        int month,
+        List<Expense> expenses,
         List<ClarificationReaction> reactions,
         DateTime today,
         string groupId)
@@ -132,22 +146,18 @@ public class YearOverviewService
         var monthKey = $"{year:D4}-{month:D2}";
         var reference = new DateTime(year, month, 1);
 
-        // Gruppiere Ausgaben
         var shared = expenses.Where(e => e.Type == ExpenseType.Shared).ToList();
         var child = expenses.Where(e => e.Type == ExpenseType.Child).ToList();
 
         var totalShared = shared.Sum(e => e.Amount);
         var totalChild = child.Sum(e => e.Amount);
 
-        var sharedByUser = shared
-            .GroupBy(e => e.CreatedByUserId!)
+        var sharedByUser = shared.GroupBy(e => e.CreatedByUserId!)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
 
-        var childByUser = child
-            .GroupBy(e => e.CreatedByUserId!)
+        var childByUser = child.GroupBy(e => e.CreatedByUserId!)
             .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount));
 
-        // Gesamt je User
         var totalByUser = new Dictionary<string, decimal>();
         foreach (var kv in sharedByUser)
             totalByUser[kv.Key] = kv.Value;
@@ -158,36 +168,25 @@ public class YearOverviewService
             totalByUser[kv.Key] += kv.Value;
         }
 
-        // Saldenberechnung
         var balanceByUser = totalByUser.ToDictionary(
             u => u.Key,
             u => totalByUser[u.Key] - totalByUser.Where(kvp => kvp.Key != u.Key).Sum(kvp => kvp.Value)
         );
 
-        // Rejected-Reaktionen
         var rejected = reactions
             .Where(r => r.Status == ClarificationStatus.Rejected)
             .GroupBy(r => r.UserId)
-            .ToDictionary(g => g.Key, g => true);
+            .ToDictionary(g => g.Key, _ => true);
 
-        // Status bestimmen
         string status;
         if (rejected.Any())
-        {
             status = "needs-clarification";
-        }
         else if (reference > today)
-        {
             status = "future";
-        }
         else if (reference < today)
-        {
             status = expenses.Count == 0 ? "notTakenIntoAccount" : "past";
-        }
         else
-        {
             status = "pending";
-        }
 
         return new MonthlyOverview
         {
@@ -204,19 +203,19 @@ public class YearOverviewService
             ChildByUser = childByUser,
             TotalByUser = totalByUser,
             BalanceByUser = balanceByUser,
-            RejectionsByUser = rejected,
-            Expenses = expenses
+            RejectionsByUser = rejected
+            // ConfirmationsByUser wird außerhalb zugewiesen
         };
     }
 
     /// <summary>
-    /// Einzelne Monatsabfrage (falls noch benötigt)
+    /// Lädt eine Einzelübersicht für einen bestimmten Monat, inkl. Snapshot oder dynamischer Berechnung.
     /// </summary>
     public async Task<MonthlyOverview> GetOverviewForMonthAsync(int year, int month, string userId, string groupId)
     {
         var monthKey = $"{year:D4}-{month:D2}";
-        
-        // Prüfe Snapshot
+
+        // 1. Snapshot bevorzugen
         var snapshot = await _snapshotService.LoadSnapshotAsync(groupId, monthKey);
         if (snapshot != null)
         {
@@ -235,14 +234,17 @@ public class YearOverviewService
                 SharedByUser = snapshot.SharedByUser,
                 ChildByUser = snapshot.ChildByUser,
                 BalanceByUser = snapshot.BalanceByUser,
-                RejectionsByUser = snapshot.RejectedByUser?.ToDictionary(id => id, id => true) ?? new Dictionary<string, bool>()
+                RejectionsByUser = snapshot.RejectedByUser?.ToDictionary(id => id, _ => true) ?? new(),
+                ConfirmationsByUser = (await _sharedDb.MonthlyConfirmations
+                    .Where(c => c.GroupId == groupId && c.MonthKey == monthKey)
+                    .ToDictionaryAsync(c => c.UserId, c => c.Confirmed))
             };
         }
 
-        // Lade Daten für einzelnen Monat
+        // 2. Fallback: dynamisch berechnen
         var monthStart = new DateTime(year, month, 1);
         var monthEnd = monthStart.AddMonths(1);
-        
+
         var expenses = await _sharedDb.SharedExpenses
             .Where(e => e.Date >= monthStart && e.Date < monthEnd && !e.isBalanced && e.CreatedByUserId != null)
             .ToListAsync();
@@ -252,11 +254,16 @@ public class YearOverviewService
             .Where(r => expenseIds.Contains(r.ExpenseId))
             .ToListAsync();
 
+        var confirmations = await _sharedDb.MonthlyConfirmations
+            .Where(c => c.GroupId == groupId && c.MonthKey == monthKey)
+            .ToDictionaryAsync(c => c.UserId, c => c.Confirmed);
+
         var today = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        
-        
-         var monthly=    CalculateMonthFromData(year, month, expenses, reactions, today, groupId);
-         monthly.Expenses = expenses;
-         return monthly;
+
+        var monthly = CalculateMonthFromData(year, month, expenses, reactions, today, groupId);
+        monthly.Expenses = expenses;
+        monthly.ConfirmationsByUser = confirmations;
+
+        return monthly;
     }
 }

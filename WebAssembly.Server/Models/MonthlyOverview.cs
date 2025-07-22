@@ -25,4 +25,6 @@ public class MonthlyOverview
     [NotMapped] public Dictionary<string, decimal> TotalByUser { get; set; } = new();
     [NotMapped] public Dictionary<string, decimal> BalanceByUser { get; set; } = new();
     [NotMapped] public Dictionary<string, bool> RejectionsByUser { get; set; } = new();
+    [NotMapped]
+    public Dictionary<string, bool> ConfirmationsByUser { get; set; } = new();
 }

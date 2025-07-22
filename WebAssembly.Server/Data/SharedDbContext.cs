@@ -12,7 +12,7 @@ namespace WebAssembly.Server.Data
         public DbSet<MonthlyOverview> SharedMonthlyOverviews { get; set; }
         public DbSet<ClarificationReaction> ClarificationReactions { get; set; }
         public DbSet<MonthlyOverviewSnapshot> MonthlyOverviewSnapshots { get; set; }
-        
+        public DbSet<MonthlyConfirmation> MonthlyConfirmations { get; set; } = default!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -30,6 +30,10 @@ namespace WebAssembly.Server.Data
             modelBuilder.Entity<ClarificationReaction>()
                 .Property(c => c.Status)
                 .IsRequired();
+            //Damit jede Kombination aus UserId, GroupId und MonthKey nur einmal vorkommen kann:
+            modelBuilder.Entity<MonthlyConfirmation>()
+                .HasIndex(c => new { c.UserId, c.GroupId, c.MonthKey })
+                .IsUnique();
         }
 
         public SharedDbContext(DbContextOptions<SharedDbContext> options)

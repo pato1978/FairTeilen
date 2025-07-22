@@ -36,10 +36,23 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
         [ExpenseType.Child]: { budget: 0, expenses: [], isLoading: true },
     })
 
-    // Extrahiere "YYYY-MM" aus Date
     function getMonthKey(date: Date | undefined): string | undefined {
         if (!date || isNaN(date.getTime())) return undefined
-        return date.toISOString().slice(0, 7)
+
+        // Verwende lokale Zeit statt UTC!
+        const year = date.getFullYear()
+        const month = (date.getMonth() + 1).toString().padStart(2, '0')
+
+        const monthKey = `${year}-${month}`
+
+        console.log('📅 getMonthKey:', {
+            input: date.toISOString(),
+            localDate: date.toLocaleDateString(),
+            output: monthKey,
+            month: date.getMonth() + 1,
+        })
+
+        return monthKey
     }
 
     /**

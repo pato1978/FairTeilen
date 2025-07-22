@@ -133,19 +133,28 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const isPast = localStatus === 'past'
     const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
 
-    // 🛠️ Korrigierte redirectTo-Funktion
-    const redirectTo = (scope: string) => {
+    const redirectTo = async (scope: string) => {
         const [yearStr, monthStr] = month.monthKey.split('-')
         const year = parseInt(yearStr, 10)
         const monthIndex = parseInt(monthStr, 10) - 1
 
-        console.log(`🎯 Navigiere zu ${scope} für Monat: ${month.monthKey}`, {
-            year,
-            monthIndex,
-            monthName: month.name,
-        })
+        console.log(
+            `🎯 Navigiere zu ${scope} für Monat: ${month.monthKey} monthIndex: ${monthIndex}`,
+            {
+                year,
+                monthIndex,
+                monthName: month.name,
+            }
+        )
 
-        setCurrentDate(new Date(year, monthIndex, 1))
+        // Erst den Monat setzen
+        const newDate = new Date(year, monthIndex, 1)
+        setCurrentDate(newDate)
+
+        // Kleine Verzögerung um sicherzustellen, dass der Context aktualisiert wurde
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Dann navigieren
         navigate(scope)
     }
 

@@ -6,6 +6,10 @@ export enum ExpenseType {
     Shared = 'shared',
     Child = 'child',
 }
+export enum SplitMode {
+    Global = 'global',
+    Custom = 'custom',
+}
 
 export interface Expense {
     id: string
@@ -20,6 +24,9 @@ export interface Expense {
     isRecurring: boolean
     isBalanced: boolean
     distribution?: Participant[] // ✅ optional hinzugefügt
+    // NEU
+    splitMode?: SplitMode // ✅ enum statt string
+    customSplit?: { [userId: string]: number }
 }
 
 export interface BudgetSummary {

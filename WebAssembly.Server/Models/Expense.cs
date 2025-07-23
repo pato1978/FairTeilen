@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using WebAssembly.Server.Enums;
 
 public class Expense
@@ -18,4 +21,30 @@ public class Expense
 
     public bool isRecurring { get; set; }
     public bool isBalanced { get; set; }
+    // NEU:
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public SplitMode? SplitMode { get; set; } // nullable für rückwärtskompatibel
+    
+    // optional: serialisiert als JSON
+    public string? CustomSplitJson { get; set; }
+
+    [NotMapped]
+    public Dictionary<string, decimal>? CustomSplit
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(CustomSplitJson)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, decimal>>(CustomSplitJson);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        set => CustomSplitJson = value == null
+            ? null
+            : JsonSerializer.Serialize(value);
+    }
 }

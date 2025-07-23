@@ -29,6 +29,6 @@ public class MonthlyConfirmation
     /// <summary>
     /// Zeitpunkt der Bestätigung (UTC)
     /// </summary>
-    public DateTime ConfirmedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ConfirmedAt { get; set; } = DateTime.UtcNow;
 }
 

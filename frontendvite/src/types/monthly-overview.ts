@@ -41,6 +41,7 @@ export interface MonthlyOverview {
     totalByUser?: Record<string, number>
     balanceByUser?: Record<string, number>
     rejectionsByUser?: Record<string, boolean>
+    confirmationsByUser?: Record<string, boolean> // ✅ Ergänzen
 }
 export interface YearOverview {
     year: number

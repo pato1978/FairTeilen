@@ -66,14 +66,15 @@ export class BackendExpenseService extends BaseExpenseService implements IExpens
     }
 
     /** 📝 Ausgabe aktualisieren */
+    /** 📝 Ausgabe aktualisieren - verwendet POST wie beim Erstellen */
     async updateExpense(expense: Expense, groupId?: string): Promise<void> {
         const gid = groupId ?? GROUP_ID
-        const url = `${API_BASE_URL}/expenses/${expense.id}`
+        const url = `${API_BASE_URL}/expenses`
         const data = { ...expense, groupId: gid }
 
         if (Capacitor.isNativePlatform?.()) {
             const opts = { url, headers: { 'Content-Type': 'application/json' }, data }
-            const response: HttpResponse = await CapacitorHttp.put(opts)
+            const response: HttpResponse = await CapacitorHttp.post(opts)
             if (response.status < 200 || response.status >= 300) {
                 console.error('UpdateExpense Fehler-Body:', JSON.stringify(response.data))
                 throw new Error(
@@ -82,7 +83,7 @@ export class BackendExpenseService extends BaseExpenseService implements IExpens
             }
         } else {
             const res = await fetch(url, {
-                method: 'PUT',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             })

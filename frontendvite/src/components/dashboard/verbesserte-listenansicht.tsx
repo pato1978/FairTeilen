@@ -7,9 +7,30 @@ import { ExpenseItem } from '@/components/dashboard/expense-item'
 import { useClarificationReactions } from '@/context/clarificationContext'
 
 // 🔘 Kleiner Kategorie-Button für obere Schnellnavigation
-function CategoryChip({ label }: { label: string }) {
+export function CategoryChip({
+    label,
+    isActive = false,
+    onClick,
+}: {
+    label: string
+    isActive?: boolean
+    onClick?: () => void
+}) {
     return (
-        <button className="whitespace-nowrap text-sm bg-gray-100 px-3 py-1 rounded-full hover:bg-gray-200 transition">
+        <button
+            type="button"
+            className={`
+        whitespace-nowrap text-sm px-3 py-1 rounded-full transition
+        ${
+            isActive
+                ? 'bg-blue-100 text-blue-800 font-semibold shadow'
+                : 'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700'
+        }
+        outline-none focus:ring-2 focus:ring-blue-300
+      `}
+            onClick={onClick}
+            tabIndex={0}
+        >
             {label}
         </button>
     )
@@ -20,6 +41,7 @@ interface VerbesserteLitenansichtProps {
     onDelete: (id: string) => void | Promise<void>
     onEdit: (expense: Expense) => void
     type: 'personal' | 'shared' | 'child'
+    currentCategory: string
 }
 
 export function VerbesserteLitenansicht({
@@ -104,16 +126,7 @@ export function VerbesserteLitenansicht({
     return (
         // 📦 Wichtig: Diese Komponente muss in einem Eltern-Container mit fester Höhe (z. B. h-full oder h-screen) verwendet werden!
         <div className="flex flex-col h-full px-1 pt-1">
-            {/* 🔷 Horizontale Schnellnavigation nach Kategorie */}
-            <div className="overflow-x-auto no-scrollbar">
-                <div className="flex gap-2 w-max">
-                    <CategoryChip label="Alle" />
-                    <CategoryChip label="Kind" />
-                    <CategoryChip label="Lebensmittel" />
-                    <CategoryChip label="Fixkosten" />
-                    <CategoryChip label="Freizeit" />
-                </div>
-            </div>
+            {/* 🔷 Horizontale Schnellnavigation nach Kategorie wird jetzt in BudgetPageInner verwaltet */}
 
             {/* 🔠 Kopfzeile mit Sortieroptionen */}
             <div className="px-0 py-2 flex items-center text-xs font-medium text-gray-500">

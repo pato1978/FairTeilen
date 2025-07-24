@@ -1,5 +1,3 @@
-import { useState } from 'react'
-import { availableIcons } from '@/lib/icon-options'
 import type { Expense } from '@/types'
 
 interface BudgetSummaryCardProps {
@@ -11,6 +9,7 @@ interface BudgetSummaryCardProps {
     onTitleClick?: () => void
     onCategoryChange?: (category: string) => void
     expenses?: Expense[] // Optional: Liste der Ausgaben
+    currentCategory?: string // Aktuelle Kategorie
 }
 
 export function BudgetSummaryCard({
@@ -21,10 +20,11 @@ export function BudgetSummaryCard({
     onBudgetClick,
     onTitleClick,
     onCategoryChange,
-    expenses = [],
+
+    currentCategory = 'gesamt',
 }: BudgetSummaryCardProps) {
-    const [categoryText, setCategoryText] = useState('gesamt')
-    const hideBudget = categoryText !== 'gesamt' // Nur im Modus „gesamt“ wird das Budget angezeigt
+    // Kategorie-Auswahl wurde nach BudgetPageInner verschoben
+    const hideBudget = currentCategory !== 'gesamt' // Nur im Modus „gesamt" wird das Budget angezeigt
 
     // 💡 Sichere Fallbacks für Berechnungen
     const safeExpenses = typeof totalExpenses === 'number' ? totalExpenses : 0
@@ -32,49 +32,6 @@ export function BudgetSummaryCard({
         typeof percentageUsed === 'number'
             ? percentageUsed
             : Math.min(100, Math.round((safeExpenses / budget) * 100))
-
-    // 💡 Definiere Sonderkategorien (filternde Kategorien ohne Icons)
-    const specialCategories = ['wiederkehrend', 'bereits beglichen']
-
-    // 🧠 Prüft, ob es in einer Kategorie Ausgaben mit Wert > 0 gibt
-    function hasExpenses(categoryName: string): boolean {
-        if (categoryName === 'wiederkehrend')
-            return expenses.some(e => e.isRecurring === true && e.amount > 0)
-
-        if (categoryName === 'bereits beglichen')
-            return expenses.some(e => e.isBalanced === true && e.amount > 0)
-
-        // Reguläre Kategorieprüfung
-        return expenses.some(e => e.category === categoryName && !e.isRecurring && e.amount > 0)
-    }
-
-    /**
-     * 🔁 Kategorie durchschalten:
-     * - Startet bei „gesamt“
-     * - Geht durch alle gültigen Kategorien (Sonderkategorien + Icons)
-     * - Springt am Ende zurück auf „gesamt“
-     */
-    const chooseCategory = (current: string) => {
-        // Alle Kategorien in gewünschter Reihenfolge
-        const allCategories = [...specialCategories, ...availableIcons.map(i => i.name)]
-
-        const currentIndex = allCategories.indexOf(current)
-        let newCategory = 'gesamt'
-
-        if (current === 'gesamt') {
-            // Starte bei der ersten verfügbaren Kategorie mit Ausgaben
-            const first = allCategories.find(cat => hasExpenses(cat))
-            if (first) newCategory = first
-        } else {
-            // Finde die nächste gültige Kategorie mit Ausgaben
-            const rest = allCategories.slice(currentIndex + 1)
-            const next = rest.find(cat => hasExpenses(cat))
-            newCategory = next || 'gesamt' // Falls nichts mehr kommt: zurück zu gesamt
-        }
-
-        setCategoryText(newCategory)
-        onCategoryChange?.(newCategory) // Optionale Callback-Benachrichtigung
-    }
 
     return (
         <div
@@ -90,10 +47,10 @@ export function BudgetSummaryCard({
                         className="text-blue-600 text-base font-semibold cursor-pointer"
                         onClick={e => {
                             e.stopPropagation() // Verhindert, dass onTitleClick ausgelöst wird
-                            chooseCategory(categoryText)
+                            onCategoryChange?.('gesamt') // Ruft die Callback-Funktion auf
                         }}
                     >
-                        {categoryText}
+                        {currentCategory}
                     </span>
                 </div>
             </h4>

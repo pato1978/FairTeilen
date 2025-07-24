@@ -7,7 +7,7 @@ namespace WebAssembly.Server.Models;
 public class AppUser
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    
+    public string? GroupId { get; set; } // Gruppenzugehörigkeit für Shared-Logik
     // 🔐 Auth
     public string? Email { get; set; }         // wird später Pflicht bei Registrierung
     public string? PasswordHash { get; set; }  // Bcrypt oder anderes Hashverfahren

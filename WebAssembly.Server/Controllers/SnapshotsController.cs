@@ -119,7 +119,7 @@ namespace WebAssembly.Server.Controllers
                 {
                     await _mailService.SendEmailAsync(
                         to: recipient,
-                        subject: "",
+                        subject: "Monatsabrechnung "+$"({year}-{month:D2})",
                         htmlBody: mailBody
                     );
                 }

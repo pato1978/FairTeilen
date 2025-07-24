@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react'
 import { saveSnapshot } from '@/services/SnapshotService'
+import { MonthlyConfirmationService } from '@/services/MonthlyConfirmationService' // ✅ NEU: Service Import
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'
@@ -108,6 +109,7 @@ function ActionButton({
 //  EnhancedMonthCard
 //  - Enthält Toggle-Logik für Bestätigungen (confirm/unconfirm)
 //  - Re-Render erfolgt über lokalen State `confirmations`
+//  - ✅ AKTUALISIERT: Korrekte Abschluss-Logik und Service-Integration
 // -----------------------------------------------------------
 export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
@@ -123,6 +125,9 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [confirmations, setConfirmations] = useState<Record<string, boolean>>(
         month.confirmationsByUser ?? {}
     )
+
+    // ✅ NEU: Loading State für bessere UX
+    const [isConfirming, setIsConfirming] = useState(false)
 
     const { setCurrentDate } = useMonth()
     const navigate = useNavigate()
@@ -141,6 +146,13 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const notTakenIntoAccount = localStatus === 'notTakenIntoAccount'
     const isPast = localStatus === 'past'
     const hasOpenReactions = Object.values(reactions ?? {}).some(val => val === true)
+
+    // ✅ NEU: Korrekte Abschluss-Logik - alle User müssen bestätigt haben
+    const allUsersConfirmed = Object.keys(month.totalByUser ?? {}).every(
+        userId => confirmations?.[userId] === true
+    )
+
+    const canCompleteMonth = isPast && !hasOpenReactions && allUsersConfirmed && !isCompleted
 
     /**
      * Navigiert zu einem Scope (/shared, /child, …) und setzt vorher den Monat im Context.
@@ -177,22 +189,21 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     }
 
     /**
-     * 🔁 Toggle-Handler für die eigene Bestätigung.
+     * ✅ AKTUALISIERT: Toggle-Handler für die eigene Bestätigung mit Service-Integration.
      * Schickt confirmed=true/false an die API und aktualisiert den lokalen State.
      */
     const toggleMyConfirmation = async (e: React.MouseEvent, newConfirmed: boolean) => {
         e.stopPropagation()
+        setIsConfirming(true) // Loading State aktivieren
+
         try {
-            await fetch('/api/monthlyconfirmation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId,
-                    groupId: month.groupId,
-                    monthKey: month.monthKey,
-                    confirmed: newConfirmed,
-                }),
-            })
+            // ✅ Service verwenden statt inline fetch
+            await MonthlyConfirmationService.setConfirmation(
+                userId,
+                month.groupId,
+                month.monthKey,
+                newConfirmed
+            )
 
             // Lokal updaten → sofortiger Re-Render
             setConfirmations(prev => ({
@@ -200,11 +211,14 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                 [userId]: newConfirmed,
             }))
 
-            // Optional: wenn der Monat anhand von Bestätigungen seinen Status ändern soll,
-            // kannst du hier lokal den Status setzen. (z. B. wenn alle bestätigt => completed)
-            // setLocalStatus(s => s)
+            console.log(
+                `✅ Bestätigung ${newConfirmed ? 'gesetzt' : 'zurückgenommen'} für ${month.monthKey}`
+            )
         } catch (err) {
-            console.error('❌ Bestätigung (Toggle) fehlgeschlagen:', err)
+            console.error('❌ Bestätigung fehlgeschlagen:', err)
+            // TODO: Hier könnte man einen Toast/User-Notification zeigen
+        } finally {
+            setIsConfirming(false) // Loading State deaktivieren
         }
     }
 
@@ -651,7 +665,7 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                                     </span>
                                                                 </div>
                                                             ) : (
-                                                                // 🔁 Toggle-Button für mich selbst
+                                                                // ✅ AKTUALISIERT: Toggle-Button für mich selbst mit Service-Integration
                                                                 <button
                                                                     onClick={e =>
                                                                         toggleMyConfirmation(
@@ -659,13 +673,16 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                                             !hasConfirmed
                                                                         )
                                                                     }
+                                                                    disabled={isConfirming}
                                                                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                                                                         hasConfirmed
                                                                             ? 'bg-green-500 text-white hover:bg-green-600'
                                                                             : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                                                    }`}
+                                                                    } ${isConfirming ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 >
-                                                                    {hasConfirmed ? (
+                                                                    {isConfirming ? (
+                                                                        'Laden...'
+                                                                    ) : hasConfirmed ? (
                                                                         <>
                                                                             <UserCheck className="h-4 w-4 inline mr-1" />
                                                                             Zurücknehmen
@@ -693,8 +710,8 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                 </div>
                             )}
 
-                            {/* Ausgleichszahlungen + Monat abschließen */}
-                            {isPast && !hasOpenReactions && !isCompleted && (
+                            {/* ✅ AKTUALISIERT: Ausgleichszahlungen + Monat abschließen mit korrigierter Logik */}
+                            {isPast && !isCompleted && (
                                 <div className="bg-white rounded-lg p-4 shadow-sm mt-4">
                                     <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                         Ausgleichszahlungen
@@ -750,9 +767,12 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         </div>
                                     </div>
 
+                                    {/* ✅ NEU: Konditioneller Button mit korrekter Abschluss-Logik */}
                                     <button
                                         onClick={async e => {
                                             e.stopPropagation()
+                                            if (!canCompleteMonth) return // Sicherheitscheck
+
                                             try {
                                                 const [yearStr, monthStr] =
                                                     month.monthKey.split('-')
@@ -764,13 +784,31 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                                 console.log('✅ Snapshot erfolgreich gespeichert!')
                                             } catch (err) {
                                                 console.error('❌ Snapshot fehlgeschlagen:', err)
+                                                // TODO: User-Benachrichtigung bei Fehler
                                             }
                                         }}
-                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center shadow-sm hover:shadow"
+                                        disabled={!canCompleteMonth}
+                                        className={`w-full font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center shadow-sm ${
+                                            canCompleteMonth
+                                                ? 'bg-green-600 hover:bg-green-700 text-white hover:shadow cursor-pointer'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
                                     >
                                         <CheckCircle className="h-5 w-5 mr-2" />
-                                        Monat abschließen
+                                        {canCompleteMonth
+                                            ? 'Monat abschließen'
+                                            : 'Warten auf Bestätigungen'}
                                     </button>
+
+                                    {/* ✅ NEU: Hilfetext wenn nicht alle bestätigt haben */}
+                                    {!canCompleteMonth && !hasOpenReactions && (
+                                        <div className="mt-2 text-sm text-gray-500 text-center">
+                                            {!allUsersConfirmed &&
+                                                'Noch nicht alle Benutzer haben bestätigt'}
+                                            {hasOpenReactions &&
+                                                'Offene Klärungspunkte müssen zuerst gelöst werden'}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

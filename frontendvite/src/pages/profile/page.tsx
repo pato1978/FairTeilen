@@ -20,7 +20,7 @@ import { UserService, type AppUser } from '@/services/UserService'
 export default function ProfilePage() {
     // ✅ Alle Funktionen aus dem vollständig Backend-integrierten Context
     const {
-        userId, // Aktuelle User-ID (aus localStorage + Backend)
+        //userId, // Aktuelle User-ID (aus localStorage + Backend)
         setUserId, // User wechseln (speichert + lädt Backend-Daten)
         user, // Aktueller User (komplett aus Backend)
         updateUserData, // User-Daten im Backend aktualisieren
@@ -174,14 +174,14 @@ export default function ProfilePage() {
     ]
 
     // 🎭 Icon basierend auf User-Rolle (aus Backend-Daten)
-    const getUserIcon = (role: string) => {
+    const resolveUserIcon = (role: string): React.ElementType => {
         switch (role) {
             case 'Admin':
-                return Crown // Admin-User
+                return Crown
             case 'Premium':
-                return Users // Premium-User
+                return Users
             default:
-                return UserIcon // Free-User (Standard)
+                return UserIcon
         }
     }
 
@@ -208,7 +208,7 @@ export default function ProfilePage() {
     }
 
     // Icon für aktuellen User
-    const UserIcon = getUserIcon(user.role)
+    const CurrentUserIcon = resolveUserIcon(user.role)
 
     return (
         <PageLayout showAddButton={false}>
@@ -252,7 +252,7 @@ export default function ProfilePage() {
                         <div
                             className={`p-3 rounded-full ${UserService.mapColorToCss(user.profileColor)} mr-4`}
                         >
-                            <UserIcon className="h-6 w-6 text-white" />
+                            <CurrentUserIcon className="h-6 w-6 text-white" />
                         </div>
                         <div className="flex-1">
                             {/* Alle Daten aus Backend */}
@@ -303,7 +303,7 @@ export default function ProfilePage() {
                         <div className="space-y-3">
                             {/* ✅ User-Liste komplett aus Backend */}
                             {availableUsers.map(availableUser => {
-                                const UserIcon = getUserIcon(availableUser.role) // Icon basierend auf Backend-Rolle
+                                const IconComponent = resolveUserIcon(availableUser.role)
                                 const isSelected = user.id === availableUser.id
 
                                 return (
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                                         <div
                                             className={`p-2 rounded-full ${UserService.mapColorToCss(availableUser.profileColor)} mr-3`}
                                         >
-                                            <UserIcon className="h-5 w-5 text-white" />
+                                            <IconComponent className="h-5 w-5 text-white" />
                                         </div>
                                         <div className="flex-1 text-left">
                                             {/* Alle Daten aus Backend */}

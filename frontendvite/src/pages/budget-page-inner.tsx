@@ -164,8 +164,8 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
                     ) : (
                         <>
                             {/* Horizontale Kategorienleiste */}
-                            <div className="overflow-x-auto no-scrollbar">
-                                <div className="flex gap-2 w-max">
+                            <div className="overflow-x-auto no-scrollbar pb-2">
+                                <div className="flex gap-2 w-max py-1">
                                     {visibleCategories.map(cat => (
                                         <CategoryChip
                                             key={cat}

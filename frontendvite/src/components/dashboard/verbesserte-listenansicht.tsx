@@ -129,12 +129,12 @@ export function VerbesserteLitenansicht({
             {/* 🔷 Horizontale Schnellnavigation nach Kategorie wird jetzt in BudgetPageInner verwaltet */}
 
             {/* 🔠 Kopfzeile mit Sortieroptionen */}
-            <div className="px-0 py-2 flex items-center text-xs font-medium text-gray-500">
+            <div className="px-0 py-2 flex items-center text-xs font-medium text-gray-500 ">
                 <div className="w-8 flex justify-center">
                     <ArrowUpDown className="h-3 w-3" />
                 </div>
 
-                <div className="flex flex-1 gap-1 items-center">
+                <div className="flex flex-1 gap-1 items-center ">
                     {type !== 'personal' && (
                         <button
                             onClick={() => handleSort('user')}

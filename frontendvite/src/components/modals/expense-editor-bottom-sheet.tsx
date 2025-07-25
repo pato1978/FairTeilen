@@ -134,8 +134,21 @@ export function ExpenseEditorBottomSheet({
     useEffect(() => {
         if (isOpen) {
             setAnimation('entering')
+            // Verhindere Body-Scroll und verstecke App-Footer
+            document.body.style.overflow = 'hidden'
+            document.body.style.position = 'fixed'
+            document.body.style.width = '100%'
+            document.body.style.top = '0'
         } else if (animation !== 'exited' && animation !== 'exiting') {
             setAnimation('exiting')
+        }
+
+        return () => {
+            // Stelle Body-Scroll wieder her
+            document.body.style.overflow = ''
+            document.body.style.position = ''
+            document.body.style.width = ''
+            document.body.style.top = ''
         }
     }, [isOpen])
 
@@ -266,7 +279,7 @@ export function ExpenseEditorBottomSheet({
         <>
             {/* 🔲 Dunkles Overlay */}
             <div
-                className={`fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
+                className={`fixed inset-0 z-[60] bg-black transition-opacity duration-300 ${
                     animation === 'entering' || animation === 'entered'
                         ? 'bg-opacity-50'
                         : 'bg-opacity-0'
@@ -275,15 +288,20 @@ export function ExpenseEditorBottomSheet({
                 {/* 🧾 Hauptdialog als Bottom Sheet */}
                 <div
                     ref={sideSheetRef}
-                    className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md max-h-[90vh] bg-white rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-50 flex flex-col ${
+                    className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md bg-white rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-[70] ${
                         animation === 'entering' || animation === 'entered'
-                            ? 'opacity-100'
-                            : 'opacity-0'
+                            ? 'opacity-100 translate-y-0'
+                            : 'opacity-0 translate-y-full'
                     }`}
                     onClick={e => e.stopPropagation()}
+                    style={{
+                        maxHeight: 'calc(100vh - 60px)', // Lass etwas Platz oben
+                        display: 'flex',
+                        flexDirection: 'column',
+                    }}
                 >
-                    {/* 🔷 Header */}
-                    <div className="relative px-4 py-4 text-left border-b border-gray-100 rounded-t-xl backdrop-blur-sm shadow-inner">
+                    {/* 🔷 Header - flex-shrink-0 verhindert Schrumpfung */}
+                    <div className="flex-shrink-0 relative px-4 py-4 text-left border-b border-gray-100 rounded-t-xl backdrop-blur-sm shadow-inner">
                         <div className="absolute inset-0 bg-white -z-10" />
                         <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60" />
                         <div className="flex justify-between items-center">
@@ -293,8 +311,8 @@ export function ExpenseEditorBottomSheet({
                         </div>
                     </div>
 
-                    {/* 📜 Scrollbarer Inhalt */}
-                    <div className="flex-grow overflow-y-auto px-4 py-4 space-y-4">
+                    {/* 📜 Scrollbarer Inhalt - flex-1 nimmt verfügbaren Platz, min-h-0 für Scroll */}
+                    <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
                         {/* Typ-Auswahl */}
                         <div>
                             <div className="flex space-x-2">
@@ -488,10 +506,13 @@ export function ExpenseEditorBottomSheet({
                                 />
                             </div>
                         </div>
+
+                        {/* Extra Padding am Ende für besseres Scrollen */}
+                        <div className="pb-4"></div>
                     </div>
 
-                    {/* ✅ Footer */}
-                    <div className="px-4 pt-4 pb-4 bg-white border-t border-gray-100 flex space-x-3">
+                    {/* ✅ Footer - flex-shrink-0 verhindert Schrumpfung */}
+                    <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-t border-gray-100 flex space-x-3">
                         <button
                             className="flex-1 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-xl hover:bg-blue-100 active:bg-blue-200 transition-colors"
                             onClick={handleClose}

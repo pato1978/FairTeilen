@@ -8,5 +8,6 @@ public class BudgetEntry
     public string Scope { get; set; } = ""; // "personal", "shared", "child", etc.
     // 🔑 Benutzerbindung hinzufügen:
     public string UserId { get; set; } = "";
+    public string? GroupId { get; set; }
     //public User? User { get; set; } // Navigation Property (optional)
 }

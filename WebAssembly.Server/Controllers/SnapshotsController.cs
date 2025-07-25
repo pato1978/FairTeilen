@@ -207,8 +207,8 @@ namespace WebAssembly.Server.Controllers
         /// Liefert den persönlichen Snapshot (nur eigene Personal-Ausgaben) für den aktuell angemeldeten Nutzer.
         /// Andere Nutzer haben darauf keinen Zugriff.
         /// </summary>
-        [HttpGet("personal/{year:int}/{month:int}")]
-        public async Task<IActionResult> GetPersonalSnapshot(int year, int month)
+        [HttpGet("personal/{groupId}/{year:int}/{month:int}")]
+        public async Task<IActionResult> GetPersonalSnapshot(string groupId, int year, int month)
         {
             // 🔐 Sicherstellen, dass ein Nutzer eingeloggt ist
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -217,12 +217,43 @@ namespace WebAssembly.Server.Controllers
 
             var monthKey = $"{year:D4}-{month:D2}";
 
-            var personal = await _snapshotService.GetPersonalSnapshotAsync(userId, monthKey);
+            // 🔍 Gruppenspezifisch nach persönlichem Snapshot suchen
+            var personal = await _snapshotService.GetPersonalSnapshotAsync(userId, groupId, monthKey);
 
             if (personal == null)
                 return NotFound(); // Kein persönlicher Snapshot vorhanden
 
             return Ok(personal); // 200 + JSON: PersonalSnapshotData
+        }
+        
+        
+        
+        [HttpPut("personal")]
+        public async Task<IActionResult> SavePersonalSnapshot([FromBody] PersonalSnapshotData input)
+        {
+            // 🔐 User prüfen
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || userId != input.UserId)
+                return Unauthorized("Ungültiger oder fehlender Benutzer");
+
+            if (string.IsNullOrWhiteSpace(input.GroupId) || string.IsNullOrWhiteSpace(input.MonthKey))
+                return BadRequest("GroupId und MonthKey sind erforderlich");
+
+            // 🔄 Alten Snapshot ggf. ersetzen
+            var existing = await _db.PersonalSnapshots.FirstOrDefaultAsync(p =>
+                p.UserId == input.UserId &&
+                p.GroupId == input.GroupId &&
+                p.MonthKey == input.MonthKey);
+
+            if (existing != null)
+            {
+                _db.PersonalSnapshots.Remove(existing);
+            }
+
+            _db.PersonalSnapshots.Add(input);
+            await _db.SaveChangesAsync();
+
+            return NoContent();
         }
 
 

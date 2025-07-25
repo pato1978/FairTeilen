@@ -19,23 +19,29 @@ public class BudgetController : ControllerBase
     }
 
     [HttpGet]
+    [HttpGet]
     public async Task<IActionResult> GetBudget(
-        [FromQuery] string scope,
-        [FromQuery] string month,
-        [FromQuery] string userId
+        [FromQuery] string? scope,
+        [FromQuery] string? month,
+        [FromQuery] string? userId,
+        [FromQuery] string? groupId
     )
     {
         try
         {
-            if (scope == "null") scope = null;
-            if (month == "null") month = null;
-            if (userId == "null") userId = null;
-
-            if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(month) || string.IsNullOrWhiteSpace(userId))
-                return BadRequest("Scope, Month und UserId sind erforderlich");
+            // 🔒 Validierung: alle Parameter müssen gesetzt und sinnvoll sein
+            if (string.IsNullOrWhiteSpace(scope) || scope == "null" ||
+                string.IsNullOrWhiteSpace(month) || month == "null" ||
+                string.IsNullOrWhiteSpace(userId) || userId == "null" ||
+                string.IsNullOrWhiteSpace(groupId) || groupId == "null")
+            {
+                return BadRequest("❌ Ungültige oder fehlende Parameter: scope, month, userId, groupId sind erforderlich.");
+            }
 
             var db = GetDbContext(scope);
-            var entry = await EnsureBudgetEntry(db, scope, month, userId);
+
+            var entry = await EnsureBudgetEntry(db, scope, month, userId, groupId);
+
             return Ok(entry.Amount);
         }
         catch (FormatException fe)
@@ -50,22 +56,29 @@ public class BudgetController : ControllerBase
         }
     }
 
+   
     [HttpPut]
     public async Task<IActionResult> PutBudget([FromBody] BudgetEntry input)
     {
         try
         {
-            if (input.Scope == "null") input.Scope = null;
-            if (input.Month == "null") input.Month = null;
-            if (input.UserId == "null") input.UserId = null;
-
-            if (string.IsNullOrWhiteSpace(input.Scope) || string.IsNullOrWhiteSpace(input.Month) || string.IsNullOrWhiteSpace(input.UserId))
-                return BadRequest("Scope, Month und UserId sind erforderlich");
+            // 🔒 Validierung: alle Pflichtfelder müssen gesetzt und sinnvoll sein
+            if (string.IsNullOrWhiteSpace(input.Scope) || input.Scope == "null" ||
+                string.IsNullOrWhiteSpace(input.Month) || input.Month == "null" ||
+                string.IsNullOrWhiteSpace(input.UserId) || input.UserId == "null" ||
+                string.IsNullOrWhiteSpace(input.GroupId) || input.GroupId == "null")
+            {
+                return BadRequest("❌ Ungültige oder fehlende Felder: scope, month, userId, groupId sind erforderlich.");
+            }
 
             var db = GetDbContext(input.Scope);
 
-            var existing = await db.Set<BudgetEntry>()
-                .FirstOrDefaultAsync(b => b.Month == input.Month && b.Scope == input.Scope && b.UserId == input.UserId);
+            // 🔁 Update oder Insert
+            var existing = await db.Set<BudgetEntry>().FirstOrDefaultAsync(b =>
+                b.Month == input.Month &&
+                b.Scope == input.Scope &&
+                b.UserId == input.UserId &&
+                b.GroupId == input.GroupId);
 
             if (existing != null)
             {
@@ -87,11 +100,12 @@ public class BudgetController : ControllerBase
         }
     }
 
-    private async Task<BudgetEntry> EnsureBudgetEntry(DbContext db, string scope, string month, string userId)
+
+    private async Task<BudgetEntry> EnsureBudgetEntry(DbContext db, string scope, string month, string userId,string groupId)
     {
-        var entry = scope == "personal"
-            ? await db.Set<BudgetEntry>().FirstOrDefaultAsync(b => b.Month == month && b.Scope == scope && b.UserId == userId)
-            : await db.Set<BudgetEntry>().FirstOrDefaultAsync(b => b.Month == month && b.Scope == scope);
+        var entry = await db.Set<BudgetEntry>().FirstOrDefaultAsync(b =>
+            b.Month == month && b.Scope == scope && b.UserId == userId && b.GroupId == groupId);
+
 
         if (entry != null)
             return entry;
@@ -110,7 +124,8 @@ public class BudgetController : ControllerBase
             Amount = entryLastMonth?.Amount ?? 0,
             Month = month,
             Scope = scope,
-            UserId = userId
+            UserId = userId,
+            GroupId = groupId // Falls benötigt, sonst entfernen
         };
 
         db.Set<BudgetEntry>().Add(entry);

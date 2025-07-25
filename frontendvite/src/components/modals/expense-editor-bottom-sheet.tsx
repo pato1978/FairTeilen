@@ -169,7 +169,14 @@ export function ExpenseEditorBottomSheet({
             setEditingExpense(updatedExpense)
         }
 
+        // Setze name automatisch, falls leer
         const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
+        if (!updatedExpense.name) {
+            const iconEntry = availableIcons.find(i => i.icon === chosenIcon)
+            if (iconEntry) {
+                updatedExpense.name = iconEntry.defaultLabel
+            }
+        }
 
         if (!propSelectedIcon) {
             setSelectedIcon(chosenIcon as LucideIcon)
@@ -302,7 +309,7 @@ export function ExpenseEditorBottomSheet({
                 >
                     {/* 🔷 Header - flex-shrink-0 verhindert Schrumpfung */}
                     <div className="flex-shrink-0 relative px-4 py-4 text-left border-b border-gray-100 rounded-t-xl backdrop-blur-sm shadow-inner">
-                        <div className="absolute inset-0 bg-white -z-10" />
+                        <div className="absolute inset-0 bg-white -z-10 rounded-t-xl" />
                         <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60" />
                         <div className="flex justify-between items-center">
                             <h3 className="text-2xl font-bold text-gray-700">

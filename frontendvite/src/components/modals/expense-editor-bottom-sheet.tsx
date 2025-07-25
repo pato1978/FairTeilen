@@ -1,4 +1,5 @@
 'use client'
+import isEqual from 'lodash.isequal'
 import { iconMap } from '@/lib/icon-map'
 import { useEffect, useRef, useState } from 'react'
 import { Baby, Check, Euro, Repeat, ShoppingCart, User, Users } from 'lucide-react'
@@ -62,15 +63,17 @@ export function ExpenseEditorBottomSheet({
     onIconChange,
 }: ExpenseEditorBottomSheetProps) {
     const [showIconSelector, setShowIconSelector] = useState(false)
-    const [localSelectedIcon, setLocalSelectedIcon] = useState<LucideIcon>(expense?.icon || ShoppingCart)
+    const [localSelectedIcon, setLocalSelectedIcon] = useState<LucideIcon>(
+        expense?.icon || ShoppingCart
+    )
 
     // Use prop if provided, otherwise use local state
     const selectedIcon = propSelectedIcon || localSelectedIcon
     const setSelectedIcon = (icon: LucideIcon) => {
         if (onIconChange) {
-            onIconChange(icon);
+            onIconChange(icon)
         } else {
-            setLocalSelectedIcon(icon);
+            setLocalSelectedIcon(icon)
         }
     }
     const [editingExpense, setEditingExpense] = useState<Expense>(() => ({
@@ -86,7 +89,14 @@ export function ExpenseEditorBottomSheet({
     const [animation, setAnimation] = useState<'entering' | 'entered' | 'exiting' | 'exited'>(
         isOpen ? 'entering' : 'exited'
     )
+    const nameInputRef = useRef<HTMLInputElement>(null)
+    const amountInputRef = useRef<HTMLInputElement>(null)
 
+    const scrollToField = (ref: React.RefObject<HTMLElement>) => {
+        setTimeout(() => {
+            ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 250)
+    }
     // --------------------
     // LifeCycle & Effekte
     // --------------------
@@ -130,56 +140,49 @@ export function ExpenseEditorBottomSheet({
     }, [isOpen])
 
     // Expense (neu oder bestehend) setzen und Distribution vorbereiten
+
     useEffect(() => {
-        if (expense && isOpen) {
-            const updatedExpense: Expense = {
-                ...defaultExpense,
-                ...expense,
-                date: formatDate(expense.date),
-                isBalanced: expense.isBalanced ?? false,
-            }
-            setEditingExpense(updatedExpense)
+        if (!expense || !isOpen) return
 
-            // Symbol bestimmen (bereits gesetzt oder über Kategorie)
-            const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
-
-            // Nur setzen wenn kein prop-selectedIcon
-            if (!propSelectedIcon) {
-                setSelectedIcon(chosenIcon as LucideIcon)
-            }
-
-            // Name automatisch setzen, wenn leer
-            const iconEntry = availableIcons.find(i => i.icon === (propSelectedIcon || chosenIcon))
-            const defaultLabel = iconEntry?.defaultLabel || 'Lebensmittel'
-            if (!expense.name || expense.name.trim() === '') {
-                setEditingExpense(prev => ({
-                    ...prev,
-                    name: defaultLabel,
-                }))
-            }
-
-            // Distribution: Nur wenn Typ Shared oder Child
-            if (expense.type !== ExpenseType.Personal) {
-                if (expense.distribution) {
-                    const updatedDistribution = expense.distribution.map(p => ({
-                        ...p,
-                        locked: p.locked || false,
-                        amount:
-                            p.amount ||
-                            (p.percentage / 100) *
-                                (typeof updatedExpense.amount === 'number'
-                                    ? updatedExpense.amount
-                                    : parseFloat((updatedExpense.amount as any) || '0')),
-                    }))
-                    setDistribution(updatedDistribution)
-                } else {
-                    setDistribution(getDefaultDistribution(expense.type))
-                }
-            } else {
-                setDistribution([]) // Bei Personal immer leeren!
-            }
+        const updatedExpense: Expense = {
+            ...defaultExpense,
+            ...expense,
+            date: formatDate(expense.date),
+            isBalanced: expense.isBalanced ?? false,
         }
-    }, [expense, isOpen, availableIcons])
+
+        // Nur setzen, wenn sich wirklich etwas geändert hat
+        if (!isEqual(updatedExpense, editingExpense)) {
+            setEditingExpense(updatedExpense)
+        }
+
+        const chosenIcon = expense.icon || iconMap[expense.category] || ShoppingCart
+
+        if (!propSelectedIcon) {
+            setSelectedIcon(chosenIcon as LucideIcon)
+        }
+
+        // Distribution nur initial setzen
+        if (expense.type !== ExpenseType.Personal && distribution.length === 0) {
+            if (expense.distribution) {
+                const updatedDistribution = expense.distribution.map(p => ({
+                    ...p,
+                    locked: p.locked || false,
+                    amount:
+                        p.amount ||
+                        (p.percentage / 100) *
+                            (typeof updatedExpense.amount === 'number'
+                                ? updatedExpense.amount
+                                : parseFloat((updatedExpense.amount as any) || '0')),
+                }))
+                setDistribution(updatedDistribution)
+            } else {
+                setDistribution(getDefaultDistribution(expense.type))
+            }
+        } else if (expense.type === ExpenseType.Personal && distribution.length > 0) {
+            setDistribution([]) // Nur wenn nötig leeren
+        }
+    }, [expense?.id, isOpen])
 
     useEffect(() => {
         if (editingExpense.type !== ExpenseType.Personal && distribution.length === 0) {
@@ -261,7 +264,7 @@ export function ExpenseEditorBottomSheet({
 
     return (
         <>
-            {/* Overlay */}
+            {/* 🔲 Dunkles Overlay */}
             <div
                 className={`fixed inset-0 z-40 bg-black transition-opacity duration-300 ${
                     animation === 'entering' || animation === 'entered'
@@ -269,81 +272,62 @@ export function ExpenseEditorBottomSheet({
                         : 'bg-opacity-0'
                 } ${animation === 'exited' ? 'pointer-events-none' : ''}`}
             >
-                {/* Hauptfenster */}
+                {/* 🧾 Hauptdialog als Bottom Sheet */}
                 <div
                     ref={sideSheetRef}
-                    className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md bg-white rounded-xl shadow-lg transform transition-all duration-300 ease-out z-50 ${
+                    className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md max-h-[90vh] bg-white rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-50 flex flex-col ${
                         animation === 'entering' || animation === 'entered'
                             ? 'opacity-100'
                             : 'opacity-0'
                     }`}
-                    style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
                     onClick={e => e.stopPropagation()}
                 >
-                    {/* Header */}
-                    <div className="relative px-4 py-4 text-left rounded-t-xl w-full backdrop-blur-sm shadow-inner border-b border-gray-100">
+                    {/* 🔷 Header */}
+                    <div className="relative px-4 py-4 text-left border-b border-gray-100 rounded-t-xl backdrop-blur-sm shadow-inner">
                         <div className="absolute inset-0 bg-white -z-10" />
-                        <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60"></div>
+                        <div className="absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-blue-300/60 to-blue-100/60" />
                         <div className="flex justify-between items-center">
                             <h3 className="text-2xl font-bold text-gray-700">
                                 {editingExpense.id ? 'Ausgabe bearbeiten' : 'Neue Ausgabe'}
                             </h3>
                         </div>
                     </div>
-                    {/* Inhalt */}
-                    <div className="p-4 space-y-4 flex-grow">
-                        {/* Ausgaben-Typ Auswahl */}
+
+                    {/* 📜 Scrollbarer Inhalt */}
+                    <div className="flex-grow overflow-y-auto px-4 py-4 space-y-4">
+                        {/* Typ-Auswahl */}
                         <div>
                             <div className="flex space-x-2">
-                                <button
-                                    className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        editingExpense.type === ExpenseType.Personal
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border-gray-200'
-                                    }`}
-                                    onClick={() =>
-                                        setEditingExpense({
-                                            ...editingExpense,
-                                            type: ExpenseType.Personal,
-                                        })
+                                {[ExpenseType.Personal, ExpenseType.Shared, ExpenseType.Child].map(
+                                    type => {
+                                        const IconComponent =
+                                            type === ExpenseType.Personal
+                                                ? User
+                                                : type === ExpenseType.Shared
+                                                  ? Users
+                                                  : Baby
+
+                                        return (
+                                            <button
+                                                key={type}
+                                                className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
+                                                    editingExpense.type === type
+                                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                                        : 'bg-gray-50 text-gray-700 border-gray-200'
+                                                }`}
+                                                onClick={() =>
+                                                    setEditingExpense({ ...editingExpense, type })
+                                                }
+                                            >
+                                                <IconComponent className="h-5 w-5 mr-1.5" />
+                                            </button>
+                                        )
                                     }
-                                >
-                                    <User className="h-5 w-5 mr-1.5" />
-                                </button>
-                                <button
-                                    className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        editingExpense.type === ExpenseType.Shared
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border-gray-200'
-                                    }`}
-                                    onClick={() =>
-                                        setEditingExpense({
-                                            ...editingExpense,
-                                            type: ExpenseType.Shared,
-                                        })
-                                    }
-                                >
-                                    <Users className="h-5 w-5 mr-1.5" />
-                                </button>
-                                <button
-                                    className={`flex-1 py-3 px-2 rounded-xl flex items-center justify-center text-base font-semibold ${
-                                        editingExpense.type === ExpenseType.Child
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'bg-gray-50 text-gray-700 border-gray-200'
-                                    }`}
-                                    onClick={() =>
-                                        setEditingExpense({
-                                            ...editingExpense,
-                                            type: ExpenseType.Child,
-                                        })
-                                    }
-                                >
-                                    <Baby className="h-5 w-5 mr-1.5" />
-                                </button>
+                                )}
                             </div>
                         </div>
 
-                        {/* Split Option/Verteilung nur für Shared & Child */}
+                        {/* Verteilung (nur bei Shared/Child) */}
                         {(editingExpense.type === ExpenseType.Shared ||
                             editingExpense.type === ExpenseType.Child) && (
                             <SplitOption
@@ -355,9 +339,8 @@ export function ExpenseEditorBottomSheet({
                             />
                         )}
 
-                        {/* Symbol, Häufigkeit, Ausgeglichen */}
+                        {/* Symbol / Wiederkehrend / Ausgeglichen */}
                         <div className="grid grid-cols-3 gap-4">
-                            {/* Symbol */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Symbol
@@ -374,7 +357,7 @@ export function ExpenseEditorBottomSheet({
                                     </div>
                                 </button>
                             </div>
-                            {/* Häufigkeit */}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Häufigkeit
@@ -401,7 +384,7 @@ export function ExpenseEditorBottomSheet({
                                     />
                                 </button>
                             </div>
-                            {/* Ausgeglichen */}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Ausgeglichen
@@ -429,7 +412,8 @@ export function ExpenseEditorBottomSheet({
                                 </button>
                             </div>
                         </div>
-                        {/* Name */}
+
+                        {/* Bezeichnung */}
                         <div>
                             <label
                                 htmlFor="expense-name"
@@ -440,6 +424,8 @@ export function ExpenseEditorBottomSheet({
                             <input
                                 id="expense-name"
                                 type="text"
+                                ref={nameInputRef}
+                                onFocus={() => scrollToField(nameInputRef)}
                                 className="w-full p-3 text-base border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                                 value={editingExpense.name || ''}
                                 onChange={e =>
@@ -448,6 +434,7 @@ export function ExpenseEditorBottomSheet({
                                 placeholder="z.B. Supermarkt"
                             />
                         </div>
+
                         {/* Betrag + Datum */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -466,6 +453,8 @@ export function ExpenseEditorBottomSheet({
                                         type="number"
                                         step="0.01"
                                         inputMode="decimal"
+                                        ref={amountInputRef}
+                                        onFocus={() => scrollToField(amountInputRef)}
                                         className="w-full p-3 pl-10 text-base border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                                         value={amountString}
                                         onChange={e =>
@@ -500,8 +489,9 @@ export function ExpenseEditorBottomSheet({
                             </div>
                         </div>
                     </div>
-                    {/* Footer */}
-                    <div className="px-4 pt-4 pb-4 bg-white rounded-b-xl border-t border-gray-100 flex space-x-3">
+
+                    {/* ✅ Footer */}
+                    <div className="px-4 pt-4 pb-4 bg-white border-t border-gray-100 flex space-x-3">
                         <button
                             className="flex-1 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-xl hover:bg-blue-100 active:bg-blue-200 transition-colors"
                             onClick={handleClose}
@@ -519,7 +509,7 @@ export function ExpenseEditorBottomSheet({
                 </div>
             </div>
 
-            {/* Icon Selector Modal */}
+            {/* 🎨 Icon Selector Modal */}
             {isOpen && (
                 <IconSelector
                     isOpen={showIconSelector}
@@ -530,7 +520,7 @@ export function ExpenseEditorBottomSheet({
                 />
             )}
 
-            {/* Distribution Modal */}
+            {/* 👥 Distribution Modal */}
             {(editingExpense.type === ExpenseType.Shared ||
                 editingExpense.type === ExpenseType.Child) && (
                 <DistributionModal

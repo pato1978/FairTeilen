@@ -126,13 +126,17 @@ namespace WebAssembly.Server.Controllers
 
             if (scope == "personal")
                 return BadRequest("Scope 'personal' wird nicht mehr unterstützt.");
-
+                    // ✅ GroupId ist Pflicht für shared/child
+            if ((scope == "shared" || scope == "child") && string.IsNullOrWhiteSpace(group))
+            {
+                return BadRequest("GroupId ist erforderlich für shared/child Ausgaben");
+            }
             IQueryable<Expense> query = scope switch
             {
                 "shared" => _sharedDb.SharedExpenses
-                    .Where(e => e.Type == ExpenseType.Shared && (string.IsNullOrWhiteSpace(group) || e.GroupId == group)),
+                    .Where(e => e.Type == ExpenseType.Shared && e.GroupId == group),
                 "child" => _sharedDb.SharedExpenses
-                    .Where(e => e.Type == ExpenseType.Child),
+                    .Where(e => e.Type == ExpenseType.Child && e.GroupId == group),
                 _ => throw new ArgumentException($"Unbekannter scope: {scope}")
             };
 

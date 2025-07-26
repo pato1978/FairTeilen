@@ -1,23 +1,22 @@
-// src/services/BackendBudgetService.ts
+// frontendvite/src/services/backendBudgetService.ts - GEMEINSAME BUDGETS
+
 import { Capacitor } from '@capacitor/core'
 import { GROUP_ID } from '@/config/group-config'
 import type { IBudgetService } from './BudgetServiceInterface'
 import type { Budget } from '@/types'
 
-// 🌍 Plattformabhängige Basis-URL
-// Hinweis: Der Controller läuft auf Route("api/budget") → daher: + /api
 const API_BASE_URL = Capacitor.isNativePlatform?.()
-    ? `${import.meta.env.VITE_API_URL_NATIVE}/api` // z. B. http://192.168.0.42:8080/api
-    : '/api' // ⚠️ wichtig: Vite-Proxy → /api wird zu https://api.veglia.de/api
-console.log('🛠️ API_BASE_URL =', API_BASE_URL)
+    ? `${import.meta.env.VITE_API_URL_NATIVE}/api`
+    : '/api'
+
+console.log('🛠️ BackendBudgetService initialized:', {
+    API_BASE_URL,
+    GROUP_ID,
+})
+
 export const backendBudgetService: IBudgetService = {
     /**
-     * 🔄 Budget für einen bestimmten Monat laden
-     * @param scope z. B. 'personal', 'shared', 'child'
-     * @param monthKey im Format 'yyyy-MM'
-     * @param userId eindeutige Benutzer-ID
-     * @param groupId optional – aktuell (noch) nicht im Controller verwendet
-     * @returns number – Betrag für das Budget
+     * ✅ KORRIGIERT: Budget laden - für Shared/Child wird GEMEINSAMES Budget geladen
      */
     async getBudget(
         scope: string,
@@ -25,32 +24,66 @@ export const backendBudgetService: IBudgetService = {
         userId: string,
         groupId?: string
     ): Promise<number> {
+        const effectiveGroupId = groupId || GROUP_ID
+
+        // ✅ FIX: Für gemeinsame Budgets (shared/child) einen festen "Gruppen-User" verwenden
+        const effectiveUserId =
+            scope === 'shared' || scope === 'child'
+                ? `group-${effectiveGroupId}` // Gemeinsamer "User" für die ganze Gruppe
+                : userId // Personal bleibt user-spezifisch
+
         const params = new URLSearchParams({
             scope,
             month: monthKey,
-            userId,
-            ...(groupId ? { groupId } : {}), // optional
+            userId: effectiveUserId, // ✅ WICHTIG: Für shared/child immer gleiche ID
+            groupId: effectiveGroupId,
         })
 
-        const res = await fetch(`${API_BASE_URL}/budget?${params.toString()}`)
+        const url = `${API_BASE_URL}/budget?${params.toString()}`
 
-        if (!res.ok) {
-            const errorText = await res.text()
-            console.error('❌ Fehler beim Laden des Budgets:', errorText)
-            throw new Error(`Fehler beim Laden des Budgets: ${errorText}`)
+        console.log('📊 getBudget (gemeinsam):', {
+            scope,
+            monthKey,
+            originalUserId: userId,
+            effectiveUserId,
+            groupId: effectiveGroupId,
+            isSharedBudget: scope === 'shared' || scope === 'child',
+            url,
+        })
+
+        try {
+            const res = await fetch(url)
+
+            if (!res.ok) {
+                const errorText = await res.text()
+                console.error('❌ Fehler beim Laden des Budgets:', {
+                    status: res.status,
+                    statusText: res.statusText,
+                    body: errorText,
+                    url,
+                })
+
+                if (res.status === 404) {
+                    console.log('📋 Kein Budget gefunden, verwende Standard: 0')
+                    return 0
+                }
+
+                throw new Error(`Fehler beim Laden des Budgets: ${res.status} - ${errorText}`)
+            }
+
+            const amount: number = await res.json()
+            console.log(
+                `✅ ${scope === 'shared' || scope === 'child' ? 'Gemeinsames' : 'Persönliches'} Budget geladen: ${amount} für ${scope}/${monthKey}`
+            )
+            return amount ?? 0
+        } catch (error) {
+            console.error('❌ Netzwerkfehler beim Budget-Laden:', error)
+            return 0
         }
-
-        const amount: number = await res.json() // Controller gibt direkt `entry.Amount` zurück
-        return amount ?? 0
     },
 
     /**
-     * 💾 Budget speichern oder aktualisieren
-     * @param scope z. B. 'personal', 'shared', 'child'
-     * @param monthKey im Format 'yyyy-MM'
-     * @param amount zu speichernder Betrag
-     * @param userId eindeutige Benutzer-ID
-     * @param groupId optional – wird mitgeschickt, aber im Backend aktuell nicht ausgewertet
+     * ✅ KORRIGIERT: Budget speichern - für Shared/Child wird GEMEINSAMES Budget gespeichert
      */
     async saveBudget(
         scope: string,
@@ -59,24 +92,57 @@ export const backendBudgetService: IBudgetService = {
         userId: string,
         groupId?: string
     ): Promise<void> {
+        const effectiveGroupId = groupId || GROUP_ID
+
+        // ✅ FIX: Für gemeinsame Budgets (shared/child) einen festen "Gruppen-User" verwenden
+        const effectiveUserId =
+            scope === 'shared' || scope === 'child'
+                ? `group-${effectiveGroupId}` // Gemeinsamer "User" für die ganze Gruppe
+                : userId // Personal bleibt user-spezifisch
+
         const payload: Budget = {
             scope,
             month: monthKey,
             amount,
-            userId,
-            groupId: groupId ?? GROUP_ID,
+            userId: effectiveUserId, // ✅ WICHTIG: Für shared/child immer gleiche ID
+            groupId: effectiveGroupId,
         }
 
-        const res = await fetch(`${API_BASE_URL}/budget`, {
-            method: 'PUT', // ⚠️ dein Controller nimmt aktuell [HttpPut], daher entweder ändern oder hier `method: 'PUT'`
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+        console.log('💾 saveBudget (gemeinsam):', {
+            scope,
+            monthKey,
+            amount,
+            originalUserId: userId,
+            effectiveUserId,
+            groupId: effectiveGroupId,
+            isSharedBudget: scope === 'shared' || scope === 'child',
+            payload,
         })
 
-        if (!res.ok) {
-            const errorText = await res.text()
-            console.error('❌ Fehler beim Speichern des Budgets:', errorText)
-            throw new Error(`Fehler beim Speichern des Budgets: ${errorText}`)
+        try {
+            const res = await fetch(`${API_BASE_URL}/budget`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!res.ok) {
+                const errorText = await res.text()
+                console.error('❌ Fehler beim Speichern des Budgets:', {
+                    status: res.status,
+                    statusText: res.statusText,
+                    body: errorText,
+                    payload,
+                })
+                throw new Error(`Fehler beim Speichern des Budgets: ${res.status} - ${errorText}`)
+            }
+
+            console.log(
+                `✅ ${scope === 'shared' || scope === 'child' ? 'Gemeinsames' : 'Persönliches'} Budget erfolgreich gespeichert: ${amount} für ${scope}/${monthKey}`
+            )
+        } catch (error) {
+            console.error('❌ Netzwerkfehler beim Budget-Speichern:', error)
+            throw error
         }
     },
 }

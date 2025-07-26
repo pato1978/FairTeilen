@@ -126,11 +126,14 @@ namespace WebAssembly.Server.Controllers
 
             if (scope == "personal")
                 return BadRequest("Scope 'personal' wird nicht mehr unterstützt.");
-                    // ✅ GroupId ist Pflicht für shared/child
+
+            // ✅ GroupId ist Pflicht für shared/child
             if ((scope == "shared" || scope == "child") && string.IsNullOrWhiteSpace(group))
             {
+                Console.WriteLine("❌ GetExpenses → Fehlende GroupId bei scope=" + scope);
                 return BadRequest("GroupId ist erforderlich für shared/child Ausgaben");
             }
+
             IQueryable<Expense> query = scope switch
             {
                 "shared" => _sharedDb.SharedExpenses
@@ -154,6 +157,7 @@ namespace WebAssembly.Server.Controllers
             if ((dto.Type == ExpenseType.Shared || dto.Type == ExpenseType.Child) &&
                 string.IsNullOrWhiteSpace(dto.GroupId))
             {
+                Console.WriteLine("❌ SaveExpense → Fehlende GroupId für Typ " + dto.Type + $" (Name: {dto.Name})");
                 return BadRequest("Für gemeinsame oder Kind-bezogene Ausgaben ist eine gültige GroupId erforderlich.");
             }
 
@@ -183,6 +187,17 @@ namespace WebAssembly.Server.Controllers
             if (!isNew)
             {
                 var existing = await context.Set<Expense>().FirstOrDefaultAsync(e => e.Id == expense.Id);
+
+                // 🔒 GroupId-Mismatch prüfen und loggen!
+                if (existing != null && (existing.Type == ExpenseType.Shared || existing.Type == ExpenseType.Child))
+                {
+                    if (existing.GroupId != dto.GroupId)
+                    {
+                        Console.WriteLine($"❌ GroupId-Mismatch beim Update: {existing.GroupId} (alt) vs. {dto.GroupId} (neu) für Expense {expense.Id} ({expense.Name})");
+                        return BadRequest("GroupId stimmt nicht mit der gespeicherten Gruppen-ID überein.");
+                    }
+                }
+
                 if (existing != null)
                     context.Remove(existing);
             }
@@ -193,6 +208,7 @@ namespace WebAssembly.Server.Controllers
             return Ok(expense);
         }
 
+        // 📤 DELETE: Ausgabe löschen (inkl. GroupId-Check und Logging)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteExpense(string id, [FromQuery] string? group)
         {
@@ -204,10 +220,16 @@ namespace WebAssembly.Server.Controllers
             if ((expense.Type == ExpenseType.Shared || expense.Type == ExpenseType.Child))
             {
                 if (string.IsNullOrWhiteSpace(group))
+                {
+                    Console.WriteLine($"❌ DeleteExpense → Fehlende GroupId beim Löschen von {expense.Name} ({expense.Id})");
                     return BadRequest("GroupId fehlt – geteilte Ausgaben dürfen nur mit gültiger Gruppen-ID gelöscht werden.");
+                }
 
                 if (expense.GroupId != group)
+                {
+                    Console.WriteLine($"❌ DeleteExpense → GroupId-Mismatch: {expense.GroupId} (DB) vs. {group} (Request) für Expense {expense.Id} ({expense.Name})");
                     return BadRequest("GroupId stimmt nicht mit der gespeicherten Gruppen-ID überein.");
+                }
             }
 
             _sharedDb.SharedExpenses.Remove(expense);
@@ -237,7 +259,7 @@ namespace WebAssembly.Server.Controllers
             {
                 var newDate = oldExp.Date.AddMonths(1);
 
-                // Sicherheitsprüfung
+                // Sicherheitsprüfung: GroupId darf nicht fehlen
                 if (string.IsNullOrWhiteSpace(oldExp.GroupId))
                 {
                     Console.WriteLine($"⚠️ WARNUNG: Ausgabenkopie ohne gültige GroupId blockiert: {oldExp.Name} ({oldExp.Id})");

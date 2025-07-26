@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Enums;
 using WebAssembly.Server.Helpers;

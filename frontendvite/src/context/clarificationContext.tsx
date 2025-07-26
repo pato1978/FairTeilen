@@ -3,7 +3,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState, useRef } from 'react'
 import type { ClarificationReaction } from '@/types'
 import { ClarificationStatus } from '@/types/monthly-overview'
-import { getClarificationReactionsForMonth } from '@/services/ClarificationReactionService'
+import { ClarificationReactionService } from '@/services/ClarificationReactionService'
 import { useMonth } from '@/context/month-context'
 
 interface ClarificationReactionsContextValue {
@@ -11,6 +11,7 @@ interface ClarificationReactionsContextValue {
     getUnconfirmedCount: () => number
     refresh: () => void
     getAllReactions: () => ClarificationReaction[]
+    isLoading: boolean
 }
 
 const ClarificationReactionsContext = createContext<ClarificationReactionsContextValue | undefined>(
@@ -32,6 +33,7 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
     const [version, setVersion] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
     const previousMonthIdRef = useRef<string>('')
+    const loadingRef = useRef(false)
 
     const { currentDate } = useMonth()
 
@@ -40,40 +42,68 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
         currentDate && !isNaN(currentDate.getTime()) ? currentDate.toISOString().slice(0, 7) : ''
 
     useEffect(() => {
-        if (!monthId) return
+        if (!monthId) {
+            console.log('📅 ClarificationContext: Kein gültiger Monat')
+            return
+        }
 
-        // 🔍 Nur neu laden, wenn sich der Monat wirklich geändert hat
+        // 🔍 Verhindern von mehrfachen parallelen Loads
+        if (loadingRef.current) {
+            console.log('⏳ ClarificationContext: Load bereits im Gange, überspringe')
+            return
+        }
+
+        // 🔍 Nur neu laden, wenn sich der Monat wirklich geändert hat oder manueller Refresh
         if (monthId === previousMonthIdRef.current && version === 0) {
             console.log('📅 ClarificationContext: Monat unverändert, kein Reload nötig')
             return
         }
 
+        // Bei Monatswechsel: Cache leeren
+        if (monthId !== previousMonthIdRef.current && previousMonthIdRef.current !== '') {
+            console.log('🧹 ClarificationContext: Monatswechsel erkannt, leere Cache')
+            ClarificationReactionService.clearCache()
+        }
+
         previousMonthIdRef.current = monthId
 
         const load = async () => {
-            console.log('🔄 ClarificationContext: Lade Reactions für', monthId)
+            console.log('🔄 ClarificationContext: Starte Laden der Reactions für', monthId)
+            loadingRef.current = true
             setIsLoading(true)
 
             try {
-                const all = await getClarificationReactionsForMonth(monthId)
+                const all =
+                    await ClarificationReactionService.getClarificationReactionsForMonth(monthId)
                 setReactions(all)
                 console.log(
-                    `✅ ClarificationContext: ${all.length} Reactions geladen für ${monthId}`
+                    `✅ ClarificationContext: ${all.length} Reactions gesetzt für ${monthId}`
                 )
             } catch (error) {
                 console.error('❌ ClarificationContext: Fehler beim Laden der Reactions:', error)
                 setReactions([]) // Leere Liste bei Fehler
             } finally {
                 setIsLoading(false)
+                loadingRef.current = false
             }
         }
 
-        // 🕐 Kleines Delay, um sicherzustellen, dass der MonthContext vollständig aktualisiert ist
+        // 🕐 Größeres Delay für Navigation von Jahresübersicht
+        const delay = version > 0 ? 50 : 300 // Bei manuellem Refresh kurzes Delay, sonst länger
+
+        console.log(`⏱️ ClarificationContext: Warte ${delay}ms vor dem Laden`)
         const timer = setTimeout(() => {
             load()
-        }, 50)
+        }, delay)
 
-        return () => clearTimeout(timer)
+        return () => {
+            clearTimeout(timer)
+            // Wenn Component unmounted wird während des Ladens
+            if (loadingRef.current) {
+                console.log('🛑 ClarificationContext: Component unmounted während des Ladens')
+                loadingRef.current = false
+            }
+        }
     }, [monthId, version])
 
     const getIsConfirmed = (expenseId: string) => {
@@ -94,6 +124,10 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
 
     const refresh = () => {
         console.log('🔄 ClarificationContext: Manueller Refresh angefordert')
+        // Cache nur für den aktuellen Monat leeren
+        if (monthId) {
+            ClarificationReactionService.clearCacheForMonth(monthId)
+        }
         setVersion(v => v + 1)
     }
 
@@ -105,6 +139,7 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
             isLoading,
             getReactionsForExpense: (expenseId: string) =>
                 reactions.filter(r => r.expenseId === expenseId),
+            loadingRef: loadingRef.current,
         }
     }
 
@@ -115,6 +150,7 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
                 getUnconfirmedCount,
                 refresh,
                 getAllReactions,
+                isLoading,
             }}
         >
             {children}

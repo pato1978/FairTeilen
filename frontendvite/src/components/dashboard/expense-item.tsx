@@ -42,7 +42,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     if (!isReady || !currentUserId) return null
 
     // 💬 Zugriff auf Reaktionen (z. B. Klärungsbedarf) und Aktualisierung
-    const { getAllReactions, refresh } = useClarificationReactions()
+    const { getAllReactions, refresh, isLoading: isLoadingReactions } = useClarificationReactions()
     const reactions = getAllReactions() || [] // Fallback auf leeres Array
 
     // ✅ Feststellen, ob es sich um die eigene Ausgabe handelt
@@ -91,8 +91,11 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                 r => r.expenseId === item.id && r.userId === currentUserId
             )
 
+            // Extrahiere den Monat aus dem Expense-Datum
+            const expenseMonth = item.date.slice(0, 7) // Annahme: date ist im Format YYYY-MM-DD
+
             if (existing) {
-                await deleteClarificationReaction(item.id, currentUserId)
+                await deleteClarificationReaction(item.id, currentUserId, expenseMonth)
             } else {
                 const newReaction: ClarificationReaction = {
                     id: uuidv4(),
@@ -101,7 +104,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                     status: ClarificationStatus.Rejected,
                     timestamp: new Date().toISOString(),
                 }
-                await postClarificationReaction(newReaction)
+                await postClarificationReaction(newReaction, expenseMonth)
             }
 
             // Kurzes Delay vor Refresh, um sicherzustellen, dass Backend-Änderung durchgeführt wurde
@@ -207,7 +210,10 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                         {/* ✅ Reaktionssymbol (Bestätigung / Klärungsbedarf) mit Loading-State */}
                         {showInitials && (
                             <div className="flex flex-col items-center justify-center w-7">
-                                {isOwnItem ? (
+                                {isLoadingReactions ? (
+                                    // Loading-State während Reactions geladen werden
+                                    <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-blue-500 animate-spin" />
+                                ) : isOwnItem ? (
                                     // 🏠 Bei eigenen Ausgaben: Zeige Status, aber nicht klickbar
                                     hasAnyRejection ? (
                                         // WICHTIG: Wenn IRGENDWER beanstandet hat, zeige Warndreieck
@@ -222,11 +228,9 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                                         onClick={e => toggleConfirmationStatus(e, item)}
                                         className="hover:bg-gray-50 rounded-full p-1 transition-colors relative"
                                         aria-label={hasIRejected ? 'Beanstandet' : 'Bestätigt'}
+                                        disabled={isLoadingReactions}
                                     >
-                                        {/* Loading-Indikator während des Updates */}
-                                        {reactions === undefined ? (
-                                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
-                                        ) : hasIRejected ? (
+                                        {hasIRejected ? (
                                             <AlertTriangle className="w-5 h-5 text-amber-500" />
                                         ) : (
                                             <CheckCircle className="w-5 h-5 text-emerald-500" />

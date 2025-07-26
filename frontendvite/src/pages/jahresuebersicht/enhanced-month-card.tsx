@@ -175,8 +175,8 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
         const newDate = new Date(year, monthIndex, 1)
         setCurrentDate(newDate)
 
-        // Kleines Delay, damit der Context sicher aktualisiert ist
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // WICHTIG: Längeres Delay damit alle Contexts Zeit haben sich zu aktualisieren
+        await new Promise(resolve => setTimeout(resolve, 400)) // 400ms statt 100ms
 
         // Dann Route wechseln
         navigate(scope)

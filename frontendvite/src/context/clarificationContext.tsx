@@ -1,3 +1,5 @@
+// frontendvite/src/context/clarificationContext.tsx - KORRIGIERT
+
 'use client'
 
 import { createContext, ReactNode, useContext, useEffect, useState, useRef } from 'react'
@@ -39,7 +41,9 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
 
     // 💡 Schutz vor invalidem Date:
     const monthId =
-        currentDate && !isNaN(currentDate.getTime()) ? currentDate.toISOString().slice(0, 7) : ''
+        currentDate && !isNaN(currentDate.getTime())
+            ? `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`
+            : ''
 
     useEffect(() => {
         if (!monthId) {
@@ -53,19 +57,21 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
             return
         }
 
-        // 🔍 Nur neu laden, wenn sich der Monat wirklich geändert hat oder manueller Refresh
-        if (monthId === previousMonthIdRef.current && version === 0) {
-            console.log('📅 ClarificationContext: Monat unverändert, kein Reload nötig')
+        // ✅ KORREKTUR: Immer laden wenn sich der Monat geändert hat ODER manueller Refresh
+        const monthChanged = monthId !== previousMonthIdRef.current
+        const shouldLoad = monthChanged || version > 0
+
+        if (!shouldLoad) {
+            console.log('📅 ClarificationContext: Kein Reload nötig')
             return
         }
 
-        // Bei Monatswechsel: Cache leeren
-        if (monthId !== previousMonthIdRef.current && previousMonthIdRef.current !== '') {
+        // ✅ KORREKTUR: Cache bei JEDEM Monatswechsel leeren (auch programmatisch)
+        if (monthChanged) {
             console.log('🧹 ClarificationContext: Monatswechsel erkannt, leere Cache')
             ClarificationReactionService.clearCache()
+            previousMonthIdRef.current = monthId
         }
-
-        previousMonthIdRef.current = monthId
 
         const load = async () => {
             console.log('🔄 ClarificationContext: Starte Laden der Reactions für', monthId)
@@ -73,6 +79,9 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
             setIsLoading(true)
 
             try {
+                // ✅ KORREKTUR: Cache vor dem Laden explizit für diesen Monat leeren
+                ClarificationReactionService.clearCacheForMonth(monthId)
+
                 const all =
                     await ClarificationReactionService.getClarificationReactionsForMonth(monthId)
                 setReactions(all)
@@ -88,8 +97,8 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
             }
         }
 
-        // 🕐 Größeres Delay für Navigation von Jahresübersicht
-        const delay = version > 0 ? 50 : 300 // Bei manuellem Refresh kurzes Delay, sonst länger
+        // ✅ KORREKTUR: Längeres Delay für Navigation, kürzeres für Refresh
+        const delay = monthChanged ? 600 : 100 // Mehr Zeit für Monatswechsel
 
         console.log(`⏱️ ClarificationContext: Warte ${delay}ms vor dem Laden`)
         const timer = setTimeout(() => {
@@ -98,7 +107,6 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
 
         return () => {
             clearTimeout(timer)
-            // Wenn Component unmounted wird während des Ladens
             if (loadingRef.current) {
                 console.log('🛑 ClarificationContext: Component unmounted während des Ladens')
                 loadingRef.current = false
@@ -124,9 +132,19 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
 
     const refresh = () => {
         console.log('🔄 ClarificationContext: Manueller Refresh angefordert')
-        // Cache nur für den aktuellen Monat leeren
+        // ✅ KORREKTUR: Cache für aktuellen Monat explizit leeren
         if (monthId) {
             ClarificationReactionService.clearCacheForMonth(monthId)
+        }
+        setVersion(v => v + 1)
+    }
+
+    // ✅ NEU: Funktion zum expliziten Cache-Reset (für Navigation)
+    const forceReload = () => {
+        console.log('🔄 ClarificationContext: Force Reload angefordert')
+        if (monthId) {
+            ClarificationReactionService.clearCacheForMonth(monthId)
+            setReactions([]) // UI sofort zurücksetzen
         }
         setVersion(v => v + 1)
     }
@@ -140,6 +158,7 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
             getReactionsForExpense: (expenseId: string) =>
                 reactions.filter(r => r.expenseId === expenseId),
             loadingRef: loadingRef.current,
+            forceReload, // ✅ NEU: Debug-Funktion
         }
     }
 

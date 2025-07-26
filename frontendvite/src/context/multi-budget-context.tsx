@@ -1,4 +1,4 @@
-// src/context/multi-budget-context.tsx
+// frontendvite/src/context/multi-budget-context.tsx - GEMEINSAME BUDGETS
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { getExpenseService } from '@/services/ExpenseServiceFactory'
@@ -20,6 +20,7 @@ type BudgetState = {
 // --- Gesamter Kontext-Typ ---
 type MultiBudgetContextType = Record<ExpenseType, BudgetState> & {
     reloadBudgetState: (type: ExpenseType) => Promise<void>
+    saveBudget: (type: ExpenseType, amount: number) => Promise<void> // ✅ NEU
 }
 
 const MultiBudgetContext = createContext<MultiBudgetContextType | undefined>(undefined)
@@ -39,10 +40,8 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
     function getMonthKey(date: Date | undefined): string | undefined {
         if (!date || isNaN(date.getTime())) return undefined
 
-        // Verwende lokale Zeit statt UTC!
         const year = date.getFullYear()
         const month = (date.getMonth() + 1).toString().padStart(2, '0')
-
         const monthKey = `${year}-${month}`
 
         console.log('📅 getMonthKey:', {
@@ -56,8 +55,82 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
     }
 
     /**
+     * ✅ KORRIGIERT: Budget-Loading mit korrekter Shared/Child-Logik
+     */
+    async function loadBudgetFor(
+        type: ExpenseType,
+        userId: string,
+        monthKey: string
+    ): Promise<number> {
+        try {
+            const budgetService = await getBudgetService(type)
+            const groupId = type === ExpenseType.Personal ? undefined : GROUP_ID
+
+            console.log(`[loadBudgetFor] ${type}:`, {
+                userId,
+                monthKey,
+                groupId,
+                isSharedBudget: type === ExpenseType.Shared || type === ExpenseType.Child,
+            })
+
+            // ✅ Das Budget-Service behandelt bereits shared/child als gemeinsame Budgets
+            const budget = await budgetService.getBudget(type, monthKey, userId, groupId)
+
+            console.log(
+                `[✔️ loadBudgetFor] ${type}: ${budget} ${type === ExpenseType.Shared || type === ExpenseType.Child ? '(gemeinsam)' : '(persönlich)'}`
+            )
+            return budget
+        } catch (error) {
+            console.error(`[loadBudgetFor] ${type} Fehler:`, error)
+            return 0
+        }
+    }
+
+    /**
+     * ✅ NEU: Budget speichern mit korrekter Shared/Child-Logik
+     */
+    async function saveBudget(type: ExpenseType, amount: number): Promise<void> {
+        if (!userId) {
+            throw new Error('Kein User angemeldet')
+        }
+
+        const monthKey = getMonthKey(currentDate)
+        if (!monthKey) {
+            throw new Error('Kein gültiger Monat')
+        }
+
+        try {
+            const budgetService = await getBudgetService(type)
+            const groupId = type === ExpenseType.Personal ? undefined : GROUP_ID
+
+            console.log(`[saveBudget] ${type}:`, {
+                amount,
+                userId,
+                monthKey,
+                groupId,
+                isSharedBudget: type === ExpenseType.Shared || type === ExpenseType.Child,
+            })
+
+            // ✅ Das Budget-Service behandelt bereits shared/child als gemeinsame Budgets
+            await budgetService.saveBudget(type, monthKey, amount, userId, groupId)
+
+            // ✅ Lokalen State sofort aktualisieren
+            setStates(prev => ({
+                ...prev,
+                [type]: { ...prev[type], budget: amount },
+            }))
+
+            console.log(
+                `[✔️ saveBudget] ${type}: ${amount} erfolgreich gespeichert ${type === ExpenseType.Shared || type === ExpenseType.Child ? '(gemeinsam)' : '(persönlich)'}`
+            )
+        } catch (error) {
+            console.error(`[saveBudget] ${type} Fehler:`, error)
+            throw error
+        }
+    }
+
+    /**
      * Lädt Ausgaben für einen Typ.
-     * Immer über einheitliche Signatur: getExpenses(userId, type, monthKey)
      */
     async function loadExpensesFor(
         type: ExpenseType,
@@ -69,18 +142,30 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
 
         if (!monthKey) return []
 
-        const service = await getExpenseService(type)
-        const expenses = await service.getExpenses(userId, type, monthKey)
+        try {
+            const service = await getExpenseService(type)
+            const expenses = await service.getExpenses(userId, type, monthKey)
 
-        console.log('[loadExpensesFor] loaded', { type, expenses })
-        return expenses
+            console.log('[loadExpensesFor] loaded', { type, expenses: expenses.length })
+            return expenses
+        } catch (error) {
+            console.error(`[loadExpensesFor] ${type} Fehler:`, error)
+            return []
+        }
     }
 
-    // ✅ WICHTIG: Lade Daten neu, wenn sich Monat ODER User ändert
+    // ✅ Lade Daten neu, wenn sich Monat ODER User ändert
     useEffect(() => {
-        if (!userId) return
+        if (!userId) {
+            console.log('🔄 MultiBudget: Kein User, überspringe Laden')
+            return
+        }
+
         const monthKey = getMonthKey(currentDate)
-        if (!monthKey) return
+        if (!monthKey) {
+            console.log('🔄 MultiBudget: Kein gültiger Monat, überspringe Laden')
+            return
+        }
 
         console.log('🔄 MultiBudget: Loading data for', { userId, monthKey, currentDate })
 
@@ -91,29 +176,29 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
             [ExpenseType.Child]: { ...prev[ExpenseType.Child], isLoading: true },
         }))
 
+        // Lade Budget und Expenses parallel für jeden Type
         Promise.all(
             types.map(async type => {
                 try {
-                    // Budget laden
-                    const budgetService = await getBudgetService(type)
-                    const budget = await budgetService.getBudget(
-                        type,
-                        monthKey,
-                        userId,
-                        type === ExpenseType.Personal ? undefined : GROUP_ID
-                    )
+                    console.log(`[InitialLoad] ${type}: Start loading...`)
 
-                    // Ausgaben laden
-                    const expenses = await loadExpensesFor(type, userId, currentDate!)
+                    const [budget, expenses] = await Promise.all([
+                        loadBudgetFor(type, userId, monthKey),
+                        loadExpensesFor(type, userId, currentDate!),
+                    ])
 
-                    console.log(`[✔️ InitialLoad][${type}]`, { budget, expenses: expenses.length })
+                    console.log(`[✔️ InitialLoad][${type}]`, {
+                        budget,
+                        expenses: expenses.length,
+                        budgetType: type === ExpenseType.Personal ? 'persönlich' : 'gemeinsam',
+                    })
 
                     setStates(prev => ({
                         ...prev,
                         [type]: { budget, expenses, isLoading: false },
                     }))
                 } catch (err) {
-                    console.error(`[InitialLoad][${type}] Fehler`, err)
+                    console.error(`[InitialLoad][${type}] Fehler:`, err)
                     setStates(prev => ({
                         ...prev,
                         [type]: { budget: 0, expenses: [], isLoading: false },
@@ -121,41 +206,45 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
                 }
             })
         )
-    }, [currentDate, userId]) // ✅ currentDate als Dependency hinzugefügt!
+    }, [currentDate, userId])
 
-    // Manuelles Refresh (z.B. nach Save)
+    // Manuelles Refresh
     async function reloadBudgetState(type: ExpenseType) {
-        if (!userId) return
+        if (!userId) {
+            console.warn(`[reloadBudgetState] ${type}: Kein User`)
+            return
+        }
+
         const monthKey = getMonthKey(currentDate)
-        if (!monthKey) return
+        if (!monthKey) {
+            console.warn(`[reloadBudgetState] ${type}: Kein gültiger Monat`)
+            return
+        }
 
-        console.log('🔄 MultiBudget: Manual reload for', { type, userId, monthKey })
+        console.log(`🔄 MultiBudget: Manual reload for ${type}`, { userId, monthKey })
 
-        // Loading state für diesen Type setzen
         setStates(prev => ({
             ...prev,
             [type]: { ...prev[type], isLoading: true },
         }))
 
         try {
-            const budgetService = await getBudgetService(type)
-            const budget = await budgetService.getBudget(
-                type,
-                monthKey,
-                userId,
-                type === ExpenseType.Personal ? undefined : GROUP_ID
-            )
+            const [budget, expenses] = await Promise.all([
+                loadBudgetFor(type, userId, monthKey),
+                loadExpensesFor(type, userId, currentDate!),
+            ])
 
-            const expenses = await loadExpensesFor(type, userId, currentDate!)
-
-            console.log(`[✔️ reloadBudgetState][${type}]`, { budget, expenses: expenses.length })
+            console.log(`[✔️ reloadBudgetState][${type}]`, {
+                budget,
+                expenses: expenses.length,
+            })
 
             setStates(prev => ({
                 ...prev,
                 [type]: { budget, expenses, isLoading: false },
             }))
         } catch (err) {
-            console.error(`[reloadBudgetState][${type}] Fehler`, err)
+            console.error(`[reloadBudgetState][${type}] Fehler:`, err)
             setStates(prev => ({
                 ...prev,
                 [type]: { budget: 0, expenses: [], isLoading: false },
@@ -164,7 +253,13 @@ export function MultiBudgetProvider({ children }: { children: React.ReactNode })
     }
 
     return (
-        <MultiBudgetContext.Provider value={{ ...states, reloadBudgetState }}>
+        <MultiBudgetContext.Provider
+            value={{
+                ...states,
+                reloadBudgetState,
+                saveBudget, // ✅ NEU: Budget-Speichern-Funktion verfügbar machen
+            }}
+        >
             {children}
         </MultiBudgetContext.Provider>
     )

@@ -23,6 +23,7 @@ import {
     UserX,
 } from 'lucide-react'
 import { users } from '@/data/users'
+import { useClarificationReactions } from '@/context/clarificationContext'
 
 interface EnhancedMonthCardProps {
     month: MonthlyOverview
@@ -114,7 +115,7 @@ function ActionButton({
 export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
     const [isExpanded, setIsExpanded] = useState(false)
     const [showExpenseDetails, setShowExpenseDetails] = useState(false)
-
+    const { refresh: refreshClarifications } = useClarificationReactions()
     // Reaktionen (Ablehnungen) kommen initial aus den Month-Daten
     const [reactions] = useState<Record<string, boolean | null>>(month.rejectionsByUser ?? {})
 
@@ -171,15 +172,30 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
             }
         )
 
-        // Erst den Monat setzen
-        const newDate = new Date(year, monthIndex, 1)
-        setCurrentDate(newDate)
+        try {
+            // 1. Monat setzen
+            const newDate = new Date(year, monthIndex, 1)
+            setCurrentDate(newDate)
 
-        // WICHTIG: Längeres Delay damit alle Contexts Zeit haben sich zu aktualisieren
-        await new Promise(resolve => setTimeout(resolve, 400)) // 400ms statt 100ms
+            // 2. ✅ KORRIGIERT: Längeres Delay für alle Context-Updates
+            console.log('⏳ Warte auf Context-Updates...')
+            await new Promise(resolve => setTimeout(resolve, 100)) // Erhöht von 400ms
 
-        // Dann Route wechseln
-        navigate(scope)
+            // 3. ✅ NEU: Clarification Context explizit refreshen
+            console.log('🔄 Force-Refresh Clarification Context...')
+            refreshClarifications()
+
+            // 4. ✅ NEU: Zusätzliches Mini-Delay nach Refresh
+            await new Promise(resolve => setTimeout(resolve, 100))
+
+            // 5. Navigation
+            console.log(`🚀 Navigiere zu ${scope}`)
+            navigate(scope)
+        } catch (error) {
+            console.error('❌ Fehler bei Navigation:', error)
+            // Fallback: Trotzdem navigieren
+            navigate(scope)
+        }
     }
 
     const handleHeaderClick = (e?: React.MouseEvent) => {

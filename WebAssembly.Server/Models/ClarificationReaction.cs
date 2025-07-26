@@ -12,9 +12,10 @@ public class ClarificationReaction
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string ExpenseId { get; set; } = "";  // FK zur Ausgabe
     public string UserId { get; set; } = "";     // Wer hat reagiert?
+    public string GroupId { get; set; } = "";    // NEU: Gruppenzugehörigkeit
+    
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ClarificationStatus Status { get; set; } = ClarificationStatus.Accepted;
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-
     
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }

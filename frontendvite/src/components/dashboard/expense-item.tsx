@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle, Edit, Repeat, Scale, Trash2 } from 'lucide-
 import { useSwipe } from '@/lib/hooks/use-swipe'
 import { convertDateToDisplay } from '@/lib/utils'
 import { useClarificationReactions } from '@/context/clarificationContext'
-import { useUser } from '@/context/user-context' // 🆕 Zugriff auf den eingeloggten User
+import { useUser } from '@/context/user-context'
 import { users } from '@/data/users'
 import { v4 as uuidv4 } from 'uuid'
 import type { ClarificationReaction, Expense } from '@/types'
@@ -43,7 +43,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
 
     // 💬 Zugriff auf Reaktionen (z. B. Klärungsbedarf) und Aktualisierung
     const { getAllReactions, refresh } = useClarificationReactions()
-    const reactions = getAllReactions()
+    const reactions = getAllReactions() || [] // Fallback auf leeres Array
 
     // ✅ Feststellen, ob es sich um die eigene Ausgabe handelt
     const createdByUserId = item.createdByUserId
@@ -86,27 +86,44 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     ) => {
         e.stopPropagation()
 
-        const existing = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
+        try {
+            const existing = reactions.find(
+                r => r.expenseId === item.id && r.userId === currentUserId
+            )
 
-        if (existing) {
-            await deleteClarificationReaction(item.id, currentUserId)
-        } else {
-            const newReaction: ClarificationReaction = {
-                id: uuidv4(),
-                expenseId: item.id,
-                userId: currentUserId,
-                status: ClarificationStatus.Rejected,
-                timestamp: new Date().toISOString(),
+            if (existing) {
+                await deleteClarificationReaction(item.id, currentUserId)
+            } else {
+                const newReaction: ClarificationReaction = {
+                    id: uuidv4(),
+                    expenseId: item.id,
+                    userId: currentUserId,
+                    status: ClarificationStatus.Rejected,
+                    timestamp: new Date().toISOString(),
+                }
+                await postClarificationReaction(newReaction)
             }
-            await postClarificationReaction(newReaction)
-        }
 
-        refresh()
+            // Kurzes Delay vor Refresh, um sicherzustellen, dass Backend-Änderung durchgeführt wurde
+            setTimeout(() => {
+                refresh()
+            }, 100)
+        } catch (error) {
+            console.error('❌ Fehler beim Togglen des Bestätigungsstatus:', error)
+            // Trotzdem refresh versuchen, um UI zu synchronisieren
+            refresh()
+        }
     }
 
-    // 🔍 Eigene Reaktion zu dieser Ausgabe abrufen
+    // 🔍 WICHTIG: Prüfe ob IRGENDWER (nicht nur ich) diese Ausgabe beanstandet hat
+    const allReactionsForThisExpense = reactions.filter(r => r.expenseId === item.id)
+    const hasAnyRejection = allReactionsForThisExpense.some(
+        r => r.status === ClarificationStatus.Rejected
+    )
+
+    // 🔍 Meine eigene Reaktion
     const myReaction = reactions.find(r => r.expenseId === item.id && r.userId === currentUserId)
-    const hasRejected = myReaction?.status === ClarificationStatus.Rejected
+    const hasIRejected = myReaction?.status === ClarificationStatus.Rejected
 
     return (
         <div className="relative overflow-visible">
@@ -187,18 +204,29 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                             )}
                         </div>
 
-                        {/* ✅ Reaktionssymbol (Bestätigung / Klärungsbedarf) */}
+                        {/* ✅ Reaktionssymbol (Bestätigung / Klärungsbedarf) mit Loading-State */}
                         {showInitials && (
                             <div className="flex flex-col items-center justify-center w-7">
                                 {isOwnItem ? (
-                                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                                    // 🏠 Bei eigenen Ausgaben: Zeige Status, aber nicht klickbar
+                                    hasAnyRejection ? (
+                                        // WICHTIG: Wenn IRGENDWER beanstandet hat, zeige Warndreieck
+                                        <AlertTriangle className="w-5 h-5 text-amber-500 opacity-60" />
+                                    ) : (
+                                        // Ansonsten zeige bestätigt
+                                        <CheckCircle className="w-5 h-5 text-emerald-400 opacity-60" />
+                                    )
                                 ) : (
+                                    // 🤝 Bei fremden Ausgaben: Klickbar zum Ändern des eigenen Status
                                     <button
                                         onClick={e => toggleConfirmationStatus(e, item)}
-                                        className="hover:bg-gray-50 rounded-full p-1 transition-colors"
-                                        aria-label={hasRejected ? 'Beanstandet' : 'Bestätigt'}
+                                        className="hover:bg-gray-50 rounded-full p-1 transition-colors relative"
+                                        aria-label={hasIRejected ? 'Beanstandet' : 'Bestätigt'}
                                     >
-                                        {hasRejected ? (
+                                        {/* Loading-Indikator während des Updates */}
+                                        {reactions === undefined ? (
+                                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin" />
+                                        ) : hasIRejected ? (
                                             <AlertTriangle className="w-5 h-5 text-amber-500" />
                                         ) : (
                                             <CheckCircle className="w-5 h-5 text-emerald-500" />

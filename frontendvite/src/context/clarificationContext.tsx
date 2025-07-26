@@ -98,7 +98,7 @@ export function ClarificationReactionsProvider({ children }: { children: ReactNo
         }
 
         // ✅ KORREKTUR: Längeres Delay für Navigation, kürzeres für Refresh
-        const delay = monthChanged ? 600 : 100 // Mehr Zeit für Monatswechsel
+        const delay = monthChanged ? 150 : 100 // Mehr Zeit für Monatswechsel
 
         console.log(`⏱️ ClarificationContext: Warte ${delay}ms vor dem Laden`)
         const timer = setTimeout(() => {

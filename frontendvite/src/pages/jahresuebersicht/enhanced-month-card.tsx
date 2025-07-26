@@ -18,6 +18,7 @@ import {
     ChevronDown,
     ChevronUp,
     Eye,
+    Lock,
     UserCheck,
     Users,
     UserX,
@@ -498,6 +499,19 @@ export function EnhancedMonthCard({ month, onClick }: EnhancedMonthCardProps) {
                                         <span className="text-sm">
                                             Dieser Monat ist noch nicht verfügbar. Ausgaben können
                                             erst nach Monatsende bearbeitet werden.
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                            {/* Info für "nicht berücksichtigt" Status */}
+                            {notTakenIntoAccount && (
+                                <div className="bg-gray-100 border border-gray-200 rounded-lg p-4">
+                                    <div className="flex items-center text-gray-600">
+                                        <Lock className="h-5 w-5 mr-2 text-gray-600" />
+                                        <span className="text-sm">
+                                            Da der Monat abgelaufen ist und keine gespeicherten
+                                            Ausgaben vorliegen, wird dieser Monat nicht in die
+                                            Abrechnung einbezogen.
                                         </span>
                                     </div>
                                 </div>

@@ -1,4 +1,4 @@
-// src/context/user-context.tsx - FINAL MIT VOLLSTÄNDIGER BACKEND-INTEGRATION
+// src/context/user-context.tsx - FINAL OHNE localStorage
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { UserService, type AppUser } from '@/services/UserService'
 
@@ -12,7 +12,6 @@ type UserContextType = {
     updateUserData: (updates: Partial<AppUser>) => Promise<void>
     isLoading: boolean
     logout: () => Promise<void>
-    // 🆕 Zusätzliche Helper für bessere UX
     getAllAvailableUsers: () => Promise<AppUser[]>
     error: string | null
     clearError: () => void
@@ -22,40 +21,6 @@ type Props = {
     children: ReactNode
 }
 
-// ✅ Einfache localStorage-Funktionen (ersetzt UserIdService komplett)
-const STORAGE_KEY = 'current_user_id'
-
-const saveUserIdToStorage = async (userId: string): Promise<void> => {
-    try {
-        localStorage.setItem(STORAGE_KEY, userId)
-        console.log('💾 User-ID in localStorage gespeichert:', userId)
-    } catch (error) {
-        console.warn('⚠️ localStorage nicht verfügbar:', error)
-        // Graceful degradation - App funktioniert trotzdem
-    }
-}
-
-const loadUserIdFromStorage = async (): Promise<string | null> => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        console.log('📂 User-ID aus localStorage geladen:', stored || 'keine')
-        return stored
-    } catch (error) {
-        console.warn('⚠️ localStorage nicht verfügbar:', error)
-        return null
-    }
-}
-
-const clearUserIdFromStorage = async (): Promise<void> => {
-    try {
-        localStorage.removeItem(STORAGE_KEY)
-        console.log('🗑️ User-ID aus localStorage entfernt')
-    } catch (error) {
-        console.warn('⚠️ localStorage nicht verfügbar:', error)
-    }
-}
-
-// Kontext erzeugen
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: Props): JSX.Element {
@@ -65,99 +30,66 @@ export function UserProvider({ children }: Props): JSX.Element {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    // ✅ App-Start: Gespeicherte User-ID laden und Backend-Daten abrufen
     useEffect(() => {
         const initializeUser = async () => {
             console.log('🚀 UserProvider wird initialisiert...')
             setIsLoading(true)
 
             try {
-                const storedUserId = await loadUserIdFromStorage()
+                const users = await UserService.getAllUsers()
 
-                if (storedUserId) {
-                    console.log('📱 Gespeicherte User-ID gefunden:', storedUserId)
-
-                    // Prüfen ob User noch existiert
-                    const exists = await UserService.userExists(storedUserId)
-                    if (exists) {
-                        setUserId(storedUserId)
-                        await loadUserFromBackend(storedUserId)
-                    } else {
-                        console.warn(
-                            '⚠️ Gespeicherte User-ID existiert nicht mehr, lösche aus Storage'
-                        )
-                        await clearUserIdFromStorage()
-                    }
+                if (users.length > 0) {
+                    const firstUser = users[0] // Optional: bessere Auswahl
+                    setUserId(firstUser.id)
+                    setUser(firstUser)
+                    console.log('✅ User geladen:', firstUser.displayName)
                 } else {
-                    console.log('📱 Keine gespeicherte User-ID - User muss sich anmelden')
+                    console.warn('⚠️ Keine Benutzer im System gefunden')
+                    setError('Keine Benutzer im System gefunden')
                 }
             } catch (error) {
-                console.error('❌ Fehler bei UserProvider-Initialisierung:', error)
-                setError(
-                    `Initialisierung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-                )
+                const msg = error instanceof Error ? error.message : 'Unbekannter Fehler'
+                console.error('❌ Fehler beim Initialisieren:', msg)
+                setError(msg)
             } finally {
                 setIsLoading(false)
                 setIsReady(true)
-                console.log('✅ UserProvider initialisiert')
             }
         }
 
         initializeUser()
     }, [])
 
-    // ✅ User-Daten vom Backend laden
     const loadUserFromBackend = async (id: string): Promise<void> => {
-        if (!id) {
-            console.warn('⚠️ Keine User-ID zum Laden vorhanden')
-            return
-        }
+        if (!id) return
 
         try {
             console.log('🔄 Lade User-Daten für ID:', id)
             const userData = await UserService.getUserInfo(id)
             setUser(userData)
-            setError(null) // Fehler zurücksetzen bei erfolgreichem Laden
+            setError(null)
             console.log('✅ User-Daten erfolgreich geladen:', userData.displayName || userData.id)
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
             console.error('❌ Fehler beim Laden der User-Daten:', errorMessage)
-
             setError(`User-Daten konnten nicht geladen werden: ${errorMessage}`)
             setUser(null)
-
-            // Bei kritischen Fehlern: User-ID aus Storage entfernen
-            if (errorMessage.includes('404') || errorMessage.includes('nicht gefunden')) {
-                console.log('🗑️ User existiert nicht mehr, lösche aus Storage')
-                await clearUserIdFromStorage()
-                setUserId(null)
-            }
         }
     }
 
-    // ✅ Benutzer-ID setzen + speichern + Backend laden
     const setUserIdWithBackend = async (id: string): Promise<void> => {
         console.log('🔄 Setze neue User-ID:', id)
 
-        if (!id) {
-            throw new Error('User-ID darf nicht leer sein')
-        }
+        if (!id) throw new Error('User-ID darf nicht leer sein')
 
         setIsLoading(true)
         setError(null)
 
         try {
-            // 1. Validierung: User existiert?
             const exists = await UserService.userExists(id)
-            if (!exists) {
-                throw new Error(`User mit ID '${id}' existiert nicht`)
-            }
+            if (!exists) throw new Error(`User mit ID '${id}' existiert nicht`)
 
-            // 2. State und Storage aktualisieren
             setUserId(id)
-            await saveUserIdToStorage(id)
-
-            // 3. User-Daten laden
             await loadUserFromBackend(id)
 
             console.log('✅ User-Wechsel erfolgreich abgeschlossen')
@@ -165,19 +97,14 @@ export function UserProvider({ children }: Props): JSX.Element {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
             console.error('❌ Fehler beim User-Wechsel:', errorMessage)
             setError(`User-Wechsel fehlgeschlagen: ${errorMessage}`)
-            throw error // Für UI-Feedback
+            throw error
         } finally {
             setIsLoading(false)
         }
     }
 
-    // ✅ User-Daten manuell neu laden
     const refreshUser = async (): Promise<void> => {
-        if (!userId) {
-            console.warn('⚠️ Kein User zum Refreshen vorhanden')
-            return
-        }
-
+        if (!userId) return
         console.log('🔄 Refreshe User-Daten...')
         setIsLoading(true)
         setError(null)
@@ -189,26 +116,19 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
-    // ✅ User-Daten aktualisieren (Frontend + Backend)
     const updateUserData = async (updates: Partial<AppUser>): Promise<void> => {
-        if (!user) {
-            throw new Error('Kein User geladen - Update nicht möglich')
-        }
+        if (!user) throw new Error('Kein User geladen - Update nicht möglich')
 
         setIsLoading(true)
         setError(null)
 
         try {
-            console.log('💾 Aktualisiere User-Daten:', updates)
-
-            // Validierung
             const validation = UserService.validateUserData({ ...user, ...updates })
             if (!validation.isValid) {
                 throw new Error(`Validierung fehlgeschlagen: ${validation.errors.join(', ')}`)
             }
 
-            const updatedUser = { ...user, ...updates }
-            const savedUser = await UserService.updateUser(updatedUser)
+            const savedUser = await UserService.updateUser({ ...user, ...updates })
             setUser(savedUser)
 
             console.log('✅ User-Daten erfolgreich aktualisiert')
@@ -222,7 +142,6 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
-    // ✅ Alle verfügbaren User laden (für Profil-Auswahl)
     const getAllAvailableUsers = async (): Promise<AppUser[]> => {
         console.log('🔄 Lade alle verfügbaren User...')
 
@@ -238,25 +157,17 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
-    // ✅ Komplett abmelden (Storage leeren, State zurücksetzen)
     const logout = async (): Promise<void> => {
         console.log('🚪 Benutzer wird abgemeldet...')
-
         setIsLoading(true)
 
         try {
-            // Storage leeren
-            await clearUserIdFromStorage()
-
-            // State zurücksetzen
             setUserId(null)
             setUser(null)
             setError(null)
-
             console.log('✅ Benutzer erfolgreich abgemeldet')
         } catch (error) {
             console.error('❌ Fehler beim Abmelden:', error)
-            // Trotzdem State zurücksetzen für sauberen Zustand
             setUserId(null)
             setUser(null)
         } finally {
@@ -264,7 +175,6 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
-    // ✅ Fehler manuell löschen
     const clearError = (): void => {
         setError(null)
     }
@@ -286,11 +196,8 @@ export function UserProvider({ children }: Props): JSX.Element {
     return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>
 }
 
-// Custom Hook für Zugriff auf den Kontext
 export function useUser(): UserContextType {
     const context = useContext(UserContext)
-    if (!context) {
-        throw new Error('useUser must be used within a UserProvider')
-    }
+    if (!context) throw new Error('useUser must be used within a UserProvider')
     return context
 }

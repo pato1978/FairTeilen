@@ -214,7 +214,7 @@ namespace WebAssembly.Server.Controllers
                 var users = await _sharedDb.Users
                     .Where(u => u.GroupId == expense.GroupId && u.Id != expense.CreatedByUserId)
                     .ToListAsync();
-
+                Console.WriteLine($"👥 Gefundene Benutzer in Gruppe {expense.GroupId}: " + users.Count);
                 foreach (var user in users)
                 {
                     var notif = new Notification

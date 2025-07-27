@@ -7,6 +7,7 @@ export interface AppUser {
     email?: string
     profileColor?: string
     role: 'Free' | 'Premium' | 'Admin'
+    groupId?: string // ✅ HINZUGEFÜGT
     createdAt: string
     isDeleted?: boolean
     avatarUrl?: string

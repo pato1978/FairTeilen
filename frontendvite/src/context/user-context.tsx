@@ -1,6 +1,10 @@
-// src/context/user-context.tsx - FINAL OHNE localStorage
+// src/context/user-context.tsx - FINAL MIT localStorage UND Plattform-Validierung
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { UserService, type AppUser } from '@/services/UserService'
+import { UserIdService } from '@/services/UserIdService'
+import { getUsersByGroup } from '@/data/users'
+import { GROUP_ID } from '@/config/group-config'
+import { Capacitor } from '@capacitor/core'
 
 // Kontext-Typdefinition
 type UserContextType = {
@@ -30,55 +34,184 @@ export function UserProvider({ children }: Props): JSX.Element {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    /**
+     * Initialisiert den UserProvider beim App-Start mit plattform-spezifischer Logic.
+     *
+     * Ablauf:
+     * 1. Prüfe localStorage auf gespeicherte User-ID
+     * 2. Falls vorhanden: Validiere gegen aktuelle Plattform-User aus users.ts
+     * 3. Falls gültig: Lade Backend-Daten, falls ungültig: User-Auswahl
+     * 4. Falls nicht vorhanden: User-Auswahl
+     *
+     * @throws {Error} Bei Backend-Fehlern oder Validierungsfehlern
+     */
     useEffect(() => {
         const initializeUser = async () => {
-            console.log('🚀 UserProvider wird initialisiert...')
+            console.group('[UserProvider] [INIT] App-Initialisierung gestartet')
+            console.log(
+                '[UserProvider] [INIT] Platform:',
+                Capacitor.isNativePlatform() ? 'Native App' : 'Web Development'
+            )
+            console.log('[UserProvider] [INIT] Group-ID:', GROUP_ID)
+
             setIsLoading(true)
+            setError(null)
 
             try {
-                const users = await UserService.getAllUsers()
+                // ===== SCHRITT 1: localStorage prüfen =====
+                console.log('[UserProvider] [LOAD] Prüfe localStorage auf gespeicherte User-ID...')
+                const savedUserId = await UserIdService.loadUserId()
 
-                if (users.length > 0) {
-                    const firstUser = users[0] // Optional: bessere Auswahl
-                    setUserId(firstUser.id)
-                    setUser(firstUser)
-                    console.log('✅ User geladen:', firstUser.displayName)
+                console.log('[UserProvider] [LOAD] localStorage-Ergebnis:', {
+                    found: !!savedUserId,
+                    userId: savedUserId || 'nicht vorhanden',
+                    platform: GROUP_ID,
+                })
+
+                if (savedUserId) {
+                    // ===== SCHRITT 2: Plattform-Validierung =====
+                    console.log(
+                        '[UserProvider] [VALIDATE] Validiere User-ID gegen aktuelle Plattform...'
+                    )
+
+                    const platformUsers = getUsersByGroup(GROUP_ID)
+                    const isValidForPlatform = !!platformUsers[savedUserId]
+
+                    console.log('[UserProvider] [VALIDATE] Plattform-Validierung:', {
+                        savedUserId,
+                        platform: GROUP_ID,
+                        isValid: isValidForPlatform,
+                        availableUserIds: Object.keys(platformUsers),
+                        availableUserNames: Object.values(platformUsers).map(u => u.name),
+                    })
+
+                    if (isValidForPlatform) {
+                        // ===== SCHRITT 3a: Gültige User-ID → Backend laden =====
+                        console.log('[UserProvider] [LOAD] User-ID gültig - lade Backend-Daten...')
+
+                        const userData = await UserService.getUserInfo(savedUserId)
+
+                        setUserId(savedUserId)
+                        setUser(userData)
+
+                        console.log(
+                            '[UserProvider] [SUCCESS] User erfolgreich aus localStorage geladen:',
+                            {
+                                userId: userData.id,
+                                displayName: userData.displayName,
+                                groupId: userData.groupId,
+                                platform: GROUP_ID,
+                                source: 'localStorage + Backend',
+                            }
+                        )
+                    } else {
+                        // ===== SCHRITT 3b: Ungültige User-ID → User-Auswahl =====
+                        console.warn(
+                            '[UserProvider] [FALLBACK] Gespeicherte User-ID gehört nicht zur aktuellen Plattform'
+                        )
+                        console.log(
+                            '[UserProvider] [FALLBACK] Lösche ungültige User-ID und zeige User-Auswahl'
+                        )
+
+                        await UserIdService.saveUserId('') // Ungültige ID löschen
+                        // userId bleibt null → UserSelectPage wird angezeigt
+                    }
                 } else {
-                    console.warn('⚠️ Keine Benutzer im System gefunden')
-                    setError('Keine Benutzer im System gefunden')
+                    // ===== SCHRITT 4: Keine User-ID → User-Auswahl =====
+                    console.log('[UserProvider] [FALLBACK] Keine gespeicherte User-ID gefunden')
+                    console.log(
+                        '[UserProvider] [FALLBACK] Zeige User-Auswahl für Plattform:',
+                        GROUP_ID
+                    )
+
+                    const platformUsers = getUsersByGroup(GROUP_ID)
+                    console.log('[UserProvider] [FALLBACK] Verfügbare User für Auswahl:', {
+                        platform: GROUP_ID,
+                        userCount: Object.keys(platformUsers).length,
+                        users: Object.values(platformUsers).map(u => ({
+                            id: u.id,
+                            name: u.name,
+                            groupId: u.groupId,
+                        })),
+                    })
+
+                    if (Object.keys(platformUsers).length === 0) {
+                        throw new Error(
+                            `Keine User für Plattform ${GROUP_ID} in src/data/users.ts definiert`
+                        )
+                    }
                 }
             } catch (error) {
-                const msg = error instanceof Error ? error.message : 'Unbekannter Fehler'
-                console.error('❌ Fehler beim Initialisieren:', msg)
-                setError(msg)
+                // ===== FEHLERBEHANDLUNG =====
+                const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
+                console.error('[UserProvider] [ERROR] Initialisierungsfehler:', {
+                    error: errorMessage,
+                    platform: GROUP_ID,
+                    savedUserId: await UserIdService.loadUserId().catch(() => 'Fehler beim Laden'),
+                })
+
+                setError(`User-Initialisierung fehlgeschlagen: ${errorMessage}`)
+                setUserId(null)
+                setUser(null)
             } finally {
+                // ===== FINALISIERUNG =====
                 setIsLoading(false)
-                setIsReady(true)
+                setIsReady(true) // KRITISCH: Immer auf true setzen für Rendering
+
+                console.log('[UserProvider] [INIT] Initialisierung abgeschlossen:', {
+                    isReady: true,
+                    hasUserId: !!userId,
+                    hasUser: !!user,
+                    willShowUserSelect: !userId,
+                    platform: GROUP_ID,
+                })
+                console.groupEnd()
             }
         }
 
         initializeUser()
     }, [])
 
+    /**
+     * Lädt User-Daten vom Backend für eine gegebene User-ID.
+     *
+     * @param id - User-ID zum Laden
+     * @throws {Error} Bei Backend-Fehlern oder ungültigen User-Daten
+     */
     const loadUserFromBackend = async (id: string): Promise<void> => {
         if (!id) return
 
         try {
-            console.log('🔄 Lade User-Daten für ID:', id)
+            console.log('[UserProvider] [LOAD] Lade User-Daten für ID:', id)
             const userData = await UserService.getUserInfo(id)
             setUser(userData)
             setError(null)
-            console.log('✅ User-Daten erfolgreich geladen:', userData.displayName || userData.id)
+            console.log(
+                '[UserProvider] [SUCCESS] User-Daten erfolgreich geladen:',
+                userData.displayName || userData.id
+            )
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
-            console.error('❌ Fehler beim Laden der User-Daten:', errorMessage)
+            console.error('[UserProvider] [ERROR] Fehler beim Laden der User-Daten:', errorMessage)
             setError(`User-Daten konnten nicht geladen werden: ${errorMessage}`)
             setUser(null)
         }
     }
 
+    /**
+     * Setzt neue User-ID, validiert sie gegen aktuelle Plattform und speichert persistent.
+     * Wird bei User-Auswahl und User-Wechsel verwendet.
+     *
+     * @param id - User-ID aus src/data/users.ts
+     * @throws {Error} Bei Validierungs- oder Backend-Fehlern
+     */
     const setUserIdWithBackend = async (id: string): Promise<void> => {
-        console.log('🔄 Setze neue User-ID:', id)
+        console.group('[UserProvider] [SELECT] User-Wechsel gestartet')
+        console.log('[UserProvider] [SELECT] User-ID:', {
+            userId: id,
+            platform: GROUP_ID,
+            timestamp: new Date().toISOString(),
+        })
 
         if (!id) throw new Error('User-ID darf nicht leer sein')
 
@@ -86,26 +219,80 @@ export function UserProvider({ children }: Props): JSX.Element {
         setError(null)
 
         try {
-            const exists = await UserService.userExists(id)
-            if (!exists) throw new Error(`User mit ID '${id}' existiert nicht`)
+            // ===== PLATTFORM-VALIDIERUNG =====
+            console.log('[UserProvider] [VALIDATE] Prüfe User-ID gegen aktuelle Plattform...')
+            const platformUsers = getUsersByGroup(GROUP_ID)
+            const userFromConfig = platformUsers[id]
 
-            setUserId(id)
+            if (!userFromConfig) {
+                const availableIds = Object.keys(platformUsers)
+                console.error(
+                    '[UserProvider] [VALIDATE] User-ID nicht für aktuelle Plattform verfügbar:',
+                    {
+                        userId: id,
+                        platform: GROUP_ID,
+                        availableUserIds: availableIds,
+                        availableUserNames: Object.values(platformUsers).map(u => u.name),
+                    }
+                )
+                throw new Error(`User-ID ${id} nicht verfügbar für Plattform ${GROUP_ID}`)
+            }
+
+            console.log('[UserProvider] [VALIDATE] User-ID validiert:', {
+                userId: id,
+                userName: userFromConfig.name,
+                platform: GROUP_ID,
+                groupId: userFromConfig.groupId,
+            })
+
+            // ===== BACKEND-VALIDIERUNG =====
+            console.log('[UserProvider] [LOAD] Prüfe User-Existenz im Backend...')
+            const exists = await UserService.userExists(id)
+            if (!exists) {
+                throw new Error(`User ${id} existiert nicht im Backend`)
+            }
+
+            // ===== USER-DATEN LADEN =====
+            console.log('[UserProvider] [LOAD] Lade User-Daten vom Backend...')
             await loadUserFromBackend(id)
 
-            console.log('✅ User-Wechsel erfolgreich abgeschlossen')
+            // ===== PERSISTIERUNG =====
+            console.log('[UserProvider] [SAVE] Speichere User-ID in localStorage...')
+            await UserIdService.saveUserId(id)
+
+            // ===== STATE AKTUALISIERUNG =====
+            setUserId(id)
+
+            console.log('[UserProvider] [SUCCESS] User-Wechsel erfolgreich:', {
+                userId: id,
+                displayName: user?.displayName,
+                platform: GROUP_ID,
+                persistedToStorage: true,
+            })
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
-            console.error('❌ Fehler beim User-Wechsel:', errorMessage)
+            console.error('[UserProvider] [ERROR] User-Wechsel fehlgeschlagen:', {
+                userId: id,
+                error: errorMessage,
+                platform: GROUP_ID,
+            })
+
             setError(`User-Wechsel fehlgeschlagen: ${errorMessage}`)
             throw error
         } finally {
             setIsLoading(false)
+            console.groupEnd()
         }
     }
 
+    /**
+     * Aktualisiert die User-Daten des aktuell angemeldeten Users.
+     *
+     * @throws {Error} Wenn kein User angemeldet ist
+     */
     const refreshUser = async (): Promise<void> => {
         if (!userId) return
-        console.log('🔄 Refreshe User-Daten...')
+        console.log('[UserProvider] [REFRESH] Refreshe User-Daten...')
         setIsLoading(true)
         setError(null)
 
@@ -116,6 +303,12 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
+    /**
+     * Aktualisiert User-Daten im Backend und lokal.
+     *
+     * @param updates - Teilweise User-Daten zum Aktualisieren
+     * @throws {Error} Bei Validierungs- oder Backend-Fehlern
+     */
     const updateUserData = async (updates: Partial<AppUser>): Promise<void> => {
         if (!user) throw new Error('Kein User geladen - Update nicht möglich')
 
@@ -131,10 +324,13 @@ export function UserProvider({ children }: Props): JSX.Element {
             const savedUser = await UserService.updateUser({ ...user, ...updates })
             setUser(savedUser)
 
-            console.log('✅ User-Daten erfolgreich aktualisiert')
+            console.log('[UserProvider] [UPDATE] User-Daten erfolgreich aktualisiert')
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
-            console.error('❌ Fehler beim Aktualisieren der User-Daten:', errorMessage)
+            console.error(
+                '[UserProvider] [ERROR] Fehler beim Aktualisieren der User-Daten:',
+                errorMessage
+            )
             setError(`Update fehlgeschlagen: ${errorMessage}`)
             throw error
         } finally {
@@ -142,32 +338,42 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
+    /**
+     * Lädt alle verfügbaren User vom Backend.
+     *
+     * @returns Liste aller verfügbaren User
+     * @throws {Error} Bei Backend-Fehlern
+     */
     const getAllAvailableUsers = async (): Promise<AppUser[]> => {
-        console.log('🔄 Lade alle verfügbaren User...')
+        console.log('[UserProvider] [LOAD] Lade alle verfügbaren User...')
 
         try {
             const users = await UserService.getAllUsers()
-            console.log(`✅ ${users.length} User für Auswahl verfügbar`)
+            console.log(`[UserProvider] [SUCCESS] ${users.length} User für Auswahl verfügbar`)
             return users
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler'
-            console.error('❌ Fehler beim Laden der User-Liste:', errorMessage)
+            console.error('[UserProvider] [ERROR] Fehler beim Laden der User-Liste:', errorMessage)
             setError(`User-Liste konnte nicht geladen werden: ${errorMessage}`)
             throw error
         }
     }
 
+    /**
+     * Meldet den aktuellen User ab und löscht alle gespeicherten Daten.
+     */
     const logout = async (): Promise<void> => {
-        console.log('🚪 Benutzer wird abgemeldet...')
+        console.log('[UserProvider] [LOGOUT] Benutzer wird abgemeldet...')
         setIsLoading(true)
 
         try {
+            await UserIdService.saveUserId('') // localStorage leeren
             setUserId(null)
             setUser(null)
             setError(null)
-            console.log('✅ Benutzer erfolgreich abgemeldet')
+            console.log('[UserProvider] [SUCCESS] Benutzer erfolgreich abgemeldet')
         } catch (error) {
-            console.error('❌ Fehler beim Abmelden:', error)
+            console.error('[UserProvider] [ERROR] Fehler beim Abmelden:', error)
             setUserId(null)
             setUser(null)
         } finally {
@@ -175,6 +381,9 @@ export function UserProvider({ children }: Props): JSX.Element {
         }
     }
 
+    /**
+     * Löscht den aktuellen Error-Status.
+     */
     const clearError = (): void => {
         setError(null)
     }

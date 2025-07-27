@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core'
 import { CapacitorSQLite } from '@capacitor-community/sqlite'
 import { UserProvider } from './context/user-context'
 import { MultiBudgetProvider } from './context/multi-budget-context'
+import { NotificationProvider } from './context/notification-context'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { MonthProvider } from './context/month-context'
@@ -68,11 +69,13 @@ async function start() {
     root.render(
         <MonthProvider>
             <UserProvider>
-                <MultiBudgetProvider>
-                    <BrowserRouter>
-                        <App />
-                    </BrowserRouter>
-                </MultiBudgetProvider>
+                <NotificationProvider>
+                    <MultiBudgetProvider>
+                        <BrowserRouter>
+                            <App />
+                        </BrowserRouter>
+                    </MultiBudgetProvider>
+                </NotificationProvider>
             </UserProvider>
         </MonthProvider>
     )

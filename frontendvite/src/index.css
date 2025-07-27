@@ -210,3 +210,5 @@ div.bg-white:active {
     top: 0;
     height: 100%;
 }
+
+.notification-badge { @apply absolute -top-1 -right-1 bg-red-500 rounded-full text-white text-xs leading-none px-1; min-width: 16px; height: 16px; }

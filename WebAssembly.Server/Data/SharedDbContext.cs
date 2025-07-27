@@ -16,6 +16,7 @@ namespace WebAssembly.Server.Data
         public DbSet<MonthlyConfirmation> MonthlyConfirmations { get; set; } = default!;
         public DbSet<Snapshot> Snapshots { get; set; }
         public DbSet<PersonalSnapshotData> PersonalSnapshots { get; set; }
+        public DbSet<Notification> Notifications { get; set; } = default!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -66,6 +67,13 @@ namespace WebAssembly.Server.Data
                     v => JsonSerializer.Serialize(v, options),
                     v => JsonSerializer.Deserialize<List<Expense>>(v, options)
                 );
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.Type)
+                .HasConversion(new EnumToStringConverter<ActionType>());
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.GroupId, n.IsRead });
         }
 
         public SharedDbContext(DbContextOptions<SharedDbContext> options)

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Enums;
 using WebAssembly.Server.Models;
+using WebAssembly.Server.Services;
 
 namespace WebAssembly.Server.Controllers
 {
@@ -14,10 +15,12 @@ namespace WebAssembly.Server.Controllers
     public class ExpensesController : ControllerBase
     {
         private readonly SharedDbContext _sharedDb;
+        private readonly NotificationService _notifications;
 
-        public ExpensesController(SharedDbContext sharedDb)
+        public ExpensesController(SharedDbContext sharedDb, NotificationService notifications)
         {
             _sharedDb = sharedDb;
+            _notifications = notifications;
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
@@ -205,6 +208,28 @@ namespace WebAssembly.Server.Controllers
             await context.AddAsync(expense);
             await context.SaveChangesAsync();
 
+            // 🔔 Benachrichtigungen erzeugen
+            if (!string.IsNullOrWhiteSpace(expense.GroupId))
+            {
+                var users = await _sharedDb.Users
+                    .Where(u => u.GroupId == expense.GroupId && u.Id != expense.CreatedByUserId)
+                    .ToListAsync();
+
+                foreach (var user in users)
+                {
+                    var notif = new Notification
+                    {
+                        UserId = user.Id,
+                        GroupId = expense.GroupId!,
+                        ExpenseId = expense.Id,
+                        Type = isNew ? ActionType.Created : ActionType.Updated,
+                        Message = $"Ausgabe '{expense.Name}' {(isNew ? "erstellt" : "aktualisiert")}",
+                        ActionUrl = $"/expenses/{expense.Id}"
+                    };
+                    await _notifications.CreateNotificationAsync(notif);
+                }
+            }
+
             return Ok(expense);
         }
 
@@ -234,6 +259,27 @@ namespace WebAssembly.Server.Controllers
 
             _sharedDb.SharedExpenses.Remove(expense);
             await _sharedDb.SaveChangesAsync();
+
+            if (!string.IsNullOrWhiteSpace(expense.GroupId))
+            {
+                var users = await _sharedDb.Users
+                    .Where(u => u.GroupId == expense.GroupId && u.Id != expense.CreatedByUserId)
+                    .ToListAsync();
+                foreach (var user in users)
+                {
+                    var notif = new Notification
+                    {
+                        UserId = user.Id,
+                        GroupId = expense.GroupId!,
+                        ExpenseId = expense.Id,
+                        Type = ActionType.Deleted,
+                        Message = $"Ausgabe '{expense.Name}' gelöscht",
+                        ActionUrl = $"/expenses/{expense.Id}"
+                    };
+                    await _notifications.CreateNotificationAsync(notif);
+                }
+            }
+
             return NoContent();
         }
 

@@ -10,6 +10,7 @@ import { BudgetCard } from '@/components/budget/BudgetCardNew.tsx'
 import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
 import { useMultiBudget } from '@/context/multi-budget-context'
 import { useUser } from '@/context/user-context.tsx'
+import { useNotification } from '@/context/notification-context'
 import { Expense, ExpenseType } from '@/types/index'
 
 export default function HomePage() {
@@ -23,6 +24,7 @@ export default function HomePage() {
     if (!userId) return null
     const currentUser = users[userId]
     const { personal, shared, child } = useMultiBudget()
+    const { notifications, unreadCount, markAsRead } = useNotification()
 
     const handleAddButtonClick = () => {
         setEditingExpense({
@@ -54,6 +56,17 @@ export default function HomePage() {
         return Promise.resolve()
     }
 
+    const handleDropdownToggle = () => {
+        setShowMessages(!showMessages)
+        if (!showMessages && unreadCount > 0) {
+            markAsRead()
+        }
+    }
+
+    const navigateToExpense = (id?: string) => {
+        if (id) navigate(`/expense/${id}`)
+    }
+
     return (
         <PageLayout onAddButtonClick={handleAddButtonClick}>
             <div className="page-header-container  transform-origin-top -mb-2">
@@ -83,13 +96,13 @@ export default function HomePage() {
 
                             <div className="border-b border-gray-100">
                                 <button
-                                    onClick={() => setShowMessages(!showMessages)}
+                                    onClick={handleDropdownToggle}
                                     className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-h-[60px]"
                                 >
                                     <div className="flex items-center">
                                         <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
                                         <span className="text-base font-medium text-gray-700">
-                                            Neue Nachrichten (2)
+                                            Neue Nachrichten ({unreadCount})
                                         </span>
                                     </div>
                                     <ChevronDown
@@ -101,22 +114,21 @@ export default function HomePage() {
 
                                 {showMessages && (
                                     <div className="px-4 pb-4 space-y-3">
-                                        <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
-                                            <p className="text-sm text-blue-700 font-medium">
-                                                Erinnerung
-                                            </p>
-                                            <p className="text-sm text-blue-600 mt-1">
-                                                Deine Miete für März ist noch nicht eingetragen.
-                                            </p>
-                                        </div>
-                                        <div className="bg-green-50 p-3 rounded-lg border-l-4 border-green-400">
-                                            <p className="text-sm text-green-700 font-medium">
-                                                Erfolg
-                                            </p>
-                                            <p className="text-sm text-green-600 mt-1">
-                                                Du hast dein Monatsziel um 15% unterschritten! 🎉
-                                            </p>
-                                        </div>
+                                        {notifications.slice(0, 3).map(n => (
+                                            <div
+                                                key={n.id}
+                                                className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400 cursor-pointer"
+                                                onClick={() => navigateToExpense(n.expenseId)}
+                                            >
+                                                <p className="text-sm text-blue-700 font-medium">
+                                                    {n.type}
+                                                </p>
+                                                <p className="text-sm text-blue-600 mt-1">{n.message}</p>
+                                            </div>
+                                        ))}
+                                        {notifications.length === 0 && (
+                                            <div className="text-sm text-gray-500">Keine Nachrichten</div>
+                                        )}
                                     </div>
                                 )}
                             </div>

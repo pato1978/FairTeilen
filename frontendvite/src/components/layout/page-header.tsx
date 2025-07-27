@@ -4,6 +4,8 @@ import { MonthSelector } from '@/components/layout/month-selector'
 import { YearSelector } from '@/components/layout/year-selector'
 import { useMonth } from '@/context/month-context'
 import { useState } from 'react'
+import { Bell } from 'lucide-react'
+import { useNotification } from '@/context/notification-context'
 
 interface PageHeaderProps {
     title: string
@@ -17,6 +19,7 @@ export function PageHeader({ title, showMonthSelector = true, initialDate, onMon
     const currentDateValue = initialDate || monthContext.currentDate
     const setCurrentDateValue = onMonthChange || monthContext.setCurrentDate
     const [selectedYear, setSelectedYear] = useState(currentDateValue.getFullYear())
+    const { unreadCount } = useNotification()
 
     const handleYearChange = (newYear: number) => {
         setSelectedYear(newYear)
@@ -34,7 +37,15 @@ export function PageHeader({ title, showMonthSelector = true, initialDate, onMon
 
             {/* Titel und Selector nebeneinander */}
             <div className="flex flex-row items-center justify-between gap-2">
-                <h2 className="text-2xl font-bold text-gray-700">{title}</h2>
+                <h2 className="text-2xl font-bold text-gray-700 mr-2">{title}</h2>
+                <div className="relative mr-auto">
+                    <Bell className="w-5 h-5 text-gray-600" />
+                    {unreadCount > 0 && (
+                        <span className="notification-badge flex items-center justify-center px-1 text-white text-[10px]">
+                            {unreadCount}
+                        </span>
+                    )}
+                </div>
 
                 {showMonthSelector ? (
                     <div className="z-10 relative">

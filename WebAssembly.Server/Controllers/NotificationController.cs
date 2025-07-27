@@ -75,4 +75,22 @@ public class NotificationController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpPost("test")]
+    public async Task<IActionResult> CreateTestNotification(
+        [FromQuery] string userId,
+        [FromQuery] string groupId)
+    {
+        var notification = new Notification
+        {
+            UserId = userId,
+            GroupId = groupId,
+            Type = ActionType.Created,
+            Message = "Test-Benachrichtigung - System funktioniert!",
+            ActionUrl = "/test"
+        };
+
+        await _service.CreateNotificationAsync(notification);
+        return Ok("Test-Notification erstellt");
+    }
 }

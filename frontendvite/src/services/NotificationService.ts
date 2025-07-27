@@ -14,6 +14,7 @@ export const NotificationService = {
             page: page.toString(),
         }).toString()
         const url = `${API_BASE_URL}/notification?${qs}`
+        console.log('🔄 NotificationService: API call', { userId, url })
         const res = await fetch(url)
         if (!res.ok) throw new Error('Fehler beim Laden der Notifications')
         return await res.json()
@@ -21,6 +22,7 @@ export const NotificationService = {
 
     async markAsRead(id: string): Promise<void> {
         const url = `${API_BASE_URL}/notification/${id}/read`
+        console.log('🔄 NotificationService: API call', { id, url })
         const res = await fetch(url, { method: 'PUT' })
         if (!res.ok) throw new Error('Fehler beim Aktualisieren der Notification')
     },
@@ -31,6 +33,7 @@ export const NotificationService = {
             userId,
         }).toString()
         const url = `${API_BASE_URL}/notification/unread-count?${qs}`
+        console.log('🔄 NotificationService: API call', { userId, url })
         const res = await fetch(url)
         if (!res.ok) return 0
         const count = await res.json()

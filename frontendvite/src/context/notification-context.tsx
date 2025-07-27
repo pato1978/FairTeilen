@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { NotificationService } from '@/services/NotificationService'
 import type { Notification } from '@/types/notification'
 import { useUser } from './user-context'
@@ -20,27 +20,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const [unreadCount, setUnreadCount] = useState(0)
     const [isLoading, setIsLoading] = useState(false)
 
-    const load = async () => {
+    console.log('📢 NotificationProvider mounted')
+
+    const load = useCallback(async () => {
         if (!userId) return
+        console.log('🔄 NotificationService: API call', { userId })
         setIsLoading(true)
         try {
-            const data = await NotificationService.getNotifications(userId)
+            const [data, count] = await Promise.all([
+                NotificationService.getNotifications(userId),
+                NotificationService.getUnreadCount(userId),
+            ])
             setNotifications(data)
-            const count = await NotificationService.getUnreadCount(userId)
             setUnreadCount(count)
+            console.log('✅ NotificationProvider: Data loaded', { count: data.length })
+        } catch (error) {
+            console.error('❌ Notification load error:', error)
+            setNotifications([])
+            setUnreadCount(0)
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [userId])
 
     useEffect(() => {
         load()
         const id = setInterval(load, 30000)
         return () => clearInterval(id)
-    }, [userId])
+    }, [load])
 
     const markAsRead = async (id?: string) => {
         if (!userId) return
+        console.log('🔄 markAsRead', { id })
         if (id) {
             await NotificationService.markAsRead(id)
         } else {
@@ -53,6 +64,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     const markAllAsRead = async () => {
         if (!userId) return
+        console.log('🔄 markAllAsRead')
         for (const n of notifications.filter(n => !n.isRead)) {
             await NotificationService.markAsRead(n.id)
         }

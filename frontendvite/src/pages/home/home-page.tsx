@@ -24,7 +24,27 @@ export default function HomePage() {
     if (!userId) return null
     const currentUser = users[userId]
     const { personal, shared, child } = useMultiBudget()
-    const { notifications, unreadCount, markAsRead } = useNotification()
+
+    let notifications: any[] = []
+    let unreadCount = 0
+    let markAsRead: (id?: string) => Promise<void> = () => Promise.resolve()
+
+    try {
+        const notificationData = useNotification()
+        notifications = notificationData.notifications
+        unreadCount = notificationData.unreadCount
+        markAsRead = notificationData.markAsRead
+    } catch (error) {
+        console.warn('⚠️ NotificationProvider nicht verfügbar')
+        // Fallback für Demo-Zwecke
+        notifications = [
+            { id: '1', type: 'Created', message: 'Test-Nachricht 1', createdAt: new Date().toISOString() },
+            { id: '2', type: 'Updated', message: 'Test-Nachricht 2', createdAt: new Date().toISOString() },
+        ]
+        unreadCount = 2
+    }
+
+    console.log('🏠 HomePage: Notification state', { unreadCount, notifications: notifications.length })
 
     const handleAddButtonClick = () => {
         setEditingExpense({

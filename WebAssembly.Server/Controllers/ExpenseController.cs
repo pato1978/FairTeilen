@@ -16,13 +16,14 @@ namespace WebAssembly.Server.Controllers
     {
         private readonly SharedDbContext _sharedDb;
         private readonly NotificationService _notifications;
+        private readonly NotificationDispatcher _notifier;
 
-        public ExpensesController(SharedDbContext sharedDb, NotificationService notifications)
+        public ExpensesController(SharedDbContext sharedDb, NotificationService notifications, NotificationDispatcher notifier)
         {
             _sharedDb = sharedDb;
             _notifications = notifications;
+            _notifier = notifier;
         }
-
         // ─────────────────────────────────────────────────────────────────────────────
         // 📌 TESTENDPUNKT für das Kopieren wiederkehrender Ausgaben (Datum simulierbar)
         // ─────────────────────────────────────────────────────────────────────────────
@@ -153,85 +154,76 @@ namespace WebAssembly.Server.Controllers
         }
 
         // 📤 POST: Neue Ausgabe speichern oder bestehende ersetzen
-        [HttpPost]
-        public async Task<IActionResult> SaveExpense([FromBody] ExpenseDto dto)
+[HttpPost]
+public async Task<IActionResult> SaveExpense([FromBody] ExpenseDto dto)
+{
+    // ❗ Sicherheitsprüfung: GroupId muss vorhanden sein bei Shared/Child
+    if ((dto.Type == ExpenseType.Shared || dto.Type == ExpenseType.Child) &&
+        string.IsNullOrWhiteSpace(dto.GroupId))
+    {
+        Console.WriteLine("❌ SaveExpense → Fehlende GroupId für Typ " + dto.Type + $" (Name: {dto.Name})");
+        return BadRequest("Für gemeinsame oder Kind-bezogene Ausgaben ist eine gültige GroupId erforderlich.");
+    }
+
+    // 1️⃣ Generiere oder verwende die ID
+    var expenseId = string.IsNullOrWhiteSpace(dto.Id)
+        ? Guid.NewGuid().ToString()
+        : dto.Id;
+
+    // 2️⃣ Prüfe in der DB, ob es diese Ausgabe schon gibt
+    var existingExpense = await _sharedDb.SharedExpenses
+        .AsNoTracking()
+        .FirstOrDefaultAsync(e => e.Id == expenseId);
+
+    var isNew = existingExpense == null;
+    Console.WriteLine($"[DEBUG] SaveExpense → isNew = {isNew}, expenseId = {expenseId}");
+
+    // 3️⃣ Baue das Expense-Objekt
+    var expense = new Expense
+    {
+        Id               = expenseId,
+        Name             = dto.Name,
+        Amount           = dto.Amount,
+        Date             = dto.Date,
+        MonthKey         = dto.Date.ToString("yyyy-MM"),
+        YearKey          = dto.Date.Year.ToString(),
+        Category         = dto.Category,
+        Type             = dto.Type,
+        isRecurring      = dto.isRecurring,
+        isBalanced       = dto.isBalanced,
+        GroupId          = dto.GroupId,
+        CreatedByUserId  = dto.createdByUserId
+    };
+
+    // 4️⃣ Falls Update, alten Datensatz entfernen
+    if (!isNew)
+    {
+        var toRemove = await _sharedDb.SharedExpenses
+            .FirstOrDefaultAsync(e => e.Id == expenseId);
+        if (toRemove != null)
         {
-            // ❗ Sicherheitsprüfung: GroupId muss vorhanden sein bei Shared/Child
-            if ((dto.Type == ExpenseType.Shared || dto.Type == ExpenseType.Child) &&
-                string.IsNullOrWhiteSpace(dto.GroupId))
+            // 🔒 GroupId-Mismatch prüfen und loggen
+            if ((toRemove.Type == ExpenseType.Shared || toRemove.Type == ExpenseType.Child)
+                && toRemove.GroupId != dto.GroupId)
             {
-                Console.WriteLine("❌ SaveExpense → Fehlende GroupId für Typ " + dto.Type + $" (Name: {dto.Name})");
-                return BadRequest("Für gemeinsame oder Kind-bezogene Ausgaben ist eine gültige GroupId erforderlich.");
+                Console.WriteLine($"❌ GroupId-Mismatch beim Update: {toRemove.GroupId} (alt) vs. {dto.GroupId} (neu) für Expense {expense.Id} ({expense.Name})");
+                return BadRequest("GroupId stimmt nicht mit der gespeicherten Gruppen-ID überein.");
             }
 
-            var monthKey = dto.Date.ToString("yyyy-MM");
-            var yearKey = dto.Date.Year.ToString();
-            var isNew = string.IsNullOrWhiteSpace(dto.Id);
-            var expenseId = isNew ? Guid.NewGuid().ToString() : dto.Id;
-
-            var expense = new Expense
-            {
-                Id = expenseId,
-                Name = dto.Name,
-                Amount = dto.Amount,
-                Date = dto.Date,
-                MonthKey = monthKey,
-                YearKey = yearKey,
-                Category = dto.Category,
-                Type = dto.Type,
-                isRecurring = dto.isRecurring,
-                isBalanced = dto.isBalanced,
-                GroupId = dto.GroupId,
-                CreatedByUserId = dto.createdByUserId
-            };
-
-            var context = (DbContext)_sharedDb;
-
-            if (!isNew)
-            {
-                var existing = await context.Set<Expense>().FirstOrDefaultAsync(e => e.Id == expense.Id);
-
-                // 🔒 GroupId-Mismatch prüfen und loggen!
-                if (existing != null && (existing.Type == ExpenseType.Shared || existing.Type == ExpenseType.Child))
-                {
-                    if (existing.GroupId != dto.GroupId)
-                    {
-                        Console.WriteLine($"❌ GroupId-Mismatch beim Update: {existing.GroupId} (alt) vs. {dto.GroupId} (neu) für Expense {expense.Id} ({expense.Name})");
-                        return BadRequest("GroupId stimmt nicht mit der gespeicherten Gruppen-ID überein.");
-                    }
-                }
-
-                if (existing != null)
-                    context.Remove(existing);
-            }
-
-            await context.AddAsync(expense);
-            await context.SaveChangesAsync();
-
-            // 🔔 Benachrichtigungen erzeugen
-            if (!string.IsNullOrWhiteSpace(expense.GroupId))
-            {
-                var users = await _sharedDb.Users
-                    .Where(u => u.GroupId == expense.GroupId && u.Id != expense.CreatedByUserId)
-                    .ToListAsync();
-                Console.WriteLine($"👥 Gefundene Benutzer in Gruppe {expense.GroupId}: " + users.Count);
-                foreach (var user in users)
-                {
-                    var notif = new Notification
-                    {
-                        UserId = user.Id,
-                        GroupId = expense.GroupId!,
-                        ExpenseId = expense.Id,
-                        Type = isNew ? ActionType.Created : ActionType.Updated,
-                        Message = $"Ausgabe '{expense.Name}' {(isNew ? "erstellt" : "aktualisiert")}",
-                        ActionUrl = $"/expenses/{expense.Id}"
-                    };
-                    await _notifications.CreateNotificationAsync(notif);
-                }
-            }
-
-            return Ok(expense);
+            _sharedDb.SharedExpenses.Remove(toRemove);
         }
+    }
+
+    // 5️⃣ Neuen oder geänderten Datensatz hinzufügen
+    await _sharedDb.SharedExpenses.AddAsync(expense);
+    await _sharedDb.SaveChangesAsync();
+
+    // 6️⃣ Benachrichtigungen erzeugen
+    await _notifier.NotifyUsersAboutExpenseAsync(expense, isNew);
+
+    // 7️⃣ Ergebnis zurückliefern
+    return Ok(expense);
+}
 
         // 📤 DELETE: Ausgabe löschen (inkl. GroupId-Check und Logging)
         [HttpDelete("{id}")]
@@ -260,25 +252,8 @@ namespace WebAssembly.Server.Controllers
             _sharedDb.SharedExpenses.Remove(expense);
             await _sharedDb.SaveChangesAsync();
 
-            if (!string.IsNullOrWhiteSpace(expense.GroupId))
-            {
-                var users = await _sharedDb.Users
-                    .Where(u => u.GroupId == expense.GroupId && u.Id != expense.CreatedByUserId)
-                    .ToListAsync();
-                foreach (var user in users)
-                {
-                    var notif = new Notification
-                    {
-                        UserId = user.Id,
-                        GroupId = expense.GroupId!,
-                        ExpenseId = expense.Id,
-                        Type = ActionType.Deleted,
-                        Message = $"Ausgabe '{expense.Name}' gelöscht",
-                        ActionUrl = $"/expenses/{expense.Id}"
-                    };
-                    await _notifications.CreateNotificationAsync(notif);
-                }
-            }
+            await _notifier.NotifyUsersAboutDeletedExpenseAsync(expense);
+
 
             return NoContent();
         }

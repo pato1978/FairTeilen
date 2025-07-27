@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HelpCircle, ShoppingCart } from 'lucide-react'
-
+import { useSearchParams } from 'react-router-dom'
 import { useSaveExpense } from '@/services/ExpenseSaveService'
 import { availableIcons } from '@/lib/icon-options'
 import { deleteExpense as deleteExpenseApi } from '@/services/ExpenseService'
 import { iconMap } from '@/lib/icon-map'
-
+import { useNavigate, useLocation } from 'react-router-dom'
 import { calculatePercentageUsed, calculateTotalExpenses } from '@/lib/budget-utils'
 import { toDateInputValue } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
@@ -42,7 +42,7 @@ type Props = {
 // 💡 Haupt-Komponente
 export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     const { budget, setBudget, expenses, isLoading, refreshExpenses } = useBudget()
-
+    const [params] = useSearchParams()
     // States für Modals, aktuelle Kategorie usw.
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
@@ -71,10 +71,21 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     // const next = rest.find(hasExpenses) || 'gesamt'
     // setSelectedCategory(next)
     //}
-
+    const navigate = useNavigate()
+    const location = useLocation()
     const { userId } = useUser()
-    const { currentDate } = useMonth()
-
+    const { currentDate, setCurrentDate } = useMonth()
+    useEffect(() => {
+        const monthParam = params.get('month')
+        if (monthParam) {
+            const parsed = new Date(`${monthParam}-01`)
+            if (!isNaN(parsed.getTime())) {
+                setCurrentDate(parsed)
+                // Nachträgliches Entfernen des Parameters
+                navigate(location.pathname, { replace: true })
+            }
+        }
+    }, [])
     // ➕ Neue Ausgabe hinzufügen
     const handleAdd = () => {
         setEditingExpense({

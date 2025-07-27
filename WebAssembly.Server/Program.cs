@@ -48,6 +48,7 @@ builder.Services.AddScoped<SnapshotService>();
 
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<NotificationDispatcher>();
 builder.Services.AddTransient<IMailService, MailService>();
 
 // 🔧 CORS – bei Bedarf um weitere Umgebungen erweitern

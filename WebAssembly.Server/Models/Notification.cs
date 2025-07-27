@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using WebAssembly.Server.Enums;
 
 namespace WebAssembly.Server.Models;
 
@@ -23,6 +24,10 @@ public class Notification
     [Required]
     public string GroupId { get; set; } = string.Empty;
     public string? ExpenseId { get; set; }
+    [MaxLength(7)] // z. B. "2025-07"
+    public string? MonthKey { get; set; } // ✅ NEU
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ExpenseType? ExpenseType { get; set; } // ✅ NEU
     [Required]
     [Column(TypeName = "nvarchar(20)")]
     [JsonConverter(typeof(JsonStringEnumConverter))]

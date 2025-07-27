@@ -38,13 +38,26 @@ export default function HomePage() {
         console.warn('⚠️ NotificationProvider nicht verfügbar')
         // Fallback für Demo-Zwecke
         notifications = [
-            { id: '1', type: 'Created', message: 'Test-Nachricht 1', createdAt: new Date().toISOString() },
-            { id: '2', type: 'Updated', message: 'Test-Nachricht 2', createdAt: new Date().toISOString() },
+            {
+                id: '1',
+                type: 'Created',
+                message: 'Test-Nachricht 1',
+                createdAt: new Date().toISOString(),
+            },
+            {
+                id: '2',
+                type: 'Updated',
+                message: 'Test-Nachricht 2',
+                createdAt: new Date().toISOString(),
+            },
         ]
         unreadCount = 2
     }
 
-    console.log('🏠 HomePage: Notification state', { unreadCount, notifications: notifications.length })
+    console.log('🏠 HomePage: Notification state', {
+        unreadCount,
+        notifications: notifications.length,
+    })
 
     const handleAddButtonClick = () => {
         setEditingExpense({
@@ -83,8 +96,17 @@ export default function HomePage() {
         }
     }
 
-    const navigateToExpense = (id?: string) => {
-        if (id) navigate(`/expense/${id}`)
+    const navigateToExpense = (type?: ExpenseType, monthKey?: string) => {
+        if (!type || !monthKey) return
+
+        const target =
+            type === ExpenseType.Personal
+                ? '/personal'
+                : type === ExpenseType.Child
+                  ? '/child'
+                  : '/shared'
+
+        navigate(`${target}?month=${monthKey}`)
     }
 
     return (
@@ -138,16 +160,22 @@ export default function HomePage() {
                                             <div
                                                 key={n.id}
                                                 className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400 cursor-pointer"
-                                                onClick={() => navigateToExpense(n.expenseId)}
+                                                onClick={() =>
+                                                    navigateToExpense(n.expenseType, n.monthKey)
+                                                }
                                             >
                                                 <p className="text-sm text-blue-700 font-medium">
                                                     {n.type}
                                                 </p>
-                                                <p className="text-sm text-blue-600 mt-1">{n.message}</p>
+                                                <p className="text-sm text-blue-600 mt-1">
+                                                    {n.message}
+                                                </p>
                                             </div>
                                         ))}
                                         {notifications.length === 0 && (
-                                            <div className="text-sm text-gray-500">Keine Nachrichten</div>
+                                            <div className="text-sm text-gray-500">
+                                                Keine Nachrichten
+                                            </div>
                                         )}
                                     </div>
                                 )}

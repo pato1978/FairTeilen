@@ -255,18 +255,24 @@ export function ExpenseEditorBottomSheet({
         name: string
         defaultLabel: string
     }) => {
-        const previousIcon = availableIcons.find(i => i.icon === selectedIcon)
+        // Icon umschalten
+        const previousIconEntry = availableIcons.find(i => i.icon === selectedIcon)
         setSelectedIcon(iconOption.icon)
-        // Name automatisch setzen, wenn Standardname
-        if (
-            !editingExpense.name ||
-            (previousIcon && editingExpense.name === previousIcon.defaultLabel)
-        ) {
+
+        // Falls der aktuelle Name leer ist ODER noch einem alten/Default-Label entspricht,
+        // auf den neuen Default setzen (Quickfix inkl. Legacy-Labels)
+        const legacyLabels = [
+            previousIconEntry?.defaultLabel, // z. B. "Möbiliar" (neu)
+            editingExpense.category, // z. B. "Kinderzimmer" (alt in Daten)
+        ].filter(Boolean) as string[]
+
+        if (!editingExpense.name || legacyLabels.includes(editingExpense.name)) {
             setEditingExpense({
                 ...editingExpense,
-                name: iconOption.defaultLabel,
+                name: iconOption.defaultLabel, // z. B. "Möbiliar"
             })
         }
+
         setShowIconSelector(false)
     }
 

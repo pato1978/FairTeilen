@@ -18,7 +18,6 @@ import {
     Smartphone,
     Stethoscope,
     Sun,
-    Ticket,
     Tv,
     Users,
     Wallet,
@@ -32,11 +31,11 @@ export const availableIcons = [
     { icon: Wifi, name: 'Internet', defaultLabel: 'Internet' },
     { icon: Tv, name: 'Streaming', defaultLabel: 'Streamingdienste' },
     { icon: ShieldCheck, name: 'Versicherungen', defaultLabel: 'Versicherungen' },
-    { icon: Dumbbell, name: 'Fitness', defaultLabel: 'Fitnessstudio' },
+    { icon: Dumbbell, name: 'Sport', defaultLabel: 'Sport' },
     { icon: BookUser, name: 'Abos', defaultLabel: 'Abonnements' },
     { icon: CreditCard, name: 'Ratenzahlung', defaultLabel: 'Ratenzahlung' },
     { icon: HeartHandshake, name: 'Mitgliedschaften', defaultLabel: 'Mitgliedschaften' },
-    { icon: Ticket, name: 'ÖPNV', defaultLabel: 'ÖPNV' },
+
     { icon: Smartphone, name: 'Mobilfunk', defaultLabel: 'Mobilfunkvertrag' }, // ← NEU
 
     { icon: Shirt, name: 'Kleidung', defaultLabel: 'Kleidung' },
@@ -45,7 +44,7 @@ export const availableIcons = [
     { icon: Heart, name: 'Hobbys', defaultLabel: 'Hobbys' },
     { icon: Gamepad2, name: 'Spielzeug', defaultLabel: 'Spielzeug' },
     { icon: Stethoscope, name: 'Gesundheit', defaultLabel: 'Gesundheit' },
-    { icon: Bed, name: 'Kinderzimmer', defaultLabel: 'Kinderzimmer' },
+    { icon: Bed, name: 'Möbiliar', defaultLabel: 'Möbiliar' },
     { icon: Car, name: 'Transport', defaultLabel: 'Transport' },
     { icon: Cake, name: 'Geburtstage', defaultLabel: 'Geburtstage' },
     { icon: Users, name: 'Betreuung', defaultLabel: 'Betreuung' },

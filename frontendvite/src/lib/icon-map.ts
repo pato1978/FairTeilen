@@ -1,3 +1,4 @@
+// lib/icon-map.ts
 import {
     Bed,
     BookUser,
@@ -18,34 +19,39 @@ import {
     Smartphone,
     Stethoscope,
     Sun,
-    Ticket,
     Tv,
     Users,
     Wallet,
     Wifi,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+
+/**
+ * Wichtig:
+ * Keys müssen mit `availableIcons.name` übereinstimmen,
+ * weil du beim Speichern `category = selectedIconEntry.name` setzt.
+ * (z. B. "Möbiliar", nicht mehr "Kinderzimmer")
+ */
 export const iconMap: Record<string, LucideIcon> = {
-    Urlaub: Sun,
     Miete: Home,
+    Urlaub: Sun,
     Strom: Plug,
     Internet: Wifi,
-    Streamingdienste: Tv,
+    Streaming: Tv, // name: 'Streaming' (defaultLabel kann 'Streamingdienste' sein)
     Versicherungen: ShieldCheck,
-    Fitnessstudio: Dumbbell,
-    Abonnements: BookUser,
+    Sport: Dumbbell, // name: 'Sport' (statt 'Fitnessstudio')
+    Abos: BookUser, // name: 'Abos' (defaultLabel: 'Abonnements')
     Ratenzahlung: CreditCard,
     Mitgliedschaften: HeartHandshake,
-    ÖPNV: Ticket,
-    Mobilfunkvertrag: Smartphone,
 
+    Mobilfunk: Smartphone, // name: 'Mobilfunk' (defaultLabel: 'Mobilfunkvertrag')
     Kleidung: Shirt,
     Schule: GraduationCap,
     Lebensmittel: ShoppingCart,
     Hobbys: Heart,
     Spielzeug: Gamepad2,
     Gesundheit: Stethoscope,
-    Kinderzimmer: Bed,
+    Möbiliar: Bed, // ✅ vorher "Kinderzimmer"
     Transport: Car,
     Geburtstage: Cake,
     Betreuung: Users,

@@ -16,7 +16,8 @@ import {
     deleteClarificationReaction,
     postClarificationReaction,
 } from '@/services/ClarificationReactionService'
-import DeleteConfirmationModal from '../modals/deleteConfirmationModal'
+import { DeleteConfirmationModal } from './delete-confirmation-modal'
+
 interface ExpenseItemProps {
     item: Expense
     onDelete: (id: string) => void | Promise<void>

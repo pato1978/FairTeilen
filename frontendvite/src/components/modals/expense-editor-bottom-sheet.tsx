@@ -106,17 +106,21 @@ export function ExpenseEditorBottomSheet({
                 // Berechne die Position relativ zum Container
                 const elementTop = elementRect.top - containerRect.top + container.scrollTop
 
-                // Scrolle so, dass das Element weit genug vom unteren Rand entfernt ist
-                // 250px Platz für Footer + Tastatur + extra Padding
-                const paddingFromBottom = 250
-                const targetScrollTop = elementTop - (containerRect.height - paddingFromBottom)
+                // Scrolle so, dass das Element in der Mitte des sichtbaren Bereichs ist
+                // Berücksichtige Tastatur-Höhe (ca. 50% des Viewports auf Mobile)
+                const viewportHeight = window.innerHeight
+                const keyboardHeight = viewportHeight * 0.5 // Annahme: Tastatur nimmt 50% ein
+                const visibleHeight = viewportHeight - keyboardHeight - 100 // 100px für Header/Footer
+
+                // Zentriere das Feld im sichtbaren Bereich
+                const targetScrollTop = elementTop - visibleHeight / 2
 
                 container.scrollTo({
                     top: Math.max(0, targetScrollTop),
                     behavior: 'smooth',
                 })
             }
-        }, 100)
+        }, 300) // Erhöht auf 300ms, damit die Tastatur Zeit hat aufzuklappen
     }
 
     // --------------------
@@ -344,8 +348,8 @@ export function ExpenseEditorBottomSheet({
                     }`}
                     onClick={e => e.stopPropagation()}
                     style={{
-                        height: 'calc(100vh - 60px)',
-                        maxHeight: 'calc(100vh - 60px)',
+                        height: '70vh', // Reduziert von calc(100vh - 60px) auf 70vh
+                        maxHeight: '600px', // Maximale Höhe begrenzen
                         display: 'flex',
                         flexDirection: 'column',
                     }}
@@ -366,7 +370,7 @@ export function ExpenseEditorBottomSheet({
                         ref={scrollContainerRef}
                         className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4"
                         style={{
-                            paddingBottom: '300px',
+                            paddingBottom: '120px', // Reduziert von 300px auf 120px
                             scrollBehavior: 'smooth',
                         }}
                     >

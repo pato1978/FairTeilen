@@ -10,6 +10,7 @@ import {
     Heart,
     HeartHandshake,
     HelpCircle,
+    Utensils,
     Home,
     Plug,
     ShieldCheck,
@@ -37,10 +38,10 @@ export const availableIcons = [
     { icon: HeartHandshake, name: 'Mitgliedschaften', defaultLabel: 'Mitgliedschaften' },
 
     { icon: Smartphone, name: 'Mobilfunk', defaultLabel: 'Mobilfunkvertrag' }, // ← NEU
-
+    { icon: Utensils, name: 'Essengehen', defaultLabel: 'Essengehen' },
     { icon: Shirt, name: 'Kleidung', defaultLabel: 'Kleidung' },
     { icon: GraduationCap, name: 'Schule', defaultLabel: 'Schule' },
-    { icon: ShoppingCart, name: 'Lebensmittel', defaultLabel: 'Lebensmittel' },
+    { icon: ShoppingCart, name: 'Lebensmittel', defaultLabel: '' },
     { icon: Heart, name: 'Hobbys', defaultLabel: 'Hobbys' },
     { icon: Gamepad2, name: 'Spielzeug', defaultLabel: 'Spielzeug' },
     { icon: Stethoscope, name: 'Gesundheit', defaultLabel: 'Gesundheit' },

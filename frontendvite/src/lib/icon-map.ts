@@ -19,6 +19,7 @@ import {
     Smartphone,
     Stethoscope,
     Sun,
+    Utensils,
     Tv,
     Users,
     Wallet,
@@ -43,7 +44,7 @@ export const iconMap: Record<string, LucideIcon> = {
     Abos: BookUser, // name: 'Abos' (defaultLabel: 'Abonnements')
     Ratenzahlung: CreditCard,
     Mitgliedschaften: HeartHandshake,
-
+    Essengehen: Utensils,
     Mobilfunk: Smartphone, // name: 'Mobilfunk' (defaultLabel: 'Mobilfunkvertrag')
     Kleidung: Shirt,
     Schule: GraduationCap,

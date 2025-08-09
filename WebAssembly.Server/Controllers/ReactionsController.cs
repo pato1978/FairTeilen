@@ -59,7 +59,7 @@ public class ReactionsController : ControllerBase
         string userId,
         [FromQuery] string groupId)
     {
-        // 🔒 GroupId-Validierung
+        // 🔒 GroupId-Validierung dsd
         if (string.IsNullOrWhiteSpace(groupId))
             return BadRequest("GroupId ist erforderlich");
 

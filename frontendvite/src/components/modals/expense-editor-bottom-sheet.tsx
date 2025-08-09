@@ -93,34 +93,35 @@ export function ExpenseEditorBottomSheet({
     const nameInputRef = useRef<HTMLInputElement>(null)
     const amountInputRef = useRef<HTMLInputElement>(null)
 
-    // Verbesserte Scroll-zu-Feld Funktion
+    // Verbesserte Scroll-zu-Feld Funktion - zentriert das aktive Feld immer
     const scrollToField = (ref: React.RefObject<HTMLElement>) => {
-        setTimeout(() => {
-            if (ref.current && scrollContainerRef.current) {
-                const element = ref.current
-                const container = scrollContainerRef.current
+        if (ref.current && scrollContainerRef.current) {
+            const element = ref.current
+            const container = scrollContainerRef.current
 
-                const elementRect = element.getBoundingClientRect()
-                const containerRect = container.getBoundingClientRect()
+            const elementRect = element.getBoundingClientRect()
+            const containerRect = container.getBoundingClientRect()
 
-                // Berechne die Position relativ zum Container
-                const elementTop = elementRect.top - containerRect.top + container.scrollTop
+            // Position des Elements relativ zum Container
+            const elementTop = elementRect.top - containerRect.top + container.scrollTop
 
-                // Scrolle so, dass das Element in der Mitte des sichtbaren Bereichs ist
-                // Berücksichtige Tastatur-Höhe (ca. 50% des Viewports auf Mobile)
-                const viewportHeight = window.innerHeight
-                const keyboardHeight = viewportHeight * 0.5 // Annahme: Tastatur nimmt 50% ein
-                const visibleHeight = viewportHeight - keyboardHeight - 100 // 100px für Header/Footer
+            // Berechne die ideale Position: Element soll im oberen Drittel des sichtbaren Bereichs sein
+            // Das gibt genug Platz für die Tastatur und macht das Feld gut sichtbar
+            const idealPosition = containerRect.height * 0.25 // 25% vom oberen Rand
 
-                // Zentriere das Feld im sichtbaren Bereich
-                const targetScrollTop = elementTop - visibleHeight / 2
+            // Berechne wie viel gescrollt werden muss
+            const currentElementPosition = elementRect.top - containerRect.top
+            const scrollAdjustment = currentElementPosition - idealPosition
 
-                container.scrollTo({
-                    top: Math.max(0, targetScrollTop),
-                    behavior: 'smooth',
-                })
-            }
-        }, 300) // Erhöht auf 300ms, damit die Tastatur Zeit hat aufzuklappen
+            // Neues Scroll-Ziel
+            const targetScrollTop = container.scrollTop + scrollAdjustment
+
+            // Immer sanft zum Ziel scrollen, auch wenn das Element schon teilweise sichtbar ist
+            container.scrollTo({
+                top: Math.max(0, targetScrollTop),
+                behavior: 'smooth',
+            })
+        }
     }
 
     // --------------------
@@ -160,18 +161,19 @@ export function ExpenseEditorBottomSheet({
     useEffect(() => {
         if (isOpen) {
             setAnimation('entering')
-            // Verhindere Body-Scroll
+            // Verhindere Body-Scroll ohne position:fixed (das verursacht Sprünge)
             document.body.style.overflow = 'hidden'
-            document.body.style.position = 'fixed'
-            document.body.style.width = '100%'
-            document.body.style.top = '0'
+
+            // Speichere die aktuelle Scroll-Position
+            const scrollY = window.scrollY
+            document.body.style.top = `-${scrollY}px`
 
             // Setze viewport meta tag für besseres Mobile-Verhalten
             let viewportMeta = document.querySelector('meta[name="viewport"]')
             if (viewportMeta) {
                 viewportMeta.setAttribute(
                     'content',
-                    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+                    'width=device-width, initial-scale=1.0, interactive-widget=resizes-content'
                 )
             }
         } else if (animation !== 'exited' && animation !== 'exiting') {
@@ -180,10 +182,14 @@ export function ExpenseEditorBottomSheet({
 
         return () => {
             // Stelle Body-Scroll wieder her
+            const scrollY = document.body.style.top
             document.body.style.overflow = ''
-            document.body.style.position = ''
-            document.body.style.width = ''
             document.body.style.top = ''
+
+            // Stelle Scroll-Position wieder her
+            if (scrollY) {
+                window.scrollTo(0, parseInt(scrollY || '0') * -1)
+            }
 
             // Setze viewport zurück
             let viewportMeta = document.querySelector('meta[name="viewport"]')
@@ -341,17 +347,19 @@ export function ExpenseEditorBottomSheet({
                 {/* 🧾 Hauptdialog als Bottom Sheet */}
                 <div
                     ref={sideSheetRef}
-                    className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md bg-white rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-[70] ${
+                    className={`fixed left-1/2 -translate-x-1/2 w-[85%] sm:w-[75%] md:w-[65%] max-w-md bg-white rounded-t-xl shadow-lg z-[70] ${
                         animation === 'entering' || animation === 'entered'
-                            ? 'opacity-100 translate-y-0'
-                            : 'opacity-0 translate-y-full'
+                            ? 'opacity-100'
+                            : 'opacity-0'
                     }`}
                     onClick={e => e.stopPropagation()}
                     style={{
-                        height: '70vh', // Reduziert von calc(100vh - 60px) auf 70vh
-                        maxHeight: '600px', // Maximale Höhe begrenzen
+                        bottom: animation === 'entering' || animation === 'entered' ? '0' : '-100%',
+                        height: '70vh',
+                        maxHeight: '600px',
                         display: 'flex',
                         flexDirection: 'column',
+                        transition: 'bottom 0.3s ease-out, opacity 0.3s ease-out',
                     }}
                 >
                     {/* 🔷 Header - flex-shrink-0 verhindert Schrumpfung */}

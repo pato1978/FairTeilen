@@ -102,9 +102,6 @@ export function ExpenseEditorBottomSheet({
             const elementRect = element.getBoundingClientRect()
             const containerRect = container.getBoundingClientRect()
 
-            // Position des Elements relativ zum Container
-            const elementTop = elementRect.top - containerRect.top + container.scrollTop
-
             // Berechne die ideale Position: Element soll im oberen Drittel des sichtbaren Bereichs sein
             // Das gibt genug Platz für die Tastatur und macht das Feld gut sichtbar
             const idealPosition = containerRect.height * 0.25 // 25% vom oberen Rand
@@ -114,11 +111,22 @@ export function ExpenseEditorBottomSheet({
             const scrollAdjustment = currentElementPosition - idealPosition
 
             // Neues Scroll-Ziel
-            const targetScrollTop = container.scrollTop + scrollAdjustment
+            let targetScrollTop = container.scrollTop + scrollAdjustment
 
-            // Immer sanft zum Ziel scrollen, auch wenn das Element schon teilweise sichtbar ist
+            // Verhindere dass zu weit nach oben gescrollt wird
+            // Mindestens 0 (ganz oben), aber nie so dass Elemente unter dem Header verschwinden
+            targetScrollTop = Math.max(0, targetScrollTop)
+
+            // Spezialfall: Wenn es das erste Element ist (Typ-Auswahl oder Bezeichnung bei Personal)
+            // und wir würden nach oben scrollen, dann nur minimal scrollen
+            const isFirstElement = container.scrollTop === 0 && targetScrollTop < 20
+            if (isFirstElement) {
+                targetScrollTop = 0 // Bleibe ganz oben
+            }
+
+            // Immer sanft zum Ziel scrollen
             container.scrollTo({
-                top: Math.max(0, targetScrollTop),
+                top: targetScrollTop,
                 behavior: 'smooth',
             })
         }

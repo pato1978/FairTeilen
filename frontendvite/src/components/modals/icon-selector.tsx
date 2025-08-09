@@ -141,7 +141,7 @@ export function IconSelector({
                                     )}
                                 </div>
                                 <span className="text-[10px] text-gray-700 truncate w-full text-center">
-                                    {iconOption.name}
+                                    {iconOption.defaultLabel}
                                 </span>
                             </button>
                         ))}

@@ -86,17 +86,39 @@ export function ExpenseEditorBottomSheet({
     const [showDistributionModal, setShowDistributionModal] = useState(false)
     const [distribution, setDistribution] = useState<Participant[]>([])
     const sideSheetRef = useRef<HTMLDivElement>(null)
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
     const [animation, setAnimation] = useState<'entering' | 'entered' | 'exiting' | 'exited'>(
         isOpen ? 'entering' : 'exited'
     )
     const nameInputRef = useRef<HTMLInputElement>(null)
     const amountInputRef = useRef<HTMLInputElement>(null)
 
+    // Verbesserte Scroll-zu-Feld Funktion
     const scrollToField = (ref: React.RefObject<HTMLElement>) => {
         setTimeout(() => {
-            ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 250)
+            if (ref.current && scrollContainerRef.current) {
+                const element = ref.current
+                const container = scrollContainerRef.current
+
+                const elementRect = element.getBoundingClientRect()
+                const containerRect = container.getBoundingClientRect()
+
+                // Berechne die Position relativ zum Container
+                const elementTop = elementRect.top - containerRect.top + container.scrollTop
+
+                // Scrolle so, dass das Element weit genug vom unteren Rand entfernt ist
+                // 250px Platz für Footer + Tastatur + extra Padding
+                const paddingFromBottom = 250
+                const targetScrollTop = elementTop - (containerRect.height - paddingFromBottom)
+
+                container.scrollTo({
+                    top: Math.max(0, targetScrollTop),
+                    behavior: 'smooth',
+                })
+            }
+        }, 100)
     }
+
     // --------------------
     // LifeCycle & Effekte
     // --------------------
@@ -134,11 +156,20 @@ export function ExpenseEditorBottomSheet({
     useEffect(() => {
         if (isOpen) {
             setAnimation('entering')
-            // Verhindere Body-Scroll und verstecke App-Footer
+            // Verhindere Body-Scroll
             document.body.style.overflow = 'hidden'
             document.body.style.position = 'fixed'
             document.body.style.width = '100%'
             document.body.style.top = '0'
+
+            // Setze viewport meta tag für besseres Mobile-Verhalten
+            let viewportMeta = document.querySelector('meta[name="viewport"]')
+            if (viewportMeta) {
+                viewportMeta.setAttribute(
+                    'content',
+                    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+                )
+            }
         } else if (animation !== 'exited' && animation !== 'exiting') {
             setAnimation('exiting')
         }
@@ -149,11 +180,16 @@ export function ExpenseEditorBottomSheet({
             document.body.style.position = ''
             document.body.style.width = ''
             document.body.style.top = ''
+
+            // Setze viewport zurück
+            let viewportMeta = document.querySelector('meta[name="viewport"]')
+            if (viewportMeta) {
+                viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0')
+            }
         }
     }, [isOpen])
 
     // Expense (neu oder bestehend) setzen und Distribution vorbereiten
-
     useEffect(() => {
         if (!expense || !isOpen) return
 
@@ -308,7 +344,8 @@ export function ExpenseEditorBottomSheet({
                     }`}
                     onClick={e => e.stopPropagation()}
                     style={{
-                        maxHeight: 'calc(100vh - 60px)', // Lass etwas Platz oben
+                        height: 'calc(100vh - 60px)',
+                        maxHeight: 'calc(100vh - 60px)',
                         display: 'flex',
                         flexDirection: 'column',
                     }}
@@ -325,7 +362,14 @@ export function ExpenseEditorBottomSheet({
                     </div>
 
                     {/* 📜 Scrollbarer Inhalt - flex-1 nimmt verfügbaren Platz, min-h-0 für Scroll */}
-                    <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4"
+                        style={{
+                            paddingBottom: '300px',
+                            scrollBehavior: 'smooth',
+                        }}
+                    >
                         {/* Typ-Auswahl */}
                         <div>
                             <div className="flex space-x-2">
@@ -519,13 +563,10 @@ export function ExpenseEditorBottomSheet({
                                 />
                             </div>
                         </div>
-
-                        {/* Extra Padding am Ende für besseres Scrollen */}
-                        <div className="pb-4"></div>
                     </div>
 
                     {/* ✅ Footer - flex-shrink-0 verhindert Schrumpfung */}
-                    <div className="flex-shrink-0 px-4 pt-4 pb-4 bg-white border-t border-gray-100 flex space-x-3">
+                    <div className="flex-shrink-0 px-4 pt-4 pb-6 bg-white border-t border-gray-100 flex space-x-3">
                         <button
                             className="flex-1 py-2.5 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded-xl hover:bg-blue-100 active:bg-blue-200 transition-colors"
                             onClick={handleClose}

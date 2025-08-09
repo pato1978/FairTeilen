@@ -15,7 +15,6 @@ export default function DeleteConfirmationModal({
     isOpen,
     onClose,
     onConfirm,
-    expense,
 }: DeleteConfirmationModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
     const [animation, setAnimation] = useState<'entering' | 'entered' | 'exiting' | 'exited'>(
@@ -115,21 +114,6 @@ export default function DeleteConfirmationModal({
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="px-4 py-4">
-                    {expense && (
-                        <>
-                            <p className="text-gray-600 mb-4">
-                                Möchten Sie diese Ausgabe wirklich löschen?
-                            </p>
-
-                            <p className="text-sm text-red-600 mb-4">
-                                Diese Aktion kann nicht rückgängig gemacht werden.
-                            </p>
-                        </>
-                    )}
-                </div>
-
                 {/* Footer */}
                 <div className="px-4 pt-2 pb-4 bg-white border-t border-gray-100 flex space-x-3 rounded-b-xl">
                     <button
@@ -139,7 +123,7 @@ export default function DeleteConfirmationModal({
                         Abbrechen
                     </button>
                     <button
-                        className="flex-1 py-2.5 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 active:bg-red-700 transition-colors flex items-center justify-center"
+                        className="flex-1 py-2.5 text-sm font-medium   text-blue-600 bg-blue-50 border border-blue-300 rounded-xl hover:bg-blue-100 active:bg-blue-200 transition-colors flex items-center justify-center"
                         onClick={handleConfirm}
                     >
                         <Trash2 className="h-4 w-4 mr-1" />

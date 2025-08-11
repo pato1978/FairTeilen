@@ -96,20 +96,20 @@ export function BudgetSummaryCard({
             className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 ${hideBudget ? 'pb-2' : ''}`}
         >
             <h4
-                className="text-lg font-semibold text-black mb-3 cursor-pointer hover:opacity-80 transition-opacity"
+                className="text-lg font-semibold text-black mb-3 cursor-pointer hover:opacity-80 transition-opacity min-h-[44px] flex items-center active:scale-[0.98]"
                 onClick={onTitleClick || (() => console.log(`${title} Übersicht anzeigen`))}
             >
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center w-full">
                     <span>{title}</span>
-                    <span
-                        className="text-black text-base font-semibold cursor-pointer"
+                    <button
+                        className="text-black text-base font-semibold cursor-pointer px-3 py-2 hover:bg-blue-200/50 rounded-lg transition-colors min-w-[80px] min-h-[44px] active:scale-95"
                         onClick={e => {
                             e.stopPropagation()
                             onCategoryChange?.('gesamt')
                         }}
                     >
                         {currentCategory}
-                    </span>
+                    </button>
                 </div>
             </h4>
 
@@ -133,7 +133,7 @@ export function BudgetSummaryCard({
                                     <div key={userId} className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg}`}
+                                                className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg} transition-transform duration-200 hover:scale-110`}
                                             >
                                                 {user.initials}
                                             </div>
@@ -156,10 +156,10 @@ export function BudgetSummaryCard({
                 </div>
             ) : (
                 <>
-                    {/* 🔹 Budget-Anzeige */}
+                    {/* 🔹 Budget-Anzeige mit Touch-optimierung */}
                     <div className="flex justify-between items-center mb-1">
                         <button
-                            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors text-base font-medium"
+                            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors text-base font-medium px-2 py-2 -ml-2 rounded-lg hover:bg-blue-100/50 active:scale-95 min-h-[44px]"
                             onClick={onBudgetClick}
                         >
                             <span>Budget:</span>
@@ -185,7 +185,7 @@ export function BudgetSummaryCard({
                                     <div key={userId} className="flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <div
-                                                className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg}`}
+                                                className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg} transition-transform duration-200 hover:scale-110`}
                                             >
                                                 {user.initials}
                                             </div>

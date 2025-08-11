@@ -12,11 +12,11 @@ export class SnapshotService {
      */
     private static readonly API_BASE_URL = Capacitor.isNativePlatform?.()
         ? `${import.meta.env.VITE_API_URL_NATIVE}/api`
-        : '/api';
+        : '/api'
 
     /**
      * Saves a snapshot for a specific group, year, and month
-     * 
+     *
      * @param groupId The group ID
      * @param year The year
      * @param month The month
@@ -37,4 +37,4 @@ export class SnapshotService {
 }
 
 // For backward compatibility
-export const saveSnapshot = SnapshotService.saveSnapshot.bind(SnapshotService);
+export const saveSnapshot = SnapshotService.saveSnapshot.bind(SnapshotService)

@@ -64,113 +64,120 @@ namespace WebAssembly.Server.Controllers
         /// - Persönliche Ausgaben des aufrufenden Nutzers (PersonalSnapshotData)
         /// </summary>
         [HttpPost("{groupId}/{year:int}/{month:int}")]
-        public async Task<IActionResult> SaveMonthlySnapshot(
-            [FromRoute] string groupId,
-            [FromRoute] int year,
-            [FromRoute] int month)
+public async Task<IActionResult> SaveMonthlySnapshot(
+    [FromRoute] string groupId,
+    [FromRoute] int year,
+    [FromRoute] int month)
+{
+    using var transaction = await _db.Database.BeginTransactionAsync();
+
+    try
+    {
+        // 🔐 VEREINFACHT: User-ID ist optional
+        // In Produktion könnte man später echte Auth hinzufügen
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
+        
+        // Oder noch einfacher - nutze groupId als "User":
+        // var userId = $"group-{groupId}";
+        
+        Console.WriteLine($"📸 Snapshot wird erstellt für Gruppe: {groupId}, User: {userId}");
+
+        var monthKey = $"{year:D4}-{month:D2}";
+
+        // 1) Übersicht berechnen (aus allen Ausgaben)
+        var overview = await _yearOverviewService
+            .GetOverviewForMonthAsync(year, month, userId, groupId);
+
+        // 2) SnapshotData (Totals) erstellen
+        var snapshotData = new SnapshotData
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
-
-            try
-            {
-                // 🔐 Echte User-ID holen (Login vorausgesetzt)
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                             ?? throw new UnauthorizedAccessException("Kein Nutzer eingeloggt");
-
-                var monthKey = $"{year:D4}-{month:D2}";
-
-                // 1) Übersicht berechnen (aus allen Ausgaben)
-                var overview = await _yearOverviewService
-                    .GetOverviewForMonthAsync(year, month, userId, groupId);
-
-                // 2) SnapshotData (Totals) erstellen
-                var snapshotData = new SnapshotData
-                {
-                    TotalExpenses = overview.Total,
-                    SharedExpenses = overview.Shared,
-                    ChildExpenses = overview.Child,
-                    ExpensesByUser = overview.TotalByUser,
-                    SharedByUser = overview.SharedByUser,
-                    ChildByUser = overview.ChildByUser,
-                    BalanceByUser = overview.BalanceByUser,
-                    RejectedByUser = overview.RejectionsByUser?.Keys.ToList() ?? new(),
-                    ExpensesByTypeAndCategory = overview.Expenses!
-                        .GroupBy(e => e.Type)
+            TotalExpenses = overview.Total,
+            SharedExpenses = overview.Shared,
+            ChildExpenses = overview.Child,
+            ExpensesByUser = overview.TotalByUser,
+            SharedByUser = overview.SharedByUser,
+            ChildByUser = overview.ChildByUser,
+            BalanceByUser = overview.BalanceByUser,
+            RejectedByUser = overview.RejectionsByUser?.Keys.ToList() ?? new(),
+            ExpensesByTypeAndCategory = overview.Expenses!
+                .GroupBy(e => e.Type)
+                .ToDictionary(
+                    typeGroup => typeGroup.Key,
+                    typeGroup => typeGroup
+                        .GroupBy(e => e.Category ?? "Unbekannt")
                         .ToDictionary(
-                            typeGroup => typeGroup.Key,
-                            typeGroup => typeGroup
-                                .GroupBy(e => e.Category ?? "Unbekannt")
-                                .ToDictionary(
-                                    catGroup => catGroup.Key,
-                                    catGroup => catGroup.Sum(e => e.Amount)
-                                )
+                            catGroup => catGroup.Key,
+                            catGroup => catGroup.Sum(e => e.Amount)
                         )
-                };
+                )
+        };
 
-                // 3) FullSnapshotData mit Einzelausgaben (shared + child)
-                var fullSnapshot = new FullSnapshotData
-                {
-                    TotalExpenses = snapshotData.TotalExpenses,
-                    SharedExpenses = snapshotData.SharedExpenses,
-                    ChildExpenses = snapshotData.ChildExpenses,
-                    ExpensesByUser = snapshotData.ExpensesByUser,
-                    SharedByUser = snapshotData.SharedByUser,
-                    ChildByUser = snapshotData.ChildByUser,
-                    BalanceByUser = snapshotData.BalanceByUser,
-                    RejectedByUser = snapshotData.RejectedByUser,
-                    ExpensesByTypeAndCategory = snapshotData.ExpensesByTypeAndCategory,
-                    SharedAndChildExpenses = overview.Expenses!
-                        .Where(e => e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child)
-                        .ToList()
-                };
+        // 3) FullSnapshotData mit Einzelausgaben (shared + child)
+        var fullSnapshot = new FullSnapshotData
+        {
+            TotalExpenses = snapshotData.TotalExpenses,
+            SharedExpenses = snapshotData.SharedExpenses,
+            ChildExpenses = snapshotData.ChildExpenses,
+            ExpensesByUser = snapshotData.ExpensesByUser,
+            SharedByUser = snapshotData.SharedByUser,
+            ChildByUser = snapshotData.ChildByUser,
+            BalanceByUser = snapshotData.BalanceByUser,
+            RejectedByUser = snapshotData.RejectedByUser,
+            ExpensesByTypeAndCategory = snapshotData.ExpensesByTypeAndCategory,
+            SharedAndChildExpenses = overview.Expenses!
+                .Where(e => e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child)
+                .ToList()
+        };
 
-                // 4) Persönlicher Snapshot (nur eigene Personal-Ausgaben)
-                var personalSnapshot = new PersonalSnapshotData
-                {
-                    UserId = userId,
-                    GroupId = groupId,
-                    MonthKey = monthKey,
-                    PersonalExpenses = overview.Expenses!
-                        .Where(e => e.Type == ExpenseType.Personal && e.CreatedByUserId == userId)
-                        .ToList()
-                };
-
-                // 5) Speichern aller Snapshots
-                await _snapshotService.SaveSnapshotAsync(groupId, monthKey, snapshotData);           // totals
-                await _snapshotService.SaveFullSnapshotAsync(groupId, monthKey, fullSnapshot);       // full
-                await _snapshotService.SavePersonalSnapshotAsync(personalSnapshot);                  // personal
-
-                // 6) Commit Transaktion
-                await transaction.CommitAsync();
-
-                // 7) E-Mail versenden
-                var recipients = new[]
-                {
-                    "pveglia@gmx.de",
-                    "m.p.siuda@gmail.com"
-                };
-
-                var mailBody = MailTemplates.BuildSnapshotMail(groupId, year, month, snapshotData);
-
-                foreach (var recipient in recipients)
-                {
-                    await _mailService.SendEmailAsync(
-                        to: recipient,
-                        subject: $"Monatsabrechnung ({year}-{month:D2})",
-                        htmlBody: mailBody
-                    );
-                }
-
-                return NoContent(); // Erfolg: 204
-            }
-            catch (Exception)
+        // 4) Persönlicher Snapshot - OPTIONAL (nur wenn echter User vorhanden)
+        if (userId != "system" && userId != $"group-{groupId}")
+        {
+            var personalSnapshot = new PersonalSnapshotData
             {
-                await transaction.RollbackAsync(); // Im Fehlerfall zurückrollen
-                throw;
-            }
-            
-            
+                UserId = userId,
+                GroupId = groupId,
+                MonthKey = monthKey,
+                PersonalExpenses = overview.Expenses!
+                    .Where(e => e.Type == ExpenseType.Personal && e.CreatedByUserId == userId)
+                    .ToList()
+            };
+            await _snapshotService.SavePersonalSnapshotAsync(personalSnapshot);
         }
+
+        // 5) Speichern der Haupt-Snapshots
+        await _snapshotService.SaveSnapshotAsync(groupId, monthKey, snapshotData);
+        await _snapshotService.SaveFullSnapshotAsync(groupId, monthKey, fullSnapshot);
+
+        // 6) Commit Transaktion
+        await transaction.CommitAsync();
+
+        // 7) E-Mail versenden
+        var recipients = new[]
+        {
+            "pveglia@gmx.de",
+            "m.p.siuda@gmail.com"
+        };
+
+        var mailBody = MailTemplates.BuildSnapshotMail(groupId, year, month, snapshotData);
+
+        foreach (var recipient in recipients)
+        {
+            await _mailService.SendEmailAsync(
+                to: recipient,
+                subject: $"Monatsabrechnung ({year}-{month:D2})",
+                htmlBody: mailBody
+            );
+        }
+
+        return NoContent(); // Erfolg: 204
+    }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync();
+        Console.WriteLine($"❌ Snapshot-Fehler: {ex.Message}");
+        throw;
+    }
+}
         /// <summary>
         /// Liefert den aggregierten Snapshot (Totals) für eine Gruppe.
         /// Enthält Summen, Verteilungen und Kategorie-Auswertung (ohne Einzel-Ausgaben).

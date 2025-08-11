@@ -93,42 +93,40 @@ export function ExpenseEditorBottomSheet({
     const nameInputRef = useRef<HTMLInputElement>(null)
     const amountInputRef = useRef<HTMLInputElement>(null)
 
-    // Verbesserte Scroll-zu-Feld Funktion - zentriert das aktive Feld immer
+    // Verbesserte Scroll-zu-Feld Funktion mit scrollIntoView Best Practice
     const scrollToField = (ref: React.RefObject<HTMLElement>) => {
         if (ref.current && scrollContainerRef.current) {
-            const element = ref.current
-            const container = scrollContainerRef.current
-
-            const elementRect = element.getBoundingClientRect()
-            const containerRect = container.getBoundingClientRect()
-
-            // Berechne die ideale Position: Element soll im oberen Drittel des sichtbaren Bereichs sein
-            // Das gibt genug Platz für die Tastatur und macht das Feld gut sichtbar
-            const idealPosition = containerRect.height * 0.25 // 25% vom oberen Rand
-
-            // Berechne wie viel gescrollt werden muss
-            const currentElementPosition = elementRect.top - containerRect.top
-            const scrollAdjustment = currentElementPosition - idealPosition
-
-            // Neues Scroll-Ziel
-            let targetScrollTop = container.scrollTop + scrollAdjustment
-
-            // Verhindere dass zu weit nach oben gescrollt wird
-            // Mindestens 0 (ganz oben), aber nie so dass Elemente unter dem Header verschwinden
-            targetScrollTop = Math.max(0, targetScrollTop)
-
-            // Spezialfall: Wenn es das erste Element ist (Typ-Auswahl oder Bezeichnung bei Personal)
-            // und wir würden nach oben scrollen, dann nur minimal scrollen
-            const isFirstElement = container.scrollTop === 0 && targetScrollTop < 20
-            if (isFirstElement) {
-                targetScrollTop = 0 // Bleibe ganz oben
-            }
-
-            // Immer sanft zum Ziel scrollen
-            container.scrollTo({
-                top: targetScrollTop,
+            // Verwende die native scrollIntoView Methode mit block: 'center'
+            // Das ist die Standard-Lösung für dieses Problem
+            ref.current.scrollIntoView({
                 behavior: 'smooth',
+                block: 'center', // Zentriert das Element vertikal im sichtbaren Bereich
+                inline: 'nearest', // Horizontales Scrollen vermeiden
             })
+
+            // Fallback für ältere Browser oder wenn scrollIntoView nicht optimal funktioniert
+            // Zusätzliche Anpassung nach dem nativen Scroll
+            setTimeout(() => {
+                if (scrollContainerRef.current) {
+                    const container = scrollContainerRef.current
+                    const elementRect = ref.current!.getBoundingClientRect()
+                    const containerRect = container.getBoundingClientRect()
+
+                    // Prüfe ob Element zu nah am oberen Rand ist (unter Header)
+                    const topDistance = elementRect.top - containerRect.top
+                    if (topDistance < 20) {
+                        // Scrolle etwas nach unten, um Abstand zum Header zu schaffen
+                        container.scrollTop = Math.max(0, container.scrollTop - (20 - topDistance))
+                    }
+
+                    // Prüfe ob Element zu nah am unteren Rand ist (könnte von Tastatur verdeckt werden)
+                    const bottomDistance = containerRect.bottom - elementRect.bottom
+                    if (bottomDistance < 100) {
+                        // Scrolle etwas nach oben, um Abstand zur Tastatur zu schaffen
+                        container.scrollTop = container.scrollTop + (100 - bottomDistance)
+                    }
+                }
+            }, 100)
         }
     }
 

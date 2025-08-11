@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Baby, ChevronDown, ShoppingCart, User, Users } from 'lucide-react'
+import { Baby, Bell, ChevronDown, ShoppingCart, Trash2, User, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'
 import { PageHeader } from '@/components/layout/page-header.tsx'
+import { NotificationItem } from '@/pages/home/notificationItem'
 import { users } from '@/data/users'
 import { BudgetCard } from '@/components/budget/BudgetCardNew.tsx'
 import { ExpenseEditorBottomSheet } from '@/components/modals/expense-editor-bottom-sheet'
@@ -25,39 +26,8 @@ export default function HomePage() {
     const currentUser = users[userId]
     const { personal, shared, child } = useMultiBudget()
 
-    let notifications: any[] = []
-    let unreadCount = 0
-    let markAsRead: (id?: string) => Promise<void> = () => Promise.resolve()
-
-    try {
-        const notificationData = useNotification()
-        notifications = notificationData.notifications
-        unreadCount = notificationData.unreadCount
-        markAsRead = notificationData.markAsRead
-    } catch (error) {
-        console.warn('⚠️ NotificationProvider nicht verfügbar')
-        // Fallback für Demo-Zwecke
-        notifications = [
-            {
-                id: '1',
-                type: 'Created',
-                message: 'Test-Nachricht 1',
-                createdAt: new Date().toISOString(),
-            },
-            {
-                id: '2',
-                type: 'Updated',
-                message: 'Test-Nachricht 2',
-                createdAt: new Date().toISOString(),
-            },
-        ]
-        unreadCount = 2
-    }
-
-    console.log('🏠 HomePage: Notification state', {
-        unreadCount,
-        notifications: notifications.length,
-    })
+    // Notification handling
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification()
 
     const handleAddButtonClick = () => {
         setEditingExpense({
@@ -91,27 +61,34 @@ export default function HomePage() {
 
     const handleDropdownToggle = () => {
         setShowMessages(!showMessages)
-        if (!showMessages && unreadCount > 0) {
-            markAsRead()
-        }
     }
 
-    const navigateToExpense = (type?: ExpenseType, monthKey?: string) => {
+    const navigateToExpense = (type?: ExpenseType | string, monthKey?: string) => {
         if (!type || !monthKey) return
 
-        const target =
-            type === ExpenseType.Personal
-                ? '/personal'
-                : type === ExpenseType.Child
-                  ? '/child'
-                  : '/shared'
+        // Map Backend string to route
+        const typeMapping: Record<string, string> = {
+            Personal: '/personal',
+            Shared: '/shared',
+            Child: '/child',
+        }
 
+        const target = typeMapping[type as string] || '/shared'
         navigate(`${target}?month=${monthKey}`)
+    }
+
+    const handleDismissNotification = async (id: string) => {
+        await markAsRead(id)
+    }
+
+    const handleClearAllNotifications = async () => {
+        await markAllAsRead()
+        setShowMessages(false)
     }
 
     return (
         <PageLayout onAddButtonClick={handleAddButtonClick}>
-            <div className="page-header-container  transform-origin-top -mb-2">
+            <div className="page-header-container transform-origin-top -mb-2">
                 <PageHeader
                     title="Overview"
                     initialDate={currentDate}
@@ -121,6 +98,7 @@ export default function HomePage() {
 
             <main className="flex-1 px-4 mt-2 flex flex-col min-h-[calc(100vh-12rem)] justify-between">
                 <div className="flex flex-col gap-6 flex-grow">
+                    {/* Welcome Card mit Notifications */}
                     <div className="bg-white shadow-md rounded-lg border border-blue-100 overflow-visible min-h-[120px] flex items-center">
                         <div className="w-full">
                             <div className="p-4 border-b border-gray-100">
@@ -136,16 +114,29 @@ export default function HomePage() {
                                 </div>
                             </div>
 
+                            {/* Notification Toggle */}
                             <div className="border-b border-gray-100">
                                 <button
                                     onClick={handleDropdownToggle}
                                     className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-h-[60px]"
                                 >
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
-                                        <span className="text-base font-medium text-gray-700">
-                                            Neue Nachrichten ({unreadCount})
-                                        </span>
+                                        {unreadCount > 0 ? (
+                                            <>
+                                                <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
+                                                <span className="text-base font-medium text-gray-700">
+                                                    {unreadCount} neue Nachricht
+                                                    {unreadCount !== 1 ? 'en' : ''}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Bell className="h-4 w-4 text-gray-400 mr-3" />
+                                                <span className="text-base text-gray-500">
+                                                    Keine neuen Nachrichten
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                     <ChevronDown
                                         className={`h-5 w-5 text-gray-400 transition-transform ${
@@ -154,35 +145,57 @@ export default function HomePage() {
                                     />
                                 </button>
 
+                                {/* Notification List */}
                                 {showMessages && (
-                                    <div className="px-4 pb-4 space-y-3">
-                                        {notifications.slice(0, 3).map(n => (
-                                            <div
-                                                key={n.id}
-                                                className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400 cursor-pointer"
-                                                onClick={() =>
-                                                    navigateToExpense(n.expenseType, n.monthKey)
-                                                }
-                                            >
-                                                <p className="text-sm text-blue-700 font-medium">
-                                                    {n.type}
-                                                </p>
-                                                <p className="text-sm text-blue-600 mt-1">
-                                                    {n.message}
-                                                </p>
-                                            </div>
-                                        ))}
-                                        {notifications.length === 0 && (
-                                            <div className="text-sm text-gray-500">
-                                                Keine Nachrichten
+                                    <div className="border-t border-gray-100">
+                                        {/* Header mit "Alle löschen" */}
+                                        {notifications.length > 0 && (
+                                            <div className="px-4 py-2 flex items-center justify-between bg-gray-50">
+                                                <span className="text-xs text-gray-500">
+                                                    {notifications.length} Nachricht
+                                                    {notifications.length !== 1 ? 'en' : ''}
+                                                </span>
+                                                <button
+                                                    onClick={handleClearAllNotifications}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                    Alle löschen
+                                                </button>
                                             </div>
                                         )}
+
+                                        {/* Scrollable notification list */}
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {notifications.length > 0 ? (
+                                                notifications.map(n => (
+                                                    <NotificationItem
+                                                        key={n.id}
+                                                        notification={n}
+                                                        onDismiss={handleDismissNotification}
+                                                        onClick={() => {
+                                                            markAsRead(n.id)
+                                                            navigateToExpense(
+                                                                n.expenseType,
+                                                                n.monthKey
+                                                            )
+                                                            setShowMessages(false)
+                                                        }}
+                                                    />
+                                                ))
+                                            ) : (
+                                                <div className="p-4 text-center text-sm text-gray-500">
+                                                    Keine Nachrichten vorhanden
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
 
+                    {/* Budget Cards */}
                     <div className="flex flex-col space-y-5 w-full flex-grow justify-center">
                         {isReady && userId && (
                             <>
@@ -220,6 +233,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
+                {/* Quick Access */}
                 {isReady && userId && (
                     <div className="mt-6 mb-4">
                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">

@@ -11,6 +11,8 @@ export interface Notification {
     userId: string
     groupId: string
     expenseId?: string
+    monthKey?: string
+    expenseType?: ExpenseType
     type: ActionType
     message: string
     isRead: boolean

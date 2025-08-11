@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Baby, Bell, ChevronDown, ShoppingCart, User, Users, CheckCheck } from 'lucide-react'
+import { Baby, Bell, X, ShoppingCart, User, Users, CheckCheck, Hand, Sparkles } from 'lucide-react'
+
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'
 import { PageHeader } from '@/components/layout/page-header.tsx'
@@ -113,136 +114,136 @@ export default function HomePage() {
 
             <main className="flex-1 px-4 mt-2 flex flex-col min-h-[calc(100vh-12rem)] justify-between">
                 <div className="flex flex-col gap-6 flex-grow">
-                    {/* Welcome Card mit Notifications */}
-                    <div className="bg-white shadow-md rounded-lg border border-blue-100 overflow-visible min-h-[120px] flex items-center">
-                        <div className="w-full">
-                            <div className="p-4 border-b border-gray-100">
-                                <div className="flex items-center justify-between">
+                    {/* Begrüßung + Glocke */}
+                    <div className="bg-white shadow-md rounded-t-lg rounded-b-none border border-blue-100 overflow-visible">
+                        <div className="p-4 border-b border-gray-100">
+                            <div className="flex items-center justify-between">
+                                {/* Greeting */}
+                                <div className="flex items-center gap-2">
+                                    <div className="h-5 w-5 rounded-full bg-blue-50 flex items-center justify-center">
+                                        <span className="text-blue-600 text-sm">✋</span>
+                                    </div>
                                     <div>
-                                        <h3 className="font-semibold text-xl text-gray-800">
-                                            Hallo, {currentUser.name}! 👋
+                                        <h3 className="font-semibold text-base text-gray-800">
+                                            Hallo, {currentUser.name}!
                                         </h3>
-                                        <p className="text-base text-gray-600 mt-1">
+                                        <p className="text-sm text-gray-600 mt-0.5">
                                             Schön, dass du wieder da bist
                                         </p>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Notification Toggle */}
-                            <div className="border-b border-gray-100">
+                                {/* Glocke */}
                                 <button
                                     onClick={handleDropdownToggle}
-                                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors min-h-[60px]"
+                                    className={`relative inline-flex items-center justify-center h-10 w-10 rounded-full border transition
+                            ${unreadCount > 0 ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                                    aria-label="Benachrichtigungen"
+                                    aria-expanded={showMessages}
+                                    aria-haspopup="true"
                                 >
-                                    <div className="flex items-center">
-                                        {unreadCount > 0 ? (
-                                            <>
-                                                <div className="w-3 h-3 bg-blue-500 rounded-full mr-3 animate-pulse"></div>
-                                                <span className="text-base font-medium text-gray-700">
-                                                    {unreadCount} neue Nachricht
-                                                    {unreadCount !== 1 ? 'en' : ''}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Bell className="h-4 w-4 text-gray-400 mr-3" />
-                                                <span className="text-base text-gray-500">
-                                                    Keine neuen Nachrichten
-                                                </span>
-                                            </>
-                                        )}
-                                    </div>
-                                    <ChevronDown
-                                        className={`h-5 w-5 text-gray-400 transition-transform ${
-                                            showMessages ? 'rotate-180' : ''
-                                        }`}
+                                    <Bell
+                                        className={`h-5 w-5 ${unreadCount > 0 ? 'text-blue-600 animate-bounce' : 'text-gray-600'}`}
                                     />
+                                    {unreadCount > 0 && (
+                                        <span
+                                            className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-600 text-white text-[10px] leading-5 text-center font-semibold"
+                                            aria-label={`${unreadCount} neue Nachrichten`}
+                                        >
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
                                 </button>
-
-                                {/* Notification List */}
-                                {showMessages && (
-                                    <div className="border-t border-gray-100">
-                                        {/* Header mit Tabs und Aktionen */}
-                                        <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
-                                                        <button
-                                                            onClick={() => setShowOnlyUnread(true)}
-                                                            className={`text-xs px-3 py-1.5 rounded-md transition-all ${
-                                                                showOnlyUnread
-                                                                    ? 'bg-blue-500 text-white shadow-sm'
-                                                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                                                            }`}
-                                                        >
-                                                            Neu{' '}
-                                                            {unreadCount > 0 && `(${unreadCount})`}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setShowOnlyUnread(false)}
-                                                            className={`text-xs px-3 py-1.5 rounded-md transition-all ${
-                                                                !showOnlyUnread
-                                                                    ? 'bg-blue-500 text-white shadow-sm'
-                                                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                                                            }`}
-                                                        >
-                                                            Alle (
-                                                            {unreadNotifications.length +
-                                                                readNotifications.length}
-                                                            )
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {unreadCount > 0 && showOnlyUnread && (
-                                                    <button
-                                                        onClick={handleClearAllNotifications}
-                                                        className="flex items-center gap-1.5 text-xs bg-white text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm hover:shadow"
-                                                    >
-                                                        <CheckCheck className="h-3.5 w-3.5" />
-                                                        Alle als gelesen
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Scrollable notification list */}
-                                        <div className="max-h-96 overflow-y-auto bg-gray-50">
-                                            {displayedNotifications.length > 0 ? (
-                                                <div className="divide-y divide-gray-100">
-                                                    {displayedNotifications.map(n => (
-                                                        <NotificationItem
-                                                            key={n.id}
-                                                            notification={n}
-                                                            onDismiss={handleDismissNotification}
-                                                            onClick={() => {
-                                                                if (!n.isRead) markAsRead(n.id)
-                                                                navigateToExpense(
-                                                                    n.expenseType,
-                                                                    n.monthKey
-                                                                )
-                                                                setShowMessages(false)
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="p-8 text-center">
-                                                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
-                                                        <Bell className="h-6 w-6 text-gray-400" />
-                                                    </div>
-                                                    <p className="text-sm text-gray-500">
-                                                        {showOnlyUnread
-                                                            ? 'Keine neuen Nachrichten'
-                                                            : 'Keine Nachrichten vorhanden'}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
+
+                        {/* Nachrichten-Panel: im normalen Flow, gleiche Breite, direkt angeschlossen */}
+                        {showMessages && (
+                            <div
+                                className="rounded-t-none rounded-b-lg border border-blue-100 border-t-0 bg-white overflow-hidden"
+                                role="dialog"
+                                aria-label="Benachrichtigungen"
+                            >
+                                {/* Tabs + Aktionen + Close */}
+                                <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+                                            <button
+                                                onClick={() => setShowOnlyUnread(true)}
+                                                className={`text-xs px-3 py-1.5 rounded-md transition-all ${
+                                                    showOnlyUnread
+                                                        ? 'bg-blue-500 text-white shadow-sm'
+                                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                Neu {unreadCount > 0 && `(${unreadCount})`}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowOnlyUnread(false)}
+                                                className={`text-xs px-3 py-1.5 rounded-md transition-all ${
+                                                    !showOnlyUnread
+                                                        ? 'bg-blue-500 text-white shadow-sm'
+                                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                Alle (
+                                                {unreadNotifications.length +
+                                                    readNotifications.length}
+                                                )
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {unreadCount > 0 && showOnlyUnread && (
+                                                <button
+                                                    onClick={handleClearAllNotifications}
+                                                    className="flex items-center gap-1.5 text-xs bg-white text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm hover:shadow"
+                                                >
+                                                    <CheckCheck className="h-3.5 w-3.5" />
+                                                    Alle als gelesen
+                                                </button>
+                                            )}
+                                            {/* Close-X */}
+                                            <button
+                                                onClick={() => setShowMessages(false)}
+                                                className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                                                aria-label="Schließen"
+                                            >
+                                                <X className="h-4 w-4 text-gray-600" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Liste */}
+                                <div className="max-h-80 overflow-y-auto bg-gray-50">
+                                    {displayedNotifications.length > 0 ? (
+                                        <div className="divide-y divide-gray-100">
+                                            {displayedNotifications.map(n => (
+                                                <NotificationItem
+                                                    key={n.id}
+                                                    notification={n}
+                                                    onDismiss={handleDismissNotification}
+                                                    onClick={() => {
+                                                        if (!n.isRead) markAsRead(n.id)
+                                                        navigateToExpense(n.expenseType, n.monthKey)
+                                                        setShowMessages(false)
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-6 text-center">
+                                            <p className="text-xs text-gray-500">
+                                                {showOnlyUnread
+                                                    ? 'Keine neuen Nachrichten'
+                                                    : 'Keine Nachrichten vorhanden'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Budget Cards */}
@@ -283,7 +284,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                {/* Quick Access */}
+                {/* Schnellzugriff */}
                 {isReady && userId && (
                     <div className="mt-6 mb-4">
                         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
@@ -316,7 +317,7 @@ export default function HomePage() {
                     </div>
                 )}
 
-                <div className="pb-20"></div>
+                <div className="pb-20" />
             </main>
 
             <ExpenseEditorBottomSheet

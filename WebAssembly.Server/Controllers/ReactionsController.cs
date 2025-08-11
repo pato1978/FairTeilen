@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
-using WebAssembly.Server.Models;
+
+using WebAssembly.Server.Services;
 
 namespace WebAssembly.Server.Controllers;
 
@@ -10,13 +11,15 @@ namespace WebAssembly.Server.Controllers;
 public class ReactionsController : ControllerBase
 {
     private readonly SharedDbContext _db;
+    private readonly NotificationDispatcher _notifier;
 
-    public ReactionsController(SharedDbContext db)
+    public ReactionsController(SharedDbContext db, NotificationDispatcher notifier)
     {
         _db = db;
+        _notifier = notifier;
     }
 
-    // ✅ POST: Neue Reaktion speichern oder ersetzen - MIT GroupId-Validierung
+    // ✅ POST: Neue Reaktion speichern oder ersetzen - MIT Notifications
     [HttpPost]
     public async Task<IActionResult> PostReaction([FromBody] ClarificationReaction reaction)
     {
@@ -34,12 +37,15 @@ public class ReactionsController : ControllerBase
         if (expense.GroupId != reaction.GroupId)
             return BadRequest("Reaktion und Ausgabe müssen zur selben Gruppe gehören");
 
-        // Bestehende Reaktion suchen und ersetzen
+        // Bestehende Reaktion suchen
         var existing = await _db.ClarificationReactions
             .FirstOrDefaultAsync(r => 
                 r.ExpenseId == reaction.ExpenseId && 
                 r.UserId == reaction.UserId &&
                 r.GroupId == reaction.GroupId);
+
+        bool wasRejected = existing?.Status == ClarificationStatus.Rejected;
+        bool isNowRejected = reaction.Status == ClarificationStatus.Rejected;
 
         if (existing != null)
         {
@@ -49,17 +55,29 @@ public class ReactionsController : ControllerBase
         _db.ClarificationReactions.Add(reaction);
         await _db.SaveChangesAsync();
 
+        // 📢 Notifications senden
+        if (!wasRejected && isNowRejected)
+        {
+            // Neue Beanstandung
+            await _notifier.NotifyAboutRejectionAsync(reaction.ExpenseId, reaction.UserId, reaction.GroupId);
+        }
+        else if (wasRejected && !isNowRejected)
+        {
+            // Beanstandung zurückgenommen
+            await _notifier.NotifyAboutRejectionWithdrawnAsync(reaction.ExpenseId, reaction.UserId, reaction.GroupId);
+        }
+
         return Ok(reaction);
     }
 
-    // ✅ DELETE: Reaktion eines Users zu einer Ausgabe löschen - MIT GroupId
+    // ✅ DELETE: Reaktion eines Users zu einer Ausgabe löschen - MIT Notifications
     [HttpDelete("{expenseId}/{userId}")]
     public async Task<IActionResult> DeleteReaction(
         string expenseId, 
         string userId,
         [FromQuery] string groupId)
     {
-        // 🔒 GroupId-Validierung dsd
+        // 🔒 GroupId-Validierung
         if (string.IsNullOrWhiteSpace(groupId))
             return BadRequest("GroupId ist erforderlich");
 
@@ -72,8 +90,16 @@ public class ReactionsController : ControllerBase
         if (reaction == null)
             return NotFound();
 
+        bool wasRejected = reaction.Status == ClarificationStatus.Rejected;
+
         _db.ClarificationReactions.Remove(reaction);
         await _db.SaveChangesAsync();
+
+        // 📢 Wenn eine Beanstandung gelöscht wurde, benachrichtigen
+        if (wasRejected)
+        {
+            await _notifier.NotifyAboutRejectionWithdrawnAsync(expenseId, userId, groupId);
+        }
 
         return NoContent();
     }

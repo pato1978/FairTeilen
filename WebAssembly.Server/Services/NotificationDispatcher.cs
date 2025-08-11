@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
-using WebAssembly.Server.Enums;
+
 using WebAssembly.Server.Models;
 
 namespace WebAssembly.Server.Services
@@ -60,9 +57,11 @@ namespace WebAssembly.Server.Services
                     ? creator.Email
                     : "Jemand";
 
-            // 3) Textbausteine
-            var verb        = isNew ? "erstellt" : "bearbeitet";
-            var actionDate  = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm");
+            // 3) Textbausteine mit deutschem Datumsformat
+            var verb = isNew ? "erstellt" : "bearbeitet";
+            var actionDate = DateTime.UtcNow.AddHours(1); // CET/CEST
+            var dateStr = actionDate.ToString("dd.MM.yyyy");
+            var timeStr = actionDate.ToString("HH:mm");
 
             // 4) Notification erzeugen
             foreach (var user in recipients)
@@ -72,10 +71,10 @@ namespace WebAssembly.Server.Services
                     UserId    = user.Id,
                     GroupId   = expense.GroupId!,
                     ExpenseId = expense.Id,
-                    ExpenseType = expense.Type, // ✅ NEU
+                    ExpenseType = expense.Type,
                     MonthKey = expense.MonthKey,
                     Type      = isNew ? ActionType.Created : ActionType.Updated,
-                    Message   = $"{creatorName} hat die Ausgabe „{expense.Name}“ am {actionDate} {verb}.",
+                    Message   = $"{creatorName} hat am {dateStr} um {timeStr} Uhr die Ausgabe {expense.Name} {verb}.",
                     ActionUrl = $"/expenses/{expense.Id}"
                 };
 
@@ -104,8 +103,10 @@ namespace WebAssembly.Server.Services
                     ? deleter.Email
                     : "Jemand";
 
-            // 3) Datum/Uhrzeit der Löschung
-            var actionDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm");
+            // 3) Datum/Uhrzeit der Löschung (deutsches Format)
+            var actionDate = DateTime.UtcNow.AddHours(1); // CET/CEST
+            var dateStr = actionDate.ToString("dd.MM.yyyy");
+            var timeStr = actionDate.ToString("HH:mm");
 
             // 4) Notification erzeugen
             foreach (var user in recipients)
@@ -115,11 +116,136 @@ namespace WebAssembly.Server.Services
                     UserId    = user.Id,
                     GroupId   = expense.GroupId!,
                     ExpenseId = expense.Id,
-                    ExpenseType = expense.Type, // ✅ NEU
+                    ExpenseType = expense.Type,
                     MonthKey = expense.MonthKey,
                     Type      = ActionType.Deleted,
-                    Message   = $"{deleterName} hat die Ausgabe „{expense.Name}“ am {actionDate} gelöscht.",
+                    Message   = $"{deleterName} hat am {dateStr} um {timeStr} Uhr die Ausgabe {expense.Name} gelöscht.",
                     ActionUrl = $"/expenses/{expense.Id}"
+                };
+
+                await _notifications.CreateNotificationAsync(notif);
+            }
+        }
+
+        /// <summary>
+        /// NEU: Benachrichtigt den Ersteller einer Ausgabe, wenn jemand sie beanstandet hat
+        /// </summary>
+        public async Task NotifyAboutRejectionAsync(string expenseId, string rejectingUserId, string groupId)
+        {
+            // 1) Lade die Ausgabe
+            var expense = await _db.SharedExpenses.FindAsync(expenseId);
+            if (expense == null || string.IsNullOrWhiteSpace(expense.CreatedByUserId))
+                return;
+
+            // 2) Lade den beanstandenden User
+            var rejectingUser = await _db.Users.FindAsync(rejectingUserId);
+            var rejectingUserName = !string.IsNullOrWhiteSpace(rejectingUser?.DisplayName)
+                ? rejectingUser.DisplayName
+                : !string.IsNullOrWhiteSpace(rejectingUser?.Email)
+                    ? rejectingUser.Email
+                    : "Jemand";
+
+            // Datum und Zeit für die Nachricht
+            var actionDate = DateTime.UtcNow.AddHours(1); // CET/CEST
+            var dateStr = actionDate.ToString("dd.MM.yyyy");
+            var timeStr = actionDate.ToString("HH:mm");
+
+            // 3) Erstelle Notification für den Ersteller der Ausgabe
+            var notification = new Notification
+            {
+                UserId = expense.CreatedByUserId,
+                GroupId = groupId,
+                ExpenseId = expenseId,
+                ExpenseType = expense.Type,
+                MonthKey = expense.MonthKey,
+                Type = ActionType.Rejected,
+                Message = $"{rejectingUserName} hat am {dateStr} um {timeStr} Uhr deine Ausgabe {expense.Name} beanstandet.",
+                ActionUrl = $"/expenses/{expenseId}"
+            };
+
+            await _notifications.CreateNotificationAsync(notification);
+
+            // 4) Optional: Benachrichtige auch alle anderen Gruppenmitglieder
+            var otherUsers = (await GetAllUsersInGroupAsync(groupId))
+                .Where(u => u.Id != expense.CreatedByUserId && u.Id != rejectingUserId)
+                .ToList();
+
+            foreach (var user in otherUsers)
+            {
+                var notif = new Notification
+                {
+                    UserId = user.Id,
+                    GroupId = groupId,
+                    ExpenseId = expenseId,
+                    ExpenseType = expense.Type,
+                    MonthKey = expense.MonthKey,
+                    Type = ActionType.Rejected,
+                    Message = $"{rejectingUserName} hat am {dateStr} um {timeStr} Uhr die Ausgabe {expense.Name} beanstandet.",
+                    ActionUrl = $"/expenses/{expenseId}"
+                };
+
+                await _notifications.CreateNotificationAsync(notif);
+            }
+        }
+
+        /// <summary>
+        /// NEU: Benachrichtigt alle, wenn eine Beanstandung zurückgenommen wurde
+        /// </summary>
+        public async Task NotifyAboutRejectionWithdrawnAsync(string expenseId, string userId, string groupId)
+        {
+            // 1) Lade die Ausgabe
+            var expense = await _db.SharedExpenses.FindAsync(expenseId);
+            if (expense == null)
+                return;
+
+            // 2) Lade den User, der die Beanstandung zurücknimmt
+            var withdrawingUser = await _db.Users.FindAsync(userId);
+            var withdrawingUserName = !string.IsNullOrWhiteSpace(withdrawingUser?.DisplayName)
+                ? withdrawingUser.DisplayName
+                : !string.IsNullOrWhiteSpace(withdrawingUser?.Email)
+                    ? withdrawingUser.Email
+                    : "Jemand";
+
+            // Datum und Zeit für die Nachricht
+            var actionDate = DateTime.UtcNow.AddHours(1); // CET/CEST
+            var dateStr = actionDate.ToString("dd.MM.yyyy");
+            var timeStr = actionDate.ToString("HH:mm");
+
+            // 3) Benachrichtige den Ersteller
+            if (!string.IsNullOrWhiteSpace(expense.CreatedByUserId))
+            {
+                var notification = new Notification
+                {
+                    UserId = expense.CreatedByUserId,
+                    GroupId = groupId,
+                    ExpenseId = expenseId,
+                    ExpenseType = expense.Type,
+                    MonthKey = expense.MonthKey,
+                    Type = ActionType.Confirmed,
+                    Message = $"{withdrawingUserName} hat am {dateStr} um {timeStr} Uhr die Beanstandung für {expense.Name} zurückgenommen.",
+                    ActionUrl = $"/expenses/{expenseId}"
+                };
+
+                await _notifications.CreateNotificationAsync(notification);
+            }
+
+            // 4) Benachrichtige andere Gruppenmitglieder
+            var otherUsers = (await GetAllUsersInGroupAsync(groupId))
+                .Where(u => u.Id != expense.CreatedByUserId && u.Id != userId)
+                .ToList();
+
+            foreach (var user in otherUsers)
+            {
+                var notif = new Notification
+                {
+                    UserId = user.Id,
+                    GroupId = groupId,
+                    ExpenseId = expenseId,
+                    ExpenseType = expense.Type,
+                    MonthKey = expense.MonthKey,
+                    Type = ActionType.Confirmed,
+                    Message = $"{withdrawingUserName} hat am {dateStr} um {timeStr} Uhr die Beanstandung für {expense.Name} zurückgenommen.",
+                    ActionUrl = $"/expenses/{expenseId}"
                 };
 
                 await _notifications.CreateNotificationAsync(notif);

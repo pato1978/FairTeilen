@@ -1,8 +1,7 @@
 import { Plus, Edit3, Trash2, CheckCircle, AlertCircle, Clock, Check } from 'lucide-react'
 import { useSwipe } from '@/lib/hooks/use-swipe'
 import type { Notification } from '@/types/notification'
-import { formatDistanceToNow } from 'date-fns'
-import { de } from 'date-fns/locale'
+import { formatRelativeTime } from '@/lib/date-utils'
 
 interface NotificationItemProps {
     notification: Notification
@@ -16,11 +15,8 @@ export function NotificationItem({ notification, onDismiss, onClick }: Notificat
         onSwipeLeft: () => onDismiss(notification.id),
     })
 
-    // Zeitformatierung
-    const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
-        addSuffix: true,
-        locale: de,
-    })
+    // Zeitformatierung auf Deutsch
+    const timeAgo = formatRelativeTime(notification.createdAt)
 
     // Icon und Farbe basierend auf Typ
     const getIconAndColor = () => {

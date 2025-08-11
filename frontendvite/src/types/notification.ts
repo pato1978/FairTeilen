@@ -1,3 +1,4 @@
+import type { ExpenseType } from '@/types'
 export enum ActionType {
     Created = 'Created',
     Updated = 'Updated',

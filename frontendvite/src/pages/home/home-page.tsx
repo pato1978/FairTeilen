@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Baby, Bell, ChevronDown, ShoppingCart, Trash2, User, Users } from 'lucide-react'
+import { Baby, Bell, ChevronDown, ShoppingCart, User, Users, CheckCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'
 import { PageHeader } from '@/components/layout/page-header.tsx'
@@ -26,8 +26,21 @@ export default function HomePage() {
     const currentUser = users[userId]
     const { personal, shared, child } = useMultiBudget()
 
-    // Notification handling
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification()
+    // Notification handling mit getrennten Listen
+    const {
+        unreadNotifications,
+        readNotifications,
+        unreadCount,
+        showOnlyUnread,
+        setShowOnlyUnread,
+        markAsRead,
+        markAllAsRead,
+    } = useNotification()
+
+    // Entscheide welche Notifications angezeigt werden
+    const displayedNotifications = showOnlyUnread
+        ? unreadNotifications
+        : [...unreadNotifications, ...readNotifications]
 
     const handleAddButtonClick = () => {
         setEditingExpense({
@@ -78,10 +91,12 @@ export default function HomePage() {
     }
 
     const handleDismissNotification = async (id: string) => {
+        // Bei Swipe: Als gelesen markieren (nicht löschen)
         await markAsRead(id)
     }
 
     const handleClearAllNotifications = async () => {
+        // Nur noch als gelesen markieren, kein Löschen mehr
         await markAllAsRead()
         setShowMessages(false)
     }
@@ -148,44 +163,79 @@ export default function HomePage() {
                                 {/* Notification List */}
                                 {showMessages && (
                                     <div className="border-t border-gray-100">
-                                        {/* Header mit "Alle löschen" */}
-                                        {notifications.length > 0 && (
-                                            <div className="px-4 py-2 flex items-center justify-between bg-gray-50">
-                                                <span className="text-xs text-gray-500">
-                                                    {notifications.length} Nachricht
-                                                    {notifications.length !== 1 ? 'en' : ''}
-                                                </span>
-                                                <button
-                                                    onClick={handleClearAllNotifications}
-                                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                    Alle löschen
-                                                </button>
+                                        {/* Header mit Tabs und Aktionen */}
+                                        <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-gray-100">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex gap-1 bg-white rounded-lg p-0.5 shadow-sm">
+                                                        <button
+                                                            onClick={() => setShowOnlyUnread(true)}
+                                                            className={`text-xs px-3 py-1.5 rounded-md transition-all ${
+                                                                showOnlyUnread
+                                                                    ? 'bg-blue-500 text-white shadow-sm'
+                                                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            Neu{' '}
+                                                            {unreadCount > 0 && `(${unreadCount})`}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setShowOnlyUnread(false)}
+                                                            className={`text-xs px-3 py-1.5 rounded-md transition-all ${
+                                                                !showOnlyUnread
+                                                                    ? 'bg-blue-500 text-white shadow-sm'
+                                                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                                            }`}
+                                                        >
+                                                            Alle (
+                                                            {unreadNotifications.length +
+                                                                readNotifications.length}
+                                                            )
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {unreadCount > 0 && showOnlyUnread && (
+                                                    <button
+                                                        onClick={handleClearAllNotifications}
+                                                        className="flex items-center gap-1.5 text-xs bg-white text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 rounded-lg border border-blue-200 hover:border-blue-300 transition-all shadow-sm hover:shadow"
+                                                    >
+                                                        <CheckCheck className="h-3.5 w-3.5" />
+                                                        Alle als gelesen
+                                                    </button>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
 
                                         {/* Scrollable notification list */}
-                                        <div className="max-h-64 overflow-y-auto">
-                                            {notifications.length > 0 ? (
-                                                notifications.map(n => (
-                                                    <NotificationItem
-                                                        key={n.id}
-                                                        notification={n}
-                                                        onDismiss={handleDismissNotification}
-                                                        onClick={() => {
-                                                            markAsRead(n.id)
-                                                            navigateToExpense(
-                                                                n.expenseType,
-                                                                n.monthKey
-                                                            )
-                                                            setShowMessages(false)
-                                                        }}
-                                                    />
-                                                ))
+                                        <div className="max-h-96 overflow-y-auto bg-gray-50">
+                                            {displayedNotifications.length > 0 ? (
+                                                <div className="divide-y divide-gray-100">
+                                                    {displayedNotifications.map(n => (
+                                                        <NotificationItem
+                                                            key={n.id}
+                                                            notification={n}
+                                                            onDismiss={handleDismissNotification}
+                                                            onClick={() => {
+                                                                if (!n.isRead) markAsRead(n.id)
+                                                                navigateToExpense(
+                                                                    n.expenseType,
+                                                                    n.monthKey
+                                                                )
+                                                                setShowMessages(false)
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
                                             ) : (
-                                                <div className="p-4 text-center text-sm text-gray-500">
-                                                    Keine Nachrichten vorhanden
+                                                <div className="p-8 text-center">
+                                                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
+                                                        <Bell className="h-6 w-6 text-gray-400" />
+                                                    </div>
+                                                    <p className="text-sm text-gray-500">
+                                                        {showOnlyUnread
+                                                            ? 'Keine neuen Nachrichten'
+                                                            : 'Keine Nachrichten vorhanden'}
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>

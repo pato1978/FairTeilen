@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAssembly.Server.Data;
@@ -177,6 +178,81 @@ public class BudgetController : ControllerBase
         
         return entry;
     }
+     // ─────────────────────────────────────────────────────────────────────────────
+    // 📌 TESTENDPUNKT: Budgets wie zum Monatswechsel aus Vormonat kopieren
+    //    Beispiel: GET /api/budget/test/copyFromPrevious?simulatedToday=2025-08-01
+    // ─────────────────────────────────────────────────────────────────────────────
+    [HttpGet("test/copyFromPrevious")]
+    public async Task<IActionResult> TestCopyFromPrevious([FromQuery] DateTime simulatedToday)
+    {
+        await CopyBudgetsFromPreviousMonthAtDate(simulatedToday);
+        return Ok($"✅ Budget-Testlauf erfolgreich für {simulatedToday:yyyy-MM-dd}");
+    }
+
+    // 🔁 Kopiert Budgets vom Vormonat in den aktuellen Monat (alle Scopes)
+    private async Task CopyBudgetsFromPreviousMonthAtDate(DateTime simulatedToday)
+    {
+        var firstOfThisMonth = new DateTime(simulatedToday.Year, simulatedToday.Month, 1);
+        var lastMonthKey = firstOfThisMonth.AddMonths(-1).ToString("yyyy-MM");
+        var thisMonthKey = firstOfThisMonth.ToString("yyyy-MM");
+
+        // Hol alle Budget-Einträge des Vormonats (Scope/UserId/GroupId eindeutig)
+        var lastMonthBudgets = await _sharedDb.Set<BudgetEntry>()
+            .Where(b => b.Month == lastMonthKey)
+            .Select(b => new { b.Scope, b.UserId, b.GroupId, b.Amount })
+            .ToListAsync();
+
+        var created = 0;
+        foreach (var prev in lastMonthBudgets)
+        {
+            // Sicherheits-Check: Für shared/child muss GroupId gesetzt sein
+            if ((prev.Scope == "shared" || prev.Scope == "child") &&
+                string.IsNullOrWhiteSpace(prev.GroupId))
+            {
+                _logger.LogWarning("⚠️ Budget-Kopie übersprungen (fehlende GroupId) für {Scope} / {UserId}", prev.Scope, prev.UserId);
+                continue;
+            }
+
+            var exists = await _sharedDb.Set<BudgetEntry>().AnyAsync(b =>
+                b.Month == thisMonthKey &&
+                b.Scope == prev.Scope &&
+                b.UserId == prev.UserId &&
+                b.GroupId == (prev.Scope == "personal" ? "" : prev.GroupId));
+
+            if (exists) continue;
+
+            var entry = new BudgetEntry
+            {
+                Id = Guid.NewGuid(),
+                Month = thisMonthKey,
+                Scope = prev.Scope,
+                // ⚠️ Konvention: Für personal → GroupId leer; für shared/child bleibt GroupId
+                GroupId = prev.Scope == "personal" ? "" : prev.GroupId,
+                // ⚠️ Konvention aus deinem Code: Für shared/child ist userId bereits "group-{groupId}"
+                UserId = prev.UserId,
+                Amount = prev.Amount
+            };
+
+            _sharedDb.Set<BudgetEntry>().Add(entry);
+            created++;
+        }
+
+        if (created > 0)
+        {
+            await _sharedDb.SaveChangesAsync();
+        }
+
+        _logger.LogInformation("✅ Budget-Kopie abgeschlossen: {Created} neue Einträge für Monat {Month}", created, thisMonthKey);
+    }
+
+    // 📅 Hangfire-Job: zum Monatsanfang Budgets aus Vormonat übernehmen
+    [DisableConcurrentExecution(timeoutInSeconds: 60 * 60)]
+    public async Task CopyBudgetsFromPreviousMonth()
+    {
+        var today = DateTime.Today;
+        await CopyBudgetsFromPreviousMonthAtDate(today);
+    }
+
 
     private DbContext GetDbContext(string scope)
     {

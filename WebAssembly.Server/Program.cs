@@ -57,8 +57,10 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",     // ✅ Vite Dev Server (http)
-                "https://localhost"          // ✅ zusätzlich erlaubt (https für Capacitor Preview etc.)
+                "http://localhost:5173",
+                "https://localhost",
+                "http://localhost:5289",  // ⚠️ Diese Zeile
+                "null"  
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
@@ -71,6 +73,10 @@ var app = builder.Build();
 app.UseRouting();
 app.UseCors();
 app.UseAuthorization();
+
+// ✅ HINZUFÜGEN: Hangfire Dashboard aktivieren
+app.UseHangfireDashboard("/hangfire");
+
 app.Use(async (context, next) =>
 {
     try
@@ -92,15 +98,19 @@ using (var scope = app.Services.CreateScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
+    // ✅ VERBESSERUNG: Logging hinzufügen
+    Console.WriteLine("🔄 Registriere Hangfire Recurring Job...");
+    
     recurringJobManager.AddOrUpdate(
         "monthly-copy-shared-expenses",
         Job.FromExpression<WebAssembly.Server.Controllers.ExpensesController>(c => c.CopyRecurringSharedExpenses()),
         "5 0 1 * *",
         TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time")
     );
+    
+    Console.WriteLine("✅ Hangfire Job 'monthly-copy-shared-expenses' erfolgreich registriert");
+    Console.WriteLine($"⏰ Nächste Ausführung: Jeden 1. des Monats um 00:05 (CEST)");
+    Console.WriteLine($"🌍 Zeitzone: Central European Standard Time");
 }
-
-
-
 
 app.Run();

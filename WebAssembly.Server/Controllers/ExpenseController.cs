@@ -40,15 +40,15 @@ namespace WebAssembly.Server.Controllers
             var firstOfThisMonth = new DateTime(simulatedToday.Year, simulatedToday.Month, 1);
 
             // 👉 Bereits kopiert? (gilt nur für Shared/Child!)
-            var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
-                (e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child) &&
-                e.isRecurring &&
-                e.Date >= firstOfThisMonth &&
-                e.Date < firstOfThisMonth.AddMonths(1)
-            );
+            //var alreadyCopied = await _sharedDb.SharedExpenses.AnyAsync(e =>
+              //  (e.Type == ExpenseType.Shared || e.Type == ExpenseType.Child) &&
+               // e.isRecurring &&
+                //e.Date >= firstOfThisMonth &&
+                //e.Date < firstOfThisMonth.AddMonths(1)
+            //);
 
-            if (alreadyCopied)
-                return;
+            //if (alreadyCopied)
+              //  return;
 
             var lastMonthStart = firstOfThisMonth.AddMonths(-1);
             var lastMonthEnd = firstOfThisMonth;

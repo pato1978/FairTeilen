@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
         <PackageReference Include="Hangfire" Version="1.8.20" />
         <PackageReference Include="Hangfire.AspNetCore" Version="1.8.20" />
         <PackageReference Include="Hangfire.SqlServer" Version="1.8.20" />
@@ -22,6 +23,7 @@
 
         <!-- Test Packages -->
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.1" />
         <PackageReference Include="xunit" Version="2.7.0" />
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.7">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

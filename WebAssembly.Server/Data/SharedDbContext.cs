@@ -9,6 +9,7 @@ namespace WebAssembly.Server.Data
         public DbSet<Expense> SharedExpenses { get; set; }
         public DbSet<BudgetEntry> SharedBudgets { get; set; }
         public DbSet<AppUser> Users { get; set; }
+        public DbSet<InviteToken> InviteTokens { get; set; } = default!;
         
         public DbSet<MonthlyOverview> SharedMonthlyOverviews { get; set; }
         public DbSet<ClarificationReaction> ClarificationReactions { get; set; }
@@ -21,9 +22,12 @@ namespace WebAssembly.Server.Data
         {
             base.OnModelCreating(modelBuilder);
             
-            modelBuilder.Entity<AppUser>()
-                .HasIndex(u => u.Email)
-                .IsUnique(false); // ← später evtl. auf true setzen, wenn E-Mail Pflicht
+            modelBuilder.Entity<AppUser>(b =>
+            {
+                b.HasIndex(u => u.Email)
+                 .IsUnique(false); // ← später evtl. auf true setzen, wenn E-Mail Pflicht
+                b.Property(u => u.DisplayName).HasMaxLength(100);
+            });
             // ✅ Markiere MonthlyOverview als keyless ViewModel
             modelBuilder.Entity<MonthlyOverview>().HasNoKey();
             // 🔗 Beziehung zur Ausgabe – optional (nur nötig, wenn Navigation verwendet wird)
@@ -74,6 +78,21 @@ namespace WebAssembly.Server.Data
 
             modelBuilder.Entity<Notification>()
                 .HasIndex(n => new { n.UserId, n.GroupId, n.IsRead });
+
+            modelBuilder.Entity<InviteToken>(b =>
+            {
+                b.HasKey(i => i.Id);
+                b.HasIndex(i => i.Code).IsUnique();
+                b.Property(i => i.Code).HasMaxLength(50).IsRequired();
+                b.HasOne(i => i.InviterUser)
+                    .WithMany()
+                    .HasForeignKey(i => i.InviterUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(i => i.RedeemedByUser)
+                    .WithMany()
+                    .HasForeignKey(i => i.RedeemedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
         }
 
         public SharedDbContext(DbContextOptions<SharedDbContext> options)

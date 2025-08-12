@@ -13,6 +13,9 @@ public class AppUser
     public string? PasswordHash { get; set; }  // Bcrypt oder anderes Hashverfahren
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // 🎫 Einladungen
+    public string? InvitedByUserId { get; set; }
+
     // 🧩 Rolle & Flags
     [Column(TypeName = "nvarchar(20)")]
     [JsonConverter(typeof(JsonStringEnumConverter))]

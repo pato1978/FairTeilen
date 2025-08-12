@@ -1,0 +1,42 @@
+@baseUrl = https://localhost:5001
+
+### Register (optional mit inviteCode)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "first@example.com",
+  "password": "Str0ng!Pass123",
+  "displayName": "First User"
+}
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "first@example.com",
+  "password": "Str0ng!Pass123"
+}
+
+### Create Invite (requires Bearer)
+# Setze vorher {{token}} aus dem Login-Response.
+POST {{baseUrl}}/api/Invites/create
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "expiresInHours": 72
+}
+
+### Accept Invite + auto-login
+POST {{baseUrl}}/api/Invites/accept
+Content-Type: application/json
+
+{
+  "code": "PASTE_CODE_HERE",
+  "email": "second@example.com",
+  "password": "An0ther!Pass",
+  "displayName": "Second User"
+}
+

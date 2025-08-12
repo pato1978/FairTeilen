@@ -3,9 +3,13 @@ using System.Text.Json.Serialization;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.SqlServer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using WebAssembly.Server.Data;
 using WebAssembly.Server.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +54,39 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationDispatcher>();
 builder.Services.AddTransient<IMailService, MailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IInviteService, InviteService>();
+
+var secret = builder.Configuration["JWT:Secret"] ?? "REPLACE_WITH_STRONG_RANDOM_SECRET";
+var issuer = builder.Configuration["JWT:Issuer"] ?? "api.local";
+var audience = builder.Configuration["JWT:Audience"] ?? "api.local";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("authLimiter", o =>
+    {
+        o.Window = TimeSpan.FromSeconds(30);
+        o.PermitLimit = 10;
+        o.QueueLimit = 0;
+    });
+});
 
 // 🔧 CORS – bei Bedarf um weitere Umgebungen erweitern
 builder.Services.AddCors(options =>
@@ -69,9 +106,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-//app.UseHttpsRedirection(); // funktioniert nur, wenn HTTPS im Container konfiguriert
+app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 // ✅ HINZUFÜGEN: Hangfire Dashboard aktivieren

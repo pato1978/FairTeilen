@@ -66,7 +66,35 @@ export function NotificationItem({ notification, onDismiss, onClick }: Notificat
         }
     }
 
+    // ✅ FIX: Einheitliche Behandlung der expenseType mit case-insensitive Vergleich
+    const getExpenseTypeInfo = (expenseType?: string) => {
+        if (!expenseType) return null
+
+        // Normalisiere auf lowercase für einheitlichen Vergleich
+        const normalizedType = expenseType.toLowerCase()
+
+        switch (normalizedType) {
+            case 'shared':
+                return {
+                    label: 'Gemeinsam',
+                    className: 'bg-purple-50 text-purple-700',
+                }
+            case 'child':
+                return {
+                    label: 'Kind',
+                    className: 'bg-pink-50 text-pink-700',
+                }
+            case 'personal':
+            default:
+                return {
+                    label: 'Persönlich',
+                    className: 'bg-gray-50 text-gray-700',
+                }
+        }
+    }
+
     const { icon: Icon, bgColor, iconColor, borderColor } = getIconAndColor()
+    const expenseTypeInfo = getExpenseTypeInfo(notification.expenseType)
 
     return (
         <div className="relative overflow-hidden">
@@ -131,24 +159,12 @@ export function NotificationItem({ notification, onDismiss, onClick }: Notificat
                         </div>
                         <div className="flex items-center gap-3 mt-1">
                             <p className="text-xs text-gray-500">{timeAgo}</p>
-                            {notification.expenseType && (
+                            {/* ✅ FIX: Verwende die neue getExpenseTypeInfo Funktion */}
+                            {expenseTypeInfo && (
                                 <span
-                                    className={`
-                                    text-xs px-2 py-0.5 rounded-full
-                                    ${
-                                        notification.expenseType === 'shared'
-                                            ? 'bg-purple-50 text-purple-700'
-                                            : notification.expenseType === 'child'
-                                              ? 'bg-pink-50 text-pink-700'
-                                              : 'bg-gray-50 text-gray-700'
-                                    }
-                                `}
+                                    className={`text-xs px-2 py-0.5 rounded-full ${expenseTypeInfo.className}`}
                                 >
-                                    {notification.expenseType === 'shared'
-                                        ? 'Gemeinsam'
-                                        : notification.expenseType === 'child'
-                                          ? 'Kind'
-                                          : 'Persönlich'}
+                                    {expenseTypeInfo.label}
                                 </span>
                             )}
                         </div>

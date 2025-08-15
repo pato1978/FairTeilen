@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import type { Expense } from '@/types'
 import { users } from '@/data/users'
@@ -17,7 +19,6 @@ interface BudgetSummaryCardProps {
 export function BudgetSummaryCard({
     title,
     budget,
-
     // percentageUsed,
     onBudgetClick,
     onTitleClick,
@@ -31,7 +32,7 @@ export function BudgetSummaryCard({
     const [excludeRecurring, setExcludeRecurring] = useState(true)
 
     const parseAmount = (val: unknown) =>
-        typeof val === 'number' ? val : parseFloat(String(val).replace(',', '.')) || 0
+        typeof val === 'number' ? val : Number.parseFloat(String(val).replace(',', '.')) || 0
 
     const getFilteredExpenses = () => {
         if (currentCategory === 'gesamt') return expenses
@@ -87,9 +88,7 @@ export function BudgetSummaryCard({
 
     return (
         <div
-            className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 ${
-                hideBudget ? 'pb-2' : ''
-            }`}
+            className={`p-4 rounded-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-50 ${hideBudget ? 'pb-3' : ''}`}
         >
             <h4
                 className="text-lg font-semibold text-black mb-3 cursor-pointer hover:opacity-80 transition-opacity min-h-[44px] flex items-center active:scale-[0.98]"
@@ -97,15 +96,8 @@ export function BudgetSummaryCard({
             >
                 <div className="flex justify-between items-center w-full">
                     <span>{title}</span>
-                    <button
-                        className="text-black text-base font-semibold cursor-pointer px-3 py-2 hover:bg-blue-200/50 rounded-lg transition-colors min-w-[80px] min-h-[44px] active:scale-95"
-                        onClick={e => {
-                            e.stopPropagation()
-                            onCategoryChange?.('gesamt')
-                        }}
-                    >
-                        {currentCategory}
-                    </button>
+                    {/* Nur Text, kein Button */}
+                    <span className="text-black text-base font-semibold">{currentCategory}</span>
                 </div>
             </h4>
 
@@ -117,12 +109,15 @@ export function BudgetSummaryCard({
                     </div>
 
                     {sortedUserExpenses.length > 0 ? (
-                        <div className="space-y-1.5 pt-2 border-t border-blue-200">
+                        <div className="space-y-1 pt-2 border-t border-blue-200">
                             {sortedUserExpenses.map(({ userId, amount, user }) => {
                                 const { bg, border, text } = getUserColorClasses(user.color)
                                 return (
-                                    <div key={userId} className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
+                                    <div
+                                        key={userId}
+                                        className="flex justify-between items-center py-1"
+                                    >
+                                        <div className="flex items-center gap-3">
                                             <div
                                                 className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg} transition-transform duration-200 hover:scale-110`}
                                             >
@@ -147,54 +142,54 @@ export function BudgetSummaryCard({
                 </div>
             ) : (
                 <>
-                    <div className="flex justify-between items-center mb-1">
-                        <button
-                            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors text-base font-medium px-2 py-2 -ml-2 rounded-lg hover:bg-blue-100/50 active:scale-95 min-h-[44px]"
-                            onClick={onBudgetClick}
-                        >
-                            <span>Budget:</span>
-                            <span className="ml-1 text-xs font-normal text-blue-600">
-                                (bearbeiten)
-                            </span>
-                        </button>
-                        <span className="text-base font-medium">€{budget}</span>
+                    <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-base font-medium text-gray-700">Budget:</span>
+                            <button
+                                className="text-xs px-2 py-1 border border-blue-300 rounded hover:bg-blue-100 text-blue-600"
+                                onClick={onBudgetClick}
+                                title="Budget bearbeiten"
+                            >
+                                bearbeiten
+                            </button>
+                        </div>
+                        <span className="text-base font-medium">€{budget.toFixed(2)}</span>
                     </div>
 
-                    {/* 🔄 Toggle + Anzeige */}
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-base font-medium text-gray-700">
-                            {excludeRecurring
-                                ? 'Ausgegeben (ohne wiederkehrend):'
-                                : 'Ausgegeben (inkl. wiederkehrend):'}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-base font-medium">
-                                €{displayedTotal.toFixed(2)}
-                            </span>
+                    <div className="flex justify-between items-center mb-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-base font-medium text-gray-700">Ausgegeben:</span>
                             <button
                                 onClick={() => setExcludeRecurring(prev => !prev)}
-                                className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                                className="text-xs px-2 py-1 border border-blue-300 rounded hover:bg-blue-100 text-blue-600"
                                 title="Anzeige umschalten"
                             >
                                 {excludeRecurring ? 'inkl.' : 'ohne'}
                             </button>
                         </div>
+                        <span className="text-base font-medium">€{displayedTotal.toFixed(2)}</span>
                     </div>
 
-                    <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm text-gray-600">
-                            davon wiederkehrend (separat):
-                        </span>
-                        <span className="text-sm text-gray-600">€{recurringTotal.toFixed(2)}</span>
-                    </div>
+                    {/* 💡 „davon wiederkehrend“ nur anzeigen, wenn inkl. gewählt ist */}
+                    {excludeRecurring && (
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-sm text-gray-600">davon wiederkehrend:</span>
+                            <span className="text-sm text-gray-600">
+                                €{recurringTotal.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
                     {sortedUserExpenses.length > 0 ? (
-                        <div className="space-y-1.5 mt-3 pt-3 border-t border-blue-200">
+                        <div className="space-y-1 mt-3 pt-3 border-t border-blue-200">
                             {sortedUserExpenses.map(({ userId, amount, user }) => {
                                 const { bg, border, text } = getUserColorClasses(user.color)
                                 return (
-                                    <div key={userId} className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2">
+                                    <div
+                                        key={userId}
+                                        className="flex justify-between items-center py-1"
+                                    >
+                                        <div className="flex items-center gap-3">
                                             <div
                                                 className={`w-6 h-6 text-xs font-semibold border flex items-center justify-center rounded-full ${text} ${border} ${bg} transition-transform duration-200 hover:scale-110`}
                                             >

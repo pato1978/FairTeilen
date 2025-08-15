@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Baby, Bell, X, ShoppingCart, User, Users, CheckCheck, Hand, Sparkles } from 'lucide-react'
+import { Baby, Bell, X, ShoppingCart, User, Users, CheckCheck } from 'lucide-react'
 
 import { useNavigate } from 'react-router-dom'
 import { PageLayout } from '@/components/layout/page-layout.tsx'

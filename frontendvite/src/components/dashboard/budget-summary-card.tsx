@@ -17,7 +17,7 @@ export function BudgetSummaryCard({
     title,
     budget,
     totalExpenses = 0,
-    percentageUsed,
+    //percentageUsed,
     onBudgetClick,
     onTitleClick,
     onCategoryChange,

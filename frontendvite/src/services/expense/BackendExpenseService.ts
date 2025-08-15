@@ -1,9 +1,10 @@
-// src/services/BackendExpenseService.ts
+// src/services/expense/BackendExpenseService.ts - ERWEITERT mit Clarification-Bereinigung
 import { Capacitor, CapacitorHttp, HttpResponse } from '@capacitor/core'
 import { Expense, ExpenseType } from '@/types'
 import { GROUP_ID } from '@/config/group-config'
 import type { ExpenseScope, IExpenseService } from './ExpenseServiceInterface'
 import { BaseExpenseService } from './BaseExpenseService'
+import { ClarificationReactionService } from './ClarificationReactionService' // ✅ NEU
 
 /**
  * 🌐 Plattform‑abhängige Basis‑URL für API‑Zugriffe:
@@ -156,39 +157,107 @@ export class BackendExpenseService extends BaseExpenseService implements IExpens
         }
     }
 
-    /** ❌ Ausgabe löschen */
-    async deleteExpense(id: string, groupId?: string): Promise<void> {
+    /** ❌ Ausgabe löschen - ✅ NEU: Mit Clarification-Bereinigung für shared/child expenses */
+    async deleteExpense(id: string, groupId?: string, expenseDate?: string): Promise<void> {
         // ✅ GroupId immer aus Config nehmen, wenn nicht explizit übergeben
         const gid = groupId ?? GROUP_ID
         const url = `${API_BASE_URL}/expenses/${id}?group=${encodeURIComponent(gid)}`
 
-        console.log('🗑️ deleteExpense:', {
+        console.log('🗑️ deleteExpense (Backend - nur shared/child haben Clarifications):', {
             id,
             groupId: gid,
+            expenseDate,
             url,
         })
 
-        if (Capacitor.isNativePlatform?.()) {
-            const response: HttpResponse = await CapacitorHttp.delete({ url })
-            if (response.status < 200 || response.status >= 300) {
-                console.error('❌ DeleteExpense Fehler:', {
-                    status: response.status,
-                    data: response.data,
-                })
-                throw new Error(`Fehler beim Löschen der zentralen Ausgabe: ${response.status}`)
+        try {
+            // ✅ SCHRITT 1: Clarification Reactions bereinigen (nur für shared/child expenses)
+            // Personal expenses werden über BackendExpenseService nur bei shared/child verarbeitet
+            console.log(
+                '🧹 Schritt 1: Bereinige Clarification Reactions für shared/child expense...'
+            )
+
+            if (expenseDate) {
+                // ✅ KORRIGIERT: MonthKey aus Expense-Datum ableiten, nicht aus Reaction-Timestamp
+                const monthKey = expenseDate.slice(0, 7) // "2025-01-15" -> "2025-01"
+
+                try {
+                    // Lade alle Reactions für diese Expense
+                    const reactions = await ClarificationReactionService.getReactionsForExpense(id)
+
+                    if (reactions.length > 0) {
+                        console.log(
+                            `🔄 Lösche ${reactions.length} Clarification Reactions für Expense ${id} (Monat: ${monthKey})`
+                        )
+
+                        // Lösche jede Reaction einzeln mit dem korrekten monthKey
+                        for (const reaction of reactions) {
+                            try {
+                                await ClarificationReactionService.deleteClarificationReaction(
+                                    reaction.expenseId,
+                                    reaction.userId,
+                                    monthKey // ✅ Korrekt: aus Expense-Datum abgeleitet
+                                )
+                                console.log(
+                                    `✅ Reaction gelöscht: ${reaction.userId} für ${reaction.expenseId} (${monthKey})`
+                                )
+                            } catch (reactionError) {
+                                console.warn(`⚠️ Konnte Reaction nicht löschen:`, reactionError)
+                                // Nicht abbrechen - versuche trotzdem die Expense zu löschen
+                            }
+                        }
+                    } else {
+                        console.log('ℹ️ Keine Clarification Reactions zum Bereinigen gefunden')
+                    }
+                } catch (clarificationError) {
+                    console.warn(
+                        '⚠️ Fehler beim Bereinigen der Clarification Reactions:',
+                        clarificationError
+                    )
+                    // Nicht abbrechen - versuche trotzdem die Expense zu löschen
+                }
+            } else {
+                console.log(
+                    '⚠️ Kein Expense-Datum übergeben - Clarification-Bereinigung übersprungen'
+                )
             }
-            console.log('✅ Ausgabe erfolgreich gelöscht (native)')
-        } else {
-            const res = await fetch(url, { method: 'DELETE' })
-            if (!res.ok) {
-                const text = await res.text()
-                console.error('❌ DeleteExpense Fehler:', {
-                    status: res.status,
-                    body: text,
-                })
-                throw new Error(`Fehler beim Löschen der zentralen Ausgabe: ${text}`)
+
+            // ✅ SCHRITT 2: Dann die Ausgabe selbst löschen
+            console.log('🗑️ Schritt 2: Lösche shared/child Ausgabe...')
+
+            if (Capacitor.isNativePlatform?.()) {
+                const response: HttpResponse = await CapacitorHttp.delete({ url })
+                if (response.status < 200 || response.status >= 300) {
+                    console.error('❌ DeleteExpense Fehler:', {
+                        status: response.status,
+                        data: response.data,
+                    })
+                    throw new Error(`Fehler beim Löschen der zentralen Ausgabe: ${response.status}`)
+                }
+                console.log('✅ Shared/child Ausgabe erfolgreich gelöscht (native)')
+            } else {
+                const res = await fetch(url, { method: 'DELETE' })
+                if (!res.ok) {
+                    const text = await res.text()
+                    console.error('❌ DeleteExpense Fehler:', {
+                        status: res.status,
+                        body: text,
+                    })
+                    throw new Error(`Fehler beim Löschen der zentralen Ausgabe: ${text}`)
+                }
+                console.log('✅ Shared/child Ausgabe erfolgreich gelöscht (web)')
             }
-            console.log('✅ Ausgabe erfolgreich gelöscht (web)')
+
+            // ✅ SCHRITT 3: Cache invalidieren
+            console.log('🧹 Schritt 3: Invalidiere Clarification-Cache...')
+            ClarificationReactionService.clearCache()
+
+            console.log(
+                '✅ Shared/child Ausgabe und alle dazugehörigen Clarifications erfolgreich gelöscht'
+            )
+        } catch (error) {
+            console.error('❌ Fehler beim vollständigen Löschen der shared/child Ausgabe:', error)
+            throw error
         }
     }
 

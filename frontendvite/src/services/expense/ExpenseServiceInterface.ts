@@ -1,10 +1,9 @@
-// src/services/ExpenseServiceInterface.ts
+// src/services/expense/ExpenseServiceInterface.ts - ERWEITERT
 
 import type { Expense } from '@/types'
 import type { LucideIcon } from 'lucide-react'
 
 export type ExpenseScope = 'personal' | 'shared' | 'child'
-/** Das fachliche Modell einer Ausgabe */
 
 export interface ValidationResult {
     isValid: boolean
@@ -24,8 +23,13 @@ export interface ExpenseServiceInterface {
     /** Bestehende Ausgabe aktualisieren; groupId nur für shared/child nötig */
     updateExpense(e: Expense, groupId?: string): Promise<void>
 
-    /** Ausgabe löschen; groupId nur für shared/child nötig */
-    deleteExpense(id: string, groupId?: string): Promise<void>
+    /**
+     * ✅ ERWEITERT: Ausgabe löschen; groupId nur für shared/child nötig
+     * @param id Expense ID
+     * @param groupId Group ID (für shared/child)
+     * @param expenseDate Optional: Expense date für monthKey-Ableitung (nur BackendService)
+     */
+    deleteExpense(id: string, groupId?: string, expenseDate?: string): Promise<void>
 
     /** Gefilterte Ausgaben laden: user, scope, Monat, groupId (shared/child) */
     getExpenses(
@@ -35,11 +39,7 @@ export interface ExpenseServiceInterface {
         groupId?: string
     ): Promise<Expense[]>
 
-    prepareExpense(
-        partial: Partial<Expense>,
-        userId: string,
-        icon: LucideIcon
-    ): Expense
+    prepareExpense(partial: Partial<Expense>, userId: string, icon: LucideIcon): Expense
 
     validateExpense(expense: Expense): ValidationResult
 }

@@ -16,12 +16,14 @@ import {
     deleteClarificationReaction,
     postClarificationReaction,
 } from '@/services/expense/ClarificationReactionService'
+import { ExpenseService } from '@/services/expense/ExpenseService' // ✅ NEU
 import DeleteConfirmationModal from '../modals/deleteConfirmationModal'
 
 interface ExpenseItemProps {
     item: Expense
     onDelete: (id: string) => void | Promise<void>
     onEdit: (expense: Expense) => void
+    onDeleteSuccess?: () => void // ✅ NEU: Optional callback nach erfolgreichem Löschen
 }
 
 const formatEuro = (amount: string | number) => {
@@ -34,9 +36,10 @@ const formatEuro = (amount: string | number) => {
     }).format(parsed)
 }
 
-export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
+export function ExpenseItem({ item, onDelete, onEdit, onDeleteSuccess }: ExpenseItemProps) {
     const Icon = item.icon
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false) // ✅ NEU: Loading-State
 
     // 📦 Zugriff auf den aktuellen Benutzer über den zentralen UserContext
     const { userId: currentUserId, isReady } = useUser()
@@ -70,10 +73,42 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
     const rawColor = users[createdByUserId]?.color ?? 'gray-500'
     const { bg: bgClass, border: borderClass, text: textClass } = getUserColorClasses(rawColor)
 
-    // Funktion zum Behandeln der Löschbestätigung
-    const handleDeleteConfirm = () => {
-        onDelete(item.id)
-        setShowDeleteModal(false)
+    // ✅ ERWEITERT: Sichere Löschfunktion mit Clarification-Bereinigung
+    const handleDeleteConfirm = async () => {
+        setIsDeleting(true)
+
+        try {
+            // ✅ Verwende ExpenseService für sichere Löschung mit Clarification-Bereinigung
+            await ExpenseService.deleteExpenseWithCleanup(item)
+
+            // ✅ Rufe die ursprüngliche onDelete Callback auf (für Parent-Component Updates)
+            await onDelete(item.id)
+
+            // ✅ Optional: Zusätzlicher Success-Callback
+            onDeleteSuccess?.()
+
+            // ✅ Refresh Clarifications (falls nötig)
+            if (item.type !== ExpenseType.Personal) {
+                setTimeout(() => refresh(), 100)
+            }
+
+            console.log(`✅ ${item.type} expense mit Clarifications erfolgreich gelöscht`)
+        } catch (error) {
+            console.error('❌ Fehler beim Löschen der Expense:', error)
+
+            // ✅ Bei Fehler trotzdem versuchen, Parent zu benachrichtigen
+            try {
+                await onDelete(item.id)
+            } catch (fallbackError) {
+                console.error('❌ Auch Fallback-Löschung fehlgeschlagen:', fallbackError)
+            }
+
+            // ✅ Refresh für Konsistenz
+            refresh()
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteModal(false)
+        }
     }
 
     // 👉 Swipe-Funktionalität (nur bei eigenen Ausgaben und balanced items aktiv)
@@ -164,6 +199,7 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
               h-[72px] min-h-[72px] max-h-[72px] flex items-center p-4 rounded-xl border shadow-sm bg-white transition-colors relative
               ${state.isTouched ? 'bg-slate-50' : ''}
               ${state.isDragging ? '' : 'transition-transform duration-300'}
+              ${isDeleting ? 'opacity-50' : ''} 
             `}
                     style={style}
                     {...(isOwnItem || item.isBalanced ? touchProps : {})}
@@ -188,6 +224,10 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                                 <h3 className="font-semibold text-base text-gray-900 truncate overflow-hidden whitespace-nowrap">
                                     {item.name}
                                 </h3>
+                                {/* ✅ Loading-Indikator beim Löschen */}
+                                {isDeleting && (
+                                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 border-t-red-500 animate-spin" />
+                                )}
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                                 <div className="font-semibold text-base text-gray-900">
@@ -254,12 +294,13 @@ export function ExpenseItem({ item, onDelete, onEdit }: ExpenseItemProps) {
                 </div>
             </div>
 
-            {/* Delete Confirmation Modal */}
+            {/* ✅ ERWEITERT: Delete Confirmation Modal mit Loading-State */}
             <DeleteConfirmationModal
                 isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
+                onClose={() => !isDeleting && setShowDeleteModal(false)} // Prevent closing during delete
                 onConfirm={handleDeleteConfirm}
                 expense={item}
+                //isLoading={isDeleting} // Falls das Modal einen Loading-State unterstützt
             />
         </>
     )

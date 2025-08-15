@@ -23,14 +23,13 @@ const CompactProgress = ({
 
     const getColor = () => {
         if (mode === 'available') {
-            if (percentage < 10) return '#dc2626' // 🔴 Wenig verfügbar
-            if (percentage < 30) return '#f59e0b' // 🟠 Mittel
-            return '#4CAF50' // 🟢 Viel verfügbar
+            if (percentage < 10) return '#dc2626'
+            if (percentage < 30) return '#f59e0b'
+            return '#4CAF50'
         } else {
-            // mode === 'spent'
-            if (percentage < 70) return '#4CAF50' // 🟢 Wenig ausgegeben
-            if (percentage < 90) return '#f59e0b' // 🟠 Mittel
-            return '#dc2626' // 🔴 Viel ausgegeben
+            if (percentage < 70) return '#4CAF50'
+            if (percentage < 90) return '#f59e0b'
+            return '#dc2626'
         }
     }
 
@@ -71,7 +70,6 @@ const CompactProgress = ({
 export function BudgetCard({
     icon: Icon,
     title,
-    period,
     expenses,
     budget,
     onClick,
@@ -94,7 +92,6 @@ export function BudgetCard({
     const totalExpenses = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0)
     const available = Math.max(0, budget - totalExpenses)
 
-    // 🔁 Dynamische Werte je nach Modus
     const currentValue = displayMode === 'available' ? available : totalExpenses
     const currentPercentage = budget ? Math.min(100, Math.round((currentValue / budget) * 100)) : 0
 
@@ -113,7 +110,6 @@ export function BudgetCard({
             const progress = Math.min(1, step / steps)
             setAnimatedPercentage(Math.round(currentPercentage * progress))
             setAnimatedValue(Math.round(currentValue * progress))
-
             if (step >= steps) clearInterval(timer)
         }, interval)
 
@@ -137,43 +133,50 @@ export function BudgetCard({
                 }
             }}
             className="
-        relative
-        cursor-pointer
-        bg-gradient-to-r from-white to-blue-50/30 rounded-2xl p-4 shadow-md
+        relative cursor-pointer bg-gradient-to-r from-white to-blue-50/30 rounded-2xl
+        pt-4 pb-4 px-4
+        shadow-sm ring-1 ring-black/5
         border border-blue-200 w-full min-h-[100px]
         active:scale-[0.98] transition-all duration-200
-        focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-        outline-none
+        focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 outline-none
       "
         >
-            <div className="flex items-center space-x-4">
-                {/* Icon mit Hintergrund */}
-                <div className="bg-blue-100 p-2.5 rounded-xl flex-shrink-0">
-                    <Icon className="h-5 w-5 text-blue-700" />
-                </div>
+            {/* Zentrierender Wrapper */}
+            <div className="flex items-center h-full">
+                <div className="grid grid-cols-[auto,1fr,auto,auto] items-center gap-4 w-full">
+                    {/* Icon */}
+                    <div className="bg-blue-100 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-blue-700 block" />
+                    </div>
 
-                {/* Titel und Zeitraum */}
-                <div className="flex-1 min-w-0 text-left">
-                    <h3 className="text-lg font-semibold text-slate-800 truncate">{title}</h3>
-                    {period && <p className="text-xs text-slate-500">{period}</p>}
-                </div>
+                    {/* Titel */}
+                    <div className="flex-1 min-w-0 text-left">
+                        <h3 className="text-lg font-semibold text-slate-800 truncate leading-tight">
+                            {title}
+                        </h3>
+                    </div>
 
-                {/* Fortschrittsanzeige */}
-                <div className="flex-shrink-0">
-                    <CompactProgress percentage={animatedPercentage} mode={displayMode} />
-                </div>
+                    {/* Fortschrittsanzeige */}
+                    <div className="flex-shrink-0 flex items-center justify-center">
+                        <CompactProgress
+                            percentage={animatedPercentage}
+                            mode={displayMode}
+                            size={40}
+                        />
+                    </div>
 
-                {/* Summe + Umschalter */}
-                <div className="text-right flex-shrink-0 min-w-[80px]">
-                    <p className="text-lg font-semibold text-slate-800 mb-1">
-                        €{animatedValue.toLocaleString()}
-                    </p>
-                    <button
-                        onClick={handleToggle}
-                        className="text-xs text-blue-600 font-medium transition-colors underline decoration-dotted underline-offset-2"
-                    >
-                        {displayMode === 'available' ? 'verfügbar' : 'ausgegeben'}
-                    </button>
+                    {/* Summe + Umschalter */}
+                    <div className="text-right flex-shrink-0 min-w-[88px] flex flex-col items-end justify-center gap-1">
+                        <p className="text-lg font-semibold text-slate-800 leading-none">
+                            €{animatedValue.toLocaleString()}
+                        </p>
+                        <button
+                            onClick={handleToggle}
+                            className="inline-flex items-center h-6 px-2 rounded-md border border-blue-200 text-[11px] text-blue-700 bg-blue-50"
+                        >
+                            {displayMode === 'available' ? 'verfügbar' : 'ausgegeben'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -253,7 +253,6 @@ export default function HomePage() {
                                 <BudgetCard
                                     icon={User}
                                     title="Persönlich"
-                                    period="monatlich"
                                     expenses={personal.expenses}
                                     budget={personal.budget}
                                     onClick={() => navigate('/personal')}
@@ -263,7 +262,6 @@ export default function HomePage() {
                                 <BudgetCard
                                     icon={Users}
                                     title="Gemeinsam"
-                                    period="monatlich"
                                     expenses={shared.expenses}
                                     budget={shared.budget}
                                     onClick={() => navigate('/shared')}
@@ -273,7 +271,6 @@ export default function HomePage() {
                                 <BudgetCard
                                     icon={Baby}
                                     title="Kind"
-                                    period="jährlich"
                                     expenses={child.expenses}
                                     budget={child.budget}
                                     onClick={() => navigate('/child')}

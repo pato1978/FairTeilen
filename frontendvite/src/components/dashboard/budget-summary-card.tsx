@@ -22,7 +22,7 @@ export function BudgetSummaryCard({
     // percentageUsed,
     onBudgetClick,
     onTitleClick,
-    onCategoryChange,
+
     expenses = [],
     currentCategory = 'gesamt',
 }: BudgetSummaryCardProps) {

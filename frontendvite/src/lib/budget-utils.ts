@@ -15,6 +15,17 @@ export function calculateTotalExpenses(expenses: { amount: string | number }[]):
     }, 0)
 }
 
+export function calculateTotalExpensesWithoutRecurring(
+    expenses: { amount: string | number; isRecurring?: boolean }[]
+): number {
+    return expenses
+        .filter(exp => !exp.isRecurring) // nur nicht-wiederkehrende behalten
+        .reduce((sum, exp) => {
+            const value = extractAmountValue(exp.amount) || 0
+            return sum + value
+        }, 0)
+}
+
 /**
  * Berechnet den prozentualen Anteil der Ausgaben am Budget.
  *
@@ -25,5 +36,5 @@ export function calculateTotalExpenses(expenses: { amount: string | number }[]):
 export function calculatePercentageUsed(totalExpenses: number, budget: number): number {
     // Schütze vor Division durch 0 und begrenze den Wert auf maximal 100 %
     if (budget === 0) return 0
-    return Math.min(100, Math.round((totalExpenses / budget) * 100))
+    return Math.round((totalExpenses / budget) * 100)
 }

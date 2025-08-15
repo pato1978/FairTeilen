@@ -5,7 +5,7 @@
 import { createContext, ReactNode, useContext, useEffect, useState, useRef } from 'react'
 import type { ClarificationReaction } from '@/types'
 import { ClarificationStatus } from '@/types/monthly-overview'
-import { ClarificationReactionService } from '@/services/ClarificationReactionService'
+import { ClarificationReactionService } from '@/services/expense/ClarificationReactionService'
 import { useMonth } from '@/context/month-context'
 
 interface ClarificationReactionsContextValue {

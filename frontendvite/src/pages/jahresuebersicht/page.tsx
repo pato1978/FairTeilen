@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { EnhancedMonthCard } from './enhanced-month-card'
 
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { useFetchYearOverview } from '@/services/YearOverviewService'
+import { useFetchYearOverview } from '@/services/common/YearOverviewService'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 
 export default function JahresUebersicht() {

@@ -15,7 +15,7 @@ import { ClarificationStatus } from '@/types/monthly-overview'
 import {
     deleteClarificationReaction,
     postClarificationReaction,
-} from '@/services/ClarificationReactionService'
+} from '@/services/expense/ClarificationReactionService'
 import DeleteConfirmationModal from '../modals/deleteConfirmationModal'
 
 interface ExpenseItemProps {

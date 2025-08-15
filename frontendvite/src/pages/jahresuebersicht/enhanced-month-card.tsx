@@ -14,8 +14,8 @@
  */
 
 import React, { useState } from 'react'
-import { saveSnapshot } from '@/services/SnapshotService'
-import { MonthlyConfirmationService } from '@/services/MonthlyConfirmationService'
+import { saveSnapshot } from '@/services/group/SnapshotService'
+import { MonthlyConfirmationService } from '@/services/group/MonthlyConfirmationService'
 import { useUser } from '@/context/user-context.tsx'
 import type { MonthlyOverview } from '@/types/monthly-overview'
 import { useNavigate } from 'react-router-dom'

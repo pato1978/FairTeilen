@@ -1,7 +1,7 @@
 // src/context/user-context.tsx - FINAL MIT localStorage UND Plattform-Validierung
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
-import { UserService, type AppUser } from '@/services/UserService'
-import { UserIdService } from '@/services/UserIdService'
+import { UserService, type AppUser } from '@/services/user/UserService'
+import { UserIdService } from '@/services/user/UserIdService'
 import { getUsersByGroup } from '@/data/users'
 import { GROUP_ID } from '@/config/group-config'
 import { Capacitor } from '@capacitor/core'

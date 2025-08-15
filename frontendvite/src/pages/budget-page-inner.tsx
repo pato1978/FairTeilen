@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { HelpCircle, ShoppingCart } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import { useSaveExpense } from '@/services/ExpenseSaveService'
+import { useSaveExpense } from '@/services/expense/ExpenseSaveService'
 import { availableIcons } from '@/lib/icon-options'
-import { deleteExpense as deleteExpenseApi } from '@/services/ExpenseService'
+import { deleteExpense as deleteExpenseApi } from '@/services/expense/ExpenseService'
 import { iconMap } from '@/lib/icon-map'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { calculatePercentageUsed, calculateTotalExpenses } from '@/lib/budget-utils'
 import { toDateInputValue } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
-import { saveBudget } from '@/services/BudgetService'
+import { saveBudget } from '@/services/budget/BudgetService'
 import { useUser } from '@/context/user-context'
 import { useMonth } from '@/context/month-context'
 import { PageLayout } from '@/components/layout/page-layout'
@@ -115,7 +115,7 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     // 💾 Ausgabe speichern
     const handleSave = async (exp: Expense) => {
         await saveExpense(exp, selectedIcon)
-        refreshExpenses()
+        await refreshExpenses()
         setIsModalOpen(false)
         setEditingExpense(null)
     }
@@ -123,7 +123,7 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
     // ❌ Ausgabe löschen
     const handleDelete = async (id: string) => {
         await deleteExpenseApi(id, type)
-        refreshExpenses()
+        await refreshExpenses()
     }
 
     // 🔎 Filterlogik für sichtbare Ausgaben je Kategorie

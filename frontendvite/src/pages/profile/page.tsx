@@ -15,7 +15,7 @@ import { PageLayout } from '@/components/layout/page-layout'
 import { PageHeader } from '@/components/layout/page-header'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '@/context/user-context.tsx'
-import { UserService, type AppUser } from '@/services/UserService'
+import { UserService, type AppUser } from '@/services/user/UserService'
 
 export default function ProfilePage() {
     // ✅ Alle Funktionen aus dem vollständig Backend-integrierten Context

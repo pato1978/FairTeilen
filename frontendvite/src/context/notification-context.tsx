@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { NotificationService } from '@/services/NotificationService'
+import { NotificationService } from '@/services/common/NotificationService'
 import type { Notification } from '@/types/notification'
 import { useUser } from './user-context'
 import { GROUP_ID } from '@/config/group-config'

@@ -153,7 +153,7 @@ export function BudgetPageInner({ title, budgetTitle, type }: Props) {
                 <PageHeader title={title} />
             </div>
 
-            <div className="bg-white shadow-md rounded-lg p-4 flex flex-col h-full min-h-0 overflow-hidden">
+            <div className="bg-[#EAEFF5] shadow-md rounded-lg p-4 flex flex-col h-full min-h-0 overflow-hidden">
                 <div className="pb-4">
                     <BudgetSummaryCard
                         title={budgetTitle}

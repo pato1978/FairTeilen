@@ -19,7 +19,10 @@ const CompactProgress = ({
     const radius = (size - strokeWidth) / 2
     const circumference = radius * 2 * Math.PI
     const strokeDasharray = circumference
-    const strokeDashoffset = circumference - (percentage / 100) * circumference
+
+    // 🔒 Nur für die Ring-Darstellung auf 0–100 begrenzen
+    const clamped = Math.max(0, Math.min(100, percentage))
+    const strokeDashoffset = circumference - (clamped / 100) * circumference
 
     const getColor = () => {
         if (mode === 'available') {
@@ -93,7 +96,7 @@ export function BudgetCard({
     const available = Math.max(0, budget - totalExpenses)
 
     const currentValue = displayMode === 'available' ? available : totalExpenses
-    const currentPercentage = budget ? Math.min(100, Math.round((currentValue / budget) * 100)) : 0
+    const currentPercentage = budget ? Math.max(0, Math.round((currentValue / budget) * 100)) : 0
 
     const [animatedPercentage, setAnimatedPercentage] = useState(0)
     const [animatedValue, setAnimatedValue] = useState(0)
